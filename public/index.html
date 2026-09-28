@@ -76,7 +76,7 @@ dialog b{display:block;font:800 clamp(36px,9vw,64px) "Barlow Condensed",sans-ser
 <section id="admin" hidden><h1>Administración</h1>
  <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña"><button id="login">Entrar</button></div>
  <div id="panel" hidden>
-  <h2>Próximo partido</h2><div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><button id="saveMatch">Guardar partido</button></div>
+  <h2>Próximo partido</h2><div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
@@ -147,6 +147,8 @@ $('#login').onclick=async()=>{pw=$('#pw').value;try{await adm('/api/admin/check'
 if(pw)adm('/api/admin/check').then(showPanel).catch(()=>{pw='';sessionStorage.removeItem('pw')});
 const act=(sel,fn,ok)=>$(sel).onclick=async()=>{try{await fn();if(ok)$('#amsg').textContent=ok;await load()}catch(e){$('#amsg').textContent=e.message}};
 act('#saveMatch',()=>adm('/api/match','PUT',{date:$('#fecha-in').value?new Date($('#fecha-in').value).toISOString():'',rival:$('#rivalIn').value}),'Partido guardado');
+$('#delMatch').onclick=async()=>{if(!confirm('¿Borrar el próximo partido (fecha y rival)?'))return;
+ try{await adm('/api/match','PUT',{date:'',rival:''});$('#fecha-in').value='';$('#rivalIn').value='';$('#amsg').textContent='Partido borrado';await load()}catch(e){$('#amsg').textContent=e.message}};
 act('#saveRound',()=>adm('/api/round','PUT',{rival:$('#roundRival').value}),'Rival de la votación guardado');
 act('#addP',async()=>{await adm('/api/players','POST',{name:$('#pn').value});$('#pn').value=''},'Jugador añadido');
 $('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;
