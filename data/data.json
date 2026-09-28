@@ -1,0 +1,59 @@
+{
+  "nextId": 15,
+  "players": [
+    {
+      "id": 1,
+      "name": "CARLOS"
+    },
+    {
+      "id": 2,
+      "name": "DAVID"
+    },
+    {
+      "id": 3,
+      "name": "ROBERT"
+    },
+    {
+      "id": 4,
+      "name": "ANTONIO"
+    },
+    {
+      "id": 5,
+      "name": "PABLO"
+    },
+    {
+      "id": 6,
+      "name": "JIMENEZ"
+    },
+    {
+      "id": 7,
+      "name": "MARIO"
+    },
+    {
+      "id": 8,
+      "name": "DODU"
+    },
+    {
+      "id": 9,
+      "name": "JORGE"
+    },
+    {
+      "id": 10,
+      "name": "ADRIAN"
+    },
+    {
+      "id": 11,
+      "name": "HUGO"
+    }
+  ],
+  "next": {
+    "date": "2026-10-04T17:00:00.000Z",
+    "rival": "Getafe"
+  },
+  "round": {
+    "rival": "",
+    "votes": []
+  },
+  "history": [],
+  "teamV2": true
+}
