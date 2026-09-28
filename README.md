@@ -10,11 +10,14 @@ Admin: pestaña Admin, contraseña `Garra26?` (o la variable ADMIN_PASSWORD).
 Todo se guarda en `data/data.json` (más `data.json.bak` y copias en `data/backups/`).
 La carpeta `data/` NO se sube a git, así que subir cambios no toca los datos.
 
-## Render (para que los datos no se pierdan)
-1. Necesitas un **Persistent Disk** (plan de pago) montado en `/var/data`.
-2. Variables de entorno: `DATA_DIR=/var/data` y `ADMIN_PASSWORD=Garra26?`
-3. Build: `npm install` · Start: `npm start`
-Sin disco, Render borra los archivos al redesplegar o reiniciar. Descarga copias desde Admin.
+## Render GRATIS sin perder datos (Upstash Redis)
+Render free borra el disco en cada reinicio/redeploy, así que los datos se guardan fuera, en Upstash (gratis, sin tarjeta, no caduca):
+1. Crea cuenta en https://upstash.com → Redis → Create Database (plan Free, región EU).
+2. En la pestaña REST API copia `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN`.
+3. En Render → tu servicio → Environment, añade esas dos variables (+ `ADMIN_PASSWORD`). No hace falta `DATA_DIR` ni disco.
+4. Redeploy. En el log verás "datos en Upstash Redis". La primera vez sube lo que haya en `data/data.json`.
+Al arrancar lee de Upstash; en cada cambio (voto, jugador, cierre...) guarda allí. Si Upstash falla al arrancar, el servidor NO arranca vacío (para no pisar datos). Sin estas variables funciona como antes (solo disco local).
+Consumo: solo escribe cuando alguien vota/edita, muy por debajo de los 500.000 comandos/mes gratis.
 
 ## Votación MVP
 - Sin campo de nombre: se pulsa el botón del jugador y el voto entra en la lista. Cada dispositivo vota una sola vez y, al votar, desaparecen los botones.
