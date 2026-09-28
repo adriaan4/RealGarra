@@ -54,10 +54,17 @@ ol.rank{padding-left:22px}
 dialog{background:var(--card);color:var(--ink);border:3px solid var(--gold);border-radius:14px;text-align:center;padding:24px 34px}
 dialog::backdrop{background:rgba(0,0,0,.75)}
 dialog b{display:block;font:800 clamp(36px,9vw,64px) "Barlow Condensed",sans-serif;color:var(--gold)}
+.spons{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px}
+a.spon{display:flex;flex-direction:column;gap:10px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:16px;color:var(--ink);text-decoration:none;transition:transform .15s,border-color .15s}
+a.spon:hover{border-color:var(--gold);transform:translateY(-3px)}
+a.spon .logo{height:280px;display:flex;align-items:center;justify-content:center;background:#0d0b09;border-radius:10px;overflow:hidden}
+a.spon .logo img{max-width:100%;max-height:100%;object-fit:contain}
+a.spon .web{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center;overflow-wrap:anywhere}
+a.spon p{margin:0;opacity:.85;font-size:16px}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
 </style></head><body>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero"><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p></div>
@@ -71,6 +78,22 @@ dialog b{display:block;font:800 clamp(36px,9vw,64px) "Barlow Condensed",sans-ser
  <div class="pbtns" id="votos"></div>
  <h2 style="margin-top:28px">Votos de esta votación</h2><div id="ranking"></div>
  <h2 style="margin-top:28px">Clasificación de MVPs</h2><ol class="rank" id="rank"></ol>
+</section>
+
+<section id="patrocinadores" hidden><h1>Patrocinadores</h1>
+ <p>Gracias a quienes apoyan al Real Garra Balonpié. Pulsa en cualquiera para visitar su web.</p>
+ <div class="spons">
+  <a class="spon" href="https://menajealacon.com" target="_blank" rel="noopener noreferrer">
+   <div class="logo"><img src="patrocinadores/menaje-alacon.jpg" alt="Logo de Menaje Alacón, desde 1972" loading="lazy"></div>
+   <span class="web">menajealacon.com</span>
+   <p>Empresa familiar que empezó vendiendo menaje de cocina de forma ambulante por pueblos de Teruel y hoy también lo hace online: sartenes, ollas, cuchillos y todo lo que necesita tu cocina.</p>
+  </a>
+  <a class="spon" href="https://trakeballer-ut6z.onrender.com" target="_blank" rel="noopener noreferrer">
+   <div class="logo"><img src="patrocinadores/trakeballer.jpg" alt="Logo de Trakeballer" loading="lazy"></div>
+   <span class="web">trakeballer-ut6z.onrender.com</span>
+   <p>Tienda online de camisetas de fútbol actuales y retro de clubes y selecciones, personalizadas con tu nombre y dorsal y enviadas a domicilio.</p>
+  </a>
+ </div>
 </section>
 
 <section id="admin" hidden><h1>Administración</h1>
