@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Acceso</title>
+<link rel="stylesheet" href="/style.css"></head><body>
+<div class="box"><img src="/escudo.png" alt="" style="width:110px">
+<input id="pw" type="password" placeholder="Contraseña" autofocus>
+<button id="go">Entrar</button><p class="msg" id="msg"></p></div>
+<script>
+const go=async()=>{const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});
+ if(r.ok)location.reload();else document.getElementById('msg').textContent=(await r.json()).error};
+document.getElementById('go').onclick=go;document.getElementById('pw').onkeydown=e=>{if(e.key==='Enter')go()};
+</script></body></html>

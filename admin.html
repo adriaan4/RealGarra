@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Panel admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css"></head><body>
+<nav><img src="/escudo.png" alt=""><a href="/">Ver web</a><a href="#" id="salir">Salir</a></nav>
+<main>
+<h1>Panel de administración</h1><p class="msg" id="amsg"></p>
+<h2>Votación MVP</h2>
+<p id="total" class="sub"></p><div id="lista"></div>
+<div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button></div>
+<div class="row"><button id="closeRound">Cerrar votación y mostrar MVP</button><button class="ghost" id="resetVotes">Vaciar votos actuales</button></div>
+<h2 style="margin-top:24px">Próximo partido</h2>
+<div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"></div>
+<div class="row"><label class="row">Escudo del rival: <input id="crestFile" type="file" accept="image/png,image/jpeg,image/webp"></label><button class="ghost" id="crestClear" type="button">Quitar escudo</button></div>
+<div class="row"><img id="crestPrev" alt="" style="max-height:90px;display:none;background:#fff2;border-radius:8px;padding:4px"></div>
+<div class="row"><button id="saveMatch">Guardar partido</button></div>
+<h2 style="margin-top:24px">Jugadores</h2>
+<div class="row"><input id="pn" placeholder="Nombre"><input id="pd" type="number" placeholder="Dorsal" style="width:100px"><input id="pp" placeholder="Posición"><button id="addP">Añadir jugador</button></div>
+<div class="grid" id="adminList"></div>
+<h2 style="margin-top:24px">Copia de seguridad</h2>
+<div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
+<p class="sub" id="info"></p>
+</main>
+<dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
+<script>
+const $=s=>document.querySelector(s);let S,filled=false,pendingCrest=null,removeCrest=false;
+function resize(file){return new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;
+ r.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{
+  const m=320,sc=Math.min(1,m/Math.max(img.width,img.height));
+  const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/png'))};img.src=r.result};r.readAsDataURL(file)})}
+$('#crestFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+ try{pendingCrest=await resize(f);removeCrest=false;$('#crestPrev').src=pendingCrest;$('#crestPrev').style.display='inline-block'}
+ catch{$('#amsg').textContent='No se pudo leer la imagen'}};
+$('#crestClear').onclick=()=>{pendingCrest=null;removeCrest=true;$('#crestFile').value='';$('#crestPrev').style.display='none'};
+const api=async(u,m='GET',b)=>{const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b&&JSON.stringify(b)});const d=await r.json().catch(()=>({}));if(r.status===401){location.reload()}if(!r.ok)throw Error(d.error||'Error');return d};
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const loc=iso=>{if(!iso)return'';const d=new Date(iso);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+async function load(){S=await api('/api/state');const i=await api('/api/admin/info');
+ $('#info').textContent='Tu IP detectada: '+i.ip+' · límite por IP: '+(i.maxIp||'desactivado')+' · datos: '+i.file;
+ const c=id=>S.round.counts[id]||0,max=Math.max(1,...S.players.map(p=>c(p.id)));
+ $('#total').textContent=S.round.total+' voto'+(S.round.total==1?'':'s')+' en la votación actual';
+ $('#lista').innerHTML=[...S.players].sort((a,b)=>c(b.id)-c(a.id)).map(p=>`<div class="pv"><div class="vh"><b>${esc(p.name)}</b><span class="cnt">${c(p.id)}</span></div><div class="bar"><i style="width:${c(p.id)/max*100}%"></i></div></div>`).join('');
+ $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><span class="n">${p.number??'–'}</span><div><b>${esc(p.name)}</b></div><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('');
+ if(!filled){$('#fecha-in').value=loc(S.next.date);$('#rivalIn').value=S.next.rival||'';$('#roundRival').value=S.round.rival||'';
+  if(S.next.crest){$('#crestPrev').src=S.next.crest;$('#crestPrev').style.display='inline-block'}
+  filled=true}}
+const act=(sel,fn,ok)=>$(sel).onclick=async()=>{try{await fn();$('#amsg').textContent=ok||'';await load()}catch(e){$('#amsg').textContent=e.message}};
+act('#saveMatch',async()=>{await api('/api/match','PUT',{date:$('#fecha-in').value?new Date($('#fecha-in').value).toISOString():'',rival:$('#rivalIn').value,crestData:pendingCrest,removeCrest});pendingCrest=null;removeCrest=false},'Partido guardado');
+act('#saveRound',()=>api('/api/round','PUT',{rival:$('#roundRival').value}),'Rival de la votación guardado');
+act('#addP',async()=>{await api('/api/players','POST',{name:$('#pn').value,number:$('#pd').value,position:$('#pp').value});['#pn','#pd','#pp'].forEach(i=>$(i).value='')},'Jugador añadido');
+act('#resetVotes',async()=>{if(!confirm('¿Vaciar todos los votos de esta votación?'))throw Error('Cancelado');await api('/api/round/reset','POST')},'Votos vaciados');
+document.addEventListener('click',async e=>{const b=e.target.closest('button[data-d]');if(!b||!confirm('¿Borrar jugador? Su historial de MVPs se mantiene.'))return;
+ try{await api('/api/players/'+b.dataset.d,'DELETE');await load()}catch(err){$('#amsg').textContent=err.message}});
+$('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;
+ try{const e=await api('/api/round/close','POST');filled=false;await load();$('#dlgRival').textContent=e.rival;$('#dlgTxt').textContent=e.mvps.map(m=>m.name).join(' y ')+(e.mvps.length>1?' (empate)':'');$('#dlg').showModal()}catch(err){$('#amsg').textContent=err.message}};
+$('#dlgOk').onclick=()=>$('#dlg').close();
+$('#salir').onclick=async e=>{e.preventDefault();await api('/api/admin/logout','POST');location.href='/'};
+$('#exportBtn').onclick=async()=>{const r=await fetch('/api/export');const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='garra-datos.json';a.click()};
+$('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('Esto reemplaza todos los datos actuales por los del archivo. ¿Seguro?'))return;
+ try{await api('/api/import','POST',JSON.parse(await f.text()));filled=false;$('#amsg').textContent='Datos restaurados';await load()}catch(err){$('#amsg').textContent=err.message}};
+load();setInterval(load,30000);
+</script></body></html>

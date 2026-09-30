@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Real Garra Balonpié</title>
+<link rel="icon" href="escudo.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head><body>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#plantilla">Plantilla</a><a href="#mvp">MVP</a></nav>
+<main>
+<section id="inicio" hidden><div class="home">
+ <div class="hero"><h2>Siguiente partido</h2><div class="vs" id="vs"></div><div id="count"></div><p class="sub" id="fecha"></p><div id="mvpHome"></div></div>
+ <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div></aside>
+</div></section>
+
+<section id="plantilla" hidden><h1>Plantilla</h1><div class="grid" id="plantel"></div></section>
+
+<section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
+ <div id="ultimo"></div>
+ <h2>Vota al MVP</h2>
+ <p id="yaVotado"></p><p class="msg" id="vmsg"></p>
+ <div class="btns" id="btns"></div>
+ <h2 style="margin-top:28px">Votos hasta ahora</h2><p class="sub" id="total"></p><div id="lista"></div>
+ <h2 style="margin-top:28px">Clasificación de MVPs</h2><ol class="rank" id="rank"></ol>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+let S={players:[],next:{},round:{counts:{},total:0},history:[],myVote:null},timer;
+const api=async(u,m='GET',b)=>{const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b&&JSON.stringify(b)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Error');return d};
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const names=h=>h.mvps.map(m=>esc(m.name)).join(' y ')+(h.mvps.length>1?' (empate)':'');
+const trophies=id=>S.history.filter(h=>h.mvps.some(m=>m.id===id)).length;
+async function load(){S=await api('/api/state');render()}
+function render(){
+ const fut=S.next.date&&new Date(S.next.date)>Date.now();
+ $('#vs').innerHTML=fut?`<img class="crest" src="escudo.png" alt="Real Garra Balonpié">${S.next.rival?'<span class="vsTxt">VS</span>':''}${S.next.crest?`<img class="crest rival" src="${S.next.crest}" alt="Escudo de ${esc(S.next.rival)}">`:S.next.rival?`<span class="vsRival">${esc(S.next.rival)}</span>`:''}`:`<img class="crest" src="escudo.png" alt="Real Garra Balonpié">`;
+ $('#fecha').textContent=fut?new Date(S.next.date).toLocaleString('es-ES',{dateStyle:'full',timeStyle:'short'}):'';
+ const l=S.history[0];
+ $('#mvpHome').innerHTML=l?`<div class="banner">MVP del Garra vs ${esc(l.rival)}<b>${names(l)}</b></div>`:'';
+ $('#ultimo').innerHTML=l?`<div class="banner">MVP del Garra vs ${esc(l.rival)}<b>${names(l)}</b></div>`:'';
+ $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${h.mvps[0].votes} de ${h.totalVotes} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
+ $('#plantel').innerHTML=S.players.map(p=>`<div class="p">${trophies(p.id)?`<span class="tro">MVP ×${trophies(p.id)}</span>`:''}<span class="n">${p.number??'–'}</span><div><b>${esc(p.name)}</b><small>${esc(p.position)}</small></div></div>`).join('')||'<p>Aún no hay jugadores.</p>';
+ renderMvp();tick()}
+function renderMvp(){
+ $('#mvpTitulo').textContent=S.round.rival?'MVP del Garra vs '+S.round.rival:'MVP del partido';
+ const c=id=>S.round.counts[id]||0,max=Math.max(1,...S.players.map(p=>c(p.id))),voted=S.myVote!=null;
+ $('#btns').innerHTML=S.players.map(p=>`<button data-v="${p.id}" class="${S.myVote===p.id?'mine':''}" ${voted?'disabled':''}>${esc(p.name)}</button>`).join('')||'<p>Aún no hay jugadores.</p>';
+ $('#yaVotado').textContent=voted?'Ya has votado. ¡Gracias!':'Toca un nombre para votar. Solo se puede votar una vez.';
+ $('#lista').innerHTML=[...S.players].sort((a,b)=>c(b.id)-c(a.id)).map(p=>`<div class="pv"><div class="vh"><b>${esc(p.name)}</b><span class="cnt">${c(p.id)}</span></div><div class="bar"><i style="width:${c(p.id)/max*100}%"></i></div></div>`).join('');
+ $('#total').textContent=S.round.total+' voto'+(S.round.total==1?'':'s')+' en total';
+ const tot={};S.history.forEach(h=>h.mvps.forEach(m=>tot[m.name]=(tot[m.name]||0)+1));
+ $('#rank').innerHTML=Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(([n,k])=>`<li>${esc(n)} — ${k} MVP${k>1?'s':''}</li>`).join('')||'<li style="list-style:none">Todavía no hay clasificación.</li>'}
+function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
+ if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
+ const f=()=>{let d=new Date(S.next.date)-Date.now();if(d<=0){tick();return}
+  el.innerHTML='<div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'};
+ f();timer=setInterval(f,1000)}
+document.addEventListener('click',async e=>{const b=e.target.closest('button[data-v]');if(!b||b.disabled)return;
+ const p=S.players.find(x=>x.id==b.dataset.v);if(!confirm(`¿Votar a ${p.name}? No podrás cambiar tu voto.`))return;
+ try{await api('/api/vote','POST',{playerId:p.id});$('#vmsg').textContent='Voto registrado'}catch(err){$('#vmsg').textContent=err.message}await load()});
+function route(){const h=(location.hash||'#inicio').slice(1);document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==h);document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h))}
+addEventListener('hashchange',route);route();load();setInterval(load,30000);
+</script></body></html>
