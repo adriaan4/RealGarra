@@ -1,167 +1,214 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const app = express();
-app.set('trust proxy', true);
-app.use(express.json({ limit: '6mb' })); // 6mb: hueco de sobra para el escudo del rival en base64
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.static('public'));
 
 // ---- Datos en un archivo JSON. En Render apunta DATA_DIR al disco persistente (p. ej. /var/data) ----
 const DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DIR, 'data.json');
 fs.mkdirSync(path.join(DIR, 'backups'), { recursive: true });
 
-const SEED = ['CARLOS', 'DAVID', 'ROBERT', 'ANTONIO', 'PABLO', 'JIMENEZ', 'MARIO', 'DODU', 'JORGE', 'ADRIAN', 'HUGO'];
-const empty = () => ({ nextId: 1, salt: crypto.randomBytes(8).toString('hex'), seeded: false, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [] });
-function load() {
-  const bad = [];
-  for (const f of [FILE, FILE + '.bak']) {
-    if (!fs.existsSync(f)) continue;
-    try { return { ...empty(), ...JSON.parse(fs.readFileSync(f, 'utf8')) }; } catch { bad.push(f); }
-  }
-  if (bad.length) { console.error('Datos ilegibles en ' + bad.join(', ') + '. No arranco para no pisarlos.'); process.exit(1); }
-  return empty();
-}
-let db = load();
-function save() {
-  const tmp = FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-  if (fs.existsSync(FILE)) fs.copyFileSync(FILE, FILE + '.bak');
-  fs.renameSync(tmp, FILE); // escritura atómica
-}
-function snapshot(tag) {
-  if (fs.existsSync(FILE)) fs.copyFileSync(FILE, path.join(DIR, 'backups', new Date().toISOString().replace(/[:.]/g, '-') + '-' + tag + '.json'));
-}
-if (!db.seeded) { // los nombres iniciales se cargan una sola vez
-  if (!db.players.length) SEED.forEach(name => db.players.push({ id: db.nextId++, name, number: null, position: '' }));
-  db.seeded = true; save();
+const TEAM = ['CARLOS', 'DAVID', 'ROBERT', 'ANTONIO', 'PABLO', 'JIMENEZ', 'MARIO', 'DODU', 'JORGE', 'ADRIAN', 'HUGO'];
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [] });
+
+// ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
+const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
+const R_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const REMOTE = !!(R_URL && R_TOKEN);
+const KEY = 'garra:db';
+async function redis(...cmd) {
+  const r = await fetch(R_URL, { method: 'POST', headers: { Authorization: 'Bearer ' + R_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(cmd) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error || 'Redis HTTP ' + r.status);
+  return d.result;
 }
 
-// ---- Cookies, IP y admin ----
-const PASS = process.env.ADMIN_PASSWORD || 'Garra26?';
-const MAX_IP = +process.env.MAX_VOTES_PER_IP || 0; // 0 = límite por IP desactivado
-const cookies = req => Object.fromEntries((req.headers.cookie || '').split(';').map(c => c.trim().split(/=(.*)/s).slice(0, 2)).filter(a => a[0] && a[1]));
-const setCookie = (req, res, name, val, maxAge) =>
-  res.append('Set-Cookie', `${name}=${val}; Path=/; HttpOnly; SameSite=${name === 'garra_admin' ? 'Strict' : 'Lax'}; Max-Age=${maxAge}${req.secure ? '; Secure' : ''}`);
-const clientIp = req => String(req.headers['true-client-ip'] || req.ip || '');
-const ipHash = req => crypto.createHash('sha256').update(db.salt + clientIp(req)).digest('hex').slice(0, 16);
-const sha = s => crypto.createHash('sha256').update(s).digest();
-const adminToken = () => crypto.createHmac('sha256', PASS).update('garra-admin').digest('hex');
-const isAdmin = req => {
-  const c = cookies(req).garra_admin;
-  return !!c && /^[a-f0-9]{64}$/.test(c) && crypto.timingSafeEqual(Buffer.from(c), Buffer.from(adminToken()));
-};
-const admin = (req, res, next) => (isAdmin(req) ? next() : res.status(401).json({ error: 'No autorizado' }));
-const bad = (res, msg) => res.status(400).json({ error: msg });
-function getVid(req, res) {
-  let v = cookies(req).garra_vid;
-  if (!/^[a-f0-9]{32}$/.test(v || '')) { v = crypto.randomBytes(16).toString('hex'); setCookie(req, res, 'garra_vid', v, 31536000); }
-  return v;
+function loadLocal() {
+  const tried = [];
+  for (const f of [FILE, FILE + '.bak']) {
+    if (!fs.existsSync(f)) continue;
+    try { return { ...empty(), ...JSON.parse(fs.readFileSync(f, 'utf8')) }; }
+    catch (e) { tried.push(f); }
+  }
+  if (tried.length) { console.error('Datos ilegibles en ' + tried.join(', ') + '. No arranco para no pisarlos.'); process.exit(1); }
+  return null;
 }
+async function loadRemote() {
+  for (let i = 1; i <= 5; i++) {
+    try {
+      const raw = await redis('GET', KEY);
+      return raw ? { ...empty(), ...JSON.parse(raw) } : null;
+    } catch (e) { console.error('Redis no responde (intento ' + i + '/5): ' + e.message); await new Promise(r => setTimeout(r, 2000 * i)); }
+  }
+  // Si no podemos leer, NO arrancamos vacíos: sobrescribiríamos los datos reales.
+  console.error('No se pudo leer la base de datos remota. No arranco para no pisar los datos.');
+  process.exit(1);
+}
+
+let db = empty();
+let dirty = false, pushing = null;
+function saveLocal() {
+  try {
+    const tmp = FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+    if (fs.existsSync(FILE)) fs.copyFileSync(FILE, FILE + '.bak');
+    fs.renameSync(tmp, FILE);
+  } catch (e) { console.error('No se pudo escribir el archivo local: ' + e.message); }
+}
+function push() { // encola la subida a Redis; siempre sube la última versión
+  if (!REMOTE) return Promise.resolve();
+  dirty = true;
+  if (pushing) return pushing;
+  pushing = (async () => {
+    while (dirty) {
+      dirty = false;
+      try { await redis('SET', KEY, JSON.stringify(db)); }
+      catch (e) { dirty = true; console.error('Fallo al guardar en Redis, reintento en 15 s: ' + e.message); break; }
+    }
+  })().finally(() => { pushing = null; });
+  return pushing;
+}
+setInterval(() => { if (dirty && !pushing) push(); }, 15000); // reintento si Redis falló
+
+async function save() { saveLocal(); await push(); }
+function snapshot(tag) {
+  const at = new Date().toISOString();
+  if (fs.existsSync(FILE)) fs.copyFileSync(FILE, path.join(DIR, 'backups', at.replace(/[:.]/g, '-') + '-' + tag + '.json'));
+  if (REMOTE) redis('SET', 'garra:backup:' + tag, JSON.stringify({ at, data: db })).catch(() => {}); // última copia de cada tipo
+}
+
+async function init() {
+  let loaded = REMOTE ? await loadRemote() : null;
+  if (REMOTE && !loaded) { // primera vez con Redis: sube lo que haya en local (o vacío)
+    loaded = loadLocal() || empty();
+    console.log('Redis vacío: subiendo los datos iniciales.');
+  } else if (!REMOTE) {
+    loaded = loadLocal() || empty();
+    console.warn('AVISO: sin UPSTASH_REDIS_REST_URL/TOKEN los datos solo se guardan en disco local (en Render free se pierden).');
+  }
+  db = loaded;
+  db.round.votes.forEach(v => { if (!v.id) v.id = db.nextId++; });
+
+  // Migración de una sola vez: la lista de jugadores pasa a ser la de la votación MVP.
+  if (!db.teamV2) {
+    snapshot('antes-de-cambiar-jugadores');
+    const old = db.players;
+    db.players = TEAM.map(n => { const o = old.find(p => norm(p.name) === n); return { id: o ? o.id : db.nextId++, name: n }; });
+    const ids = new Set(db.players.map(p => p.id));
+    db.round.votes = db.round.votes.filter(v => ids.has(v.playerId));
+    db.teamV2 = true;
+  }
+  await save();
+}
+
+const PASS = process.env.ADMIN_PASSWORD || 'Garra26?';
+const admin = (req, res, next) => (req.headers['x-admin'] === PASS ? next() : res.status(401).json({ error: 'Contraseña incorrecta' }));
+const bad = (res, msg) => res.status(400).json({ error: msg });
+const pub = ({ device, ...v }) => v; // el identificador del dispositivo nunca sale al público
 
 // ---- Público ----
 app.get('/api/state', (req, res) => {
-  const vid = getVid(req, res);
-  const counts = {};
-  db.round.votes.forEach(v => (counts[v.playerId] = (counts[v.playerId] || 0) + 1));
-  const mine = db.round.votes.find(v => v.vid === vid);
-  res.set('Cache-Control', 'no-store');
+  const d = String(req.query.d || '');
+  const mine = d && db.round.votes.find(v => v.device === d);
   res.json({
-    players: db.players, next: db.next,
-    round: { rival: db.round.rival, counts, total: db.round.votes.length },
-    history: db.history.map(({ id, rival, closedAt, mvps, totalVotes, tally }) => ({ id, rival, closedAt, mvps, totalVotes, tally })),
-    myVote: mine ? mine.playerId : null,
+    players: db.players,
+    next: db.next,
+    round: { rival: db.round.rival, votes: db.round.votes.map(pub) },
+    history: db.history.map(h => ({ ...h, votes: (h.votes || []).map(pub) })),
+    mine: mine ? { playerId: mine.playerId } : null
   });
 });
 
-app.post('/api/vote', (req, res) => {
-  const vid = getVid(req, res);
+app.post('/api/vote', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80);
   const pl = db.players.find(p => p.id === +req.body.playerId);
-  if (!pl) return bad(res, 'Jugador no válido');
-  if (db.round.votes.some(v => v.vid === vid)) return res.status(409).json({ error: 'Ya has votado en este partido' });
-  const ip = ipHash(req);
-  if (MAX_IP && db.round.votes.filter(v => v.ip === ip).length >= MAX_IP) return res.status(409).json({ error: 'Ya se ha votado el máximo de veces desde esta conexión' });
-  db.round.votes.push({ playerId: pl.id, vid, ip });
-  save();
+  if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
+  if (!pl) return bad(res, 'Elige un jugador');
+  if (db.round.votes.some(v => v.device === device)) return bad(res, 'Ya has votado en esta votación');
+  db.round.votes.push({ id: db.nextId++, playerId: pl.id, playerName: pl.name, device });
+  await save();
   res.json({ ok: true });
 });
 
-// ---- Admin: acceso ----
-const fails = {};
-app.post('/api/admin/login', (req, res) => {
-  const ip = clientIp(req);
-  const f = (fails[ip] = fails[ip] && Date.now() - fails[ip].t < 9e5 ? fails[ip] : { n: 0, t: Date.now() });
-  if (f.n >= 5) return res.status(429).json({ error: 'Demasiados intentos. Espera 15 minutos.' });
-  if (!crypto.timingSafeEqual(sha(String(req.body.password || '')), sha(PASS))) { f.n++; return res.status(401).json({ error: 'Contraseña incorrecta' }); }
-  delete fails[ip];
-  setCookie(req, res, 'garra_admin', adminToken(), 604800);
-  res.json({ ok: true });
-});
-app.post('/api/admin/logout', (req, res) => { setCookie(req, res, 'garra_admin', '', 0); res.json({ ok: true }); });
-// La página del panel solo se envía a quien ha iniciado sesión; el resto ve solo el formulario de acceso
-app.get('/admin', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'views', isAdmin(req) ? 'admin.html' : 'login.html'));
-});
-app.get('/api/admin/info', admin, (req, res) => res.json({ ip: clientIp(req), maxIp: MAX_IP, file: FILE }));
+// ---- Admin ----
+app.get('/api/admin/check', admin, (_, res) => res.json({ ok: true }));
 
-// ---- Admin: acciones ----
-app.post('/api/players', admin, (req, res) => {
-  const name = String(req.body.name || '').trim().toUpperCase();
+app.post('/api/players', admin, async (req, res) => {
+  const name = String(req.body.name || '').trim().toUpperCase().slice(0, 30);
   if (!name) return bad(res, 'Falta el nombre');
-  const p = { id: db.nextId++, name, number: req.body.number ? +req.body.number : null, position: String(req.body.position || '').trim() };
+  if (db.players.some(p => norm(p.name) === norm(name))) return bad(res, 'Ese jugador ya está en la lista');
+  const p = { id: db.nextId++, name };
   db.players.push(p);
-  db.players.sort((a, b) => (a.number ?? 999) - (b.number ?? 999));
-  save();
+  await save();
   res.json(p);
 });
-app.delete('/api/players/:id', admin, (req, res) => {
+app.delete('/api/players/:id', admin, async (req, res) => {
   const id = +req.params.id;
   db.players = db.players.filter(p => p.id !== id);
   db.round.votes = db.round.votes.filter(v => v.playerId !== id); // el historial de MVPs no se toca
-  save();
+  await save();
   res.json({ ok: true });
 });
-app.put('/api/match', admin, (req, res) => {
-  let crest = db.next.crest || '';
-  if (req.body.removeCrest) crest = '';
-  else if (req.body.crestData) {
-    if (!/^data:image\/(png|jpeg|jpg|webp);base64,/.test(req.body.crestData)) return bad(res, 'Imagen no válida');
-    if (req.body.crestData.length > 4_000_000) return bad(res, 'La imagen es demasiado grande');
-    crest = req.body.crestData;
-  }
+app.put('/api/match', admin, async (req, res) => {
+  // el escudo llega como imagen ya comprimida en base64 desde el navegador; si no se envía, se conserva el que hubiera
+  const crest = typeof req.body.crest === 'string' ? req.body.crest.slice(0, 400000) : (db.next.crest || '');
   db.next = { date: req.body.date || '', rival: String(req.body.rival || '').trim(), crest };
   if (!db.round.rival && !db.round.votes.length) db.round.rival = db.next.rival;
-  save();
+  await save();
   res.json({ ok: true });
 });
-app.put('/api/round', admin, (req, res) => { db.round.rival = String(req.body.rival || '').trim(); save(); res.json({ ok: true }); });
-app.post('/api/round/reset', admin, (req, res) => { snapshot('antes-de-vaciar-votos'); db.round.votes = []; save(); res.json({ ok: true }); });
-app.post('/api/round/close', admin, (req, res) => {
+app.put('/api/round', admin, async (req, res) => { db.round.rival = String(req.body.rival || '').trim(); await save(); res.json({ ok: true }); });
+app.delete('/api/votes/:id', admin, async (req, res) => {
+  const id = +req.params.id;
+  db.round.votes = db.round.votes.filter(v => v.id !== id); // quita el voto: ese dispositivo podrá votar otra vez
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/round/close', admin, async (req, res) => {
   const c = {};
   db.round.votes.forEach(v => (c[v.playerId] = (c[v.playerId] || 0) + 1));
-  const tally = db.players.filter(p => c[p.id]).map(p => ({ id: p.id, name: p.name, votes: c[p.id] })).sort((a, b) => b.votes - a.votes);
-  if (!tally.length) return bad(res, 'Todavía no hay votos');
-  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps: tally.filter(t => t.votes === tally[0].votes), totalVotes: db.round.votes.length, tally };
+  const max = Math.max(0, ...Object.values(c));
+  if (!max) return bad(res, 'Todavía no hay votos');
+  const mvps = Object.keys(c).filter(id => c[id] === max).map(id => ({ id: +id, name: db.round.votes.find(v => v.playerId == id).playerName, votes: max }));
+  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps, totalVotes: db.round.votes.length, votes: db.round.votes };
   db.history.unshift(entry);
   db.round = { rival: '', votes: [] };
-  save();
+  await save();
   snapshot('cierre-votacion');
-  res.json(entry);
+  res.json({ ...entry, votes: entry.votes.map(pub) });
+});
+app.delete('/api/history/:id', admin, async (req, res) => {
+  const id = +req.params.id;
+  if (!db.history.some(h => h.id === id)) return bad(res, 'MVP no encontrado');
+  snapshot('antes-de-borrar-mvp');
+  db.history = db.history.filter(h => h.id !== id);
+  await save();
+  res.json({ ok: true });
 });
 app.get('/api/export', admin, (_, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=garra-datos.json');
   res.json(db);
 });
-app.post('/api/import', admin, (req, res) => {
+app.post('/api/import', admin, async (req, res) => {
   const d = req.body;
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
-  db = { ...empty(), ...d, seeded: true };
-  save();
+  db = { ...empty(), ...d, teamV2: true };
+  await save();
   res.json({ ok: true });
 });
 
+// ---- Mantener despierto (Render free duerme la web tras ~15 min sin visitas) ----
+app.get('/healthz', (_, res) => res.send('ok'));
+const SELF = process.env.KEEPALIVE_URL || process.env.RENDER_EXTERNAL_URL; // Render pone RENDER_EXTERNAL_URL solo
+if (SELF) {
+  setInterval(() => { fetch(SELF.replace(/\/$/, '') + '/healthz').catch(() => {}); }, 4 * 60 * 1000); // cada 4 min
+  console.log('Keep-alive activo hacia ' + SELF);
+}
+
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log('Web en http://localhost:' + port + '  |  panel en /admin  |  datos en ' + FILE));
+init().then(() => app.listen(port, () => console.log('Web en http://localhost:' + port + '  |  datos en ' + (REMOTE ? 'Upstash Redis' : FILE))));
