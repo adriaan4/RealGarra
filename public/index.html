@@ -3,6 +3,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Real Garra Balonpié</title>
 <link rel="icon" href="escudo.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0d0b09">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Real Garra">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
 <style>
 :root{--bg:#0d0b09;--ink:#f6eedb;--gold:#e2ab2c;--red:#a01f22;--card:#1a1512;--line:#3b2e1f}
@@ -74,7 +80,8 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
  <div class="hero">
   <div class="vs" id="vsBox" hidden><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><span class="vsTxt">VS</span><img class="crest" id="rivalCrest" alt=""></div>
   <img class="crest" id="soloCrest" src="escudo.png" alt="Escudo Real Garra Balonpié">
-  <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p></div>
+  <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p>
+  <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
  <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div></aside>
 </div></section>
 
@@ -112,6 +119,7 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
+  <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
   <div class="grid" id="adminList"></div>
   <h2 style="margin-top:20px">MVPs anteriores</h2><div id="adminHist"></div>
@@ -200,4 +208,44 @@ $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('E
  try{await adm('/api/import','POST',JSON.parse(await f.text()));filled=false;$('#amsg').textContent='Datos restaurados';await load()}catch(err){$('#amsg').textContent=err.message}};
 function route(){const h=(location.hash||'#inicio').slice(1);document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==h);document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h))}
 addEventListener('hashchange',route);route();load();setInterval(load,30000);
+
+// ---- Avisos push ----
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;
+const b64=k=>{const p='='.repeat((4-k.length%4)%4),r=atob((k+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+const pushOK='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+let pushKey='';
+const sendSub=(sub)=>api('/api/push/subscribe','POST',{sub:sub.toJSON()});
+async function pushUI(){
+ const box=$('#pushBox'),btn=$('#pushBtn'),msg=$('#pushMsg');
+ if(!pushKey)return;
+ box.hidden=false;
+ if(!pushOK){btn.hidden=true;msg.textContent=isIOS&&!standalone?'En iPhone/iPad: pulsa Compartir → «Añadir a pantalla de inicio», abre la app desde su icono y activa aquí los avisos.':'Este navegador no admite avisos.';return}
+ const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+ if(Notification.permission==='denied'){btn.hidden=true;msg.textContent='Los avisos están bloqueados. Actívalos en los ajustes del navegador o del móvil para esta web.';return}
+ btn.hidden=false;
+ if(sub&&Notification.permission==='granted'){btn.textContent='🔕 Desactivar avisos';btn.className='ghost';msg.textContent='Avisos activados en este dispositivo.'}
+ else{btn.textContent='🔔 Activar avisos';btn.className='';msg.textContent='Te avisamos de nuevos partidos, recordatorios y del MVP.'}
+}
+$('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
+ try{
+  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+  if(sub&&Notification.permission==='granted'){await api('/api/push/unsubscribe','POST',{endpoint:sub.endpoint});await sub.unsubscribe()}
+  else{
+   if(await Notification.requestPermission()!=='granted'){msg.textContent='No has dado permiso para los avisos.';return pushUI()}
+   const s=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
+   await sendSub(s)}
+  await pushUI()
+ }catch(e){msg.textContent='No se pudieron activar los avisos: '+e.message}};
+(async()=>{
+ if(!pushOK){try{pushKey=(await api('/api/push/key')).key}catch{}return pushUI()}
+ try{
+  await navigator.serviceWorker.register('/sw.js');
+  pushKey=(await api('/api/push/key')).key;
+  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+  if(sub&&pushKey&&Notification.permission==='granted')sendSub(sub).catch(()=>{}); // re-sincroniza el dispositivo con el servidor
+  await pushUI()
+ }catch(e){console.error(e)}
+})();
+$('#sendPush').onclick=async()=>{try{const r=await adm('/api/push/send','POST',{title:$('#pushTitle').value,body:$('#pushBody').value});$('#pushBody').value='';$('#amsg').textContent='Aviso enviado a '+r.sent+' dispositivo'+(r.sent==1?'':'s')}catch(e){$('#amsg').textContent=e.message}};
 </script></body></html>
