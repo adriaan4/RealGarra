@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const webpush = require('web-push');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static('public'));
@@ -13,7 +14,7 @@ fs.mkdirSync(path.join(DIR, 'backups'), { recursive: true });
 const TEAM = ['CARLOS', 'DAVID', 'ROBERT', 'ANTONIO', 'PABLO', 'JIMENEZ', 'MARIO', 'DODU', 'JORGE', 'ADRIAN', 'HUGO'];
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [] });
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '' });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -110,6 +111,49 @@ const admin = (req, res, next) => (req.headers['x-admin'] === PASS ? next() : re
 const bad = (res, msg) => res.status(400).json({ error: msg });
 const pub = ({ device, ...v }) => v; // el identificador del dispositivo nunca sale al público
 
+// ---- Avisos push (Android, iPhone y ordenador) con Web Push + VAPID ----
+// Genera las claves una vez con:  npx web-push generate-vapid-keys
+// y ponlas como variables de entorno: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY y VAPID_SUBJECT (mailto:tu@correo.com)
+const VAPID_PUB = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIV = process.env.VAPID_PRIVATE_KEY || '';
+const PUSH = !!(VAPID_PUB && VAPID_PRIV);
+if (PUSH) {
+  try { webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@example.com', VAPID_PUB, VAPID_PRIV); }
+  catch (e) { console.error('Claves VAPID no válidas: ' + e.message); process.exit(1); }
+} else console.warn('AVISO: sin VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY los avisos push están desactivados.');
+const TZ = process.env.TZ_AVISOS || 'Europe/Madrid';
+const fmtDate = iso => new Date(iso).toLocaleString('es-ES', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+async function notifyAll(title, body, url = '/#inicio') {
+  if (!PUSH || !db.subs.length) return { sent: 0, removed: 0 };
+  const payload = JSON.stringify({ title, body, url });
+  let sent = 0;
+  const dead = new Set();
+  await Promise.all(db.subs.map(async s => {
+    try { await webpush.sendNotification(s, payload, { TTL: 86400 }); sent++; }
+    catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) dead.add(s.endpoint); // suscripción caducada o dada de baja
+      else console.error('Fallo al enviar aviso (' + (e.statusCode || e.message) + ')');
+    }
+  }));
+  if (dead.size) { db.subs = db.subs.filter(s => !dead.has(s.endpoint)); await save(); }
+  return { sent, removed: dead.size };
+}
+const notify = (...a) => notifyAll(...a).catch(e => console.error('Aviso push: ' + e.message));
+
+// Recordatorio automático cuando falten 24 h o menos para el partido (una sola vez por partido)
+setInterval(async () => {
+  try {
+    const d = db.next && db.next.date;
+    if (!PUSH || !d || db.reminded === d) return;
+    const t = new Date(d) - Date.now();
+    if (t <= 0 || t > 24 * 36e5) return;
+    db.reminded = d;
+    await save();
+    notify('⚽ Hoy o mañana juega el Garra', 'Garra vs ' + (db.next.rival || 'rival por confirmar') + ' · ' + fmtDate(d));
+  } catch (e) { console.error('Recordatorio: ' + e.message); }
+}, 5 * 60 * 1000);
+
 // ---- Público ----
 app.get('/api/state', (req, res) => {
   const d = String(req.query.d || '');
@@ -134,6 +178,36 @@ app.post('/api/vote', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Avisos push: suscripción de dispositivos ----
+app.get('/api/push/key', (_, res) => res.json({ enabled: PUSH, key: PUSH ? VAPID_PUB : '' }));
+app.post('/api/push/subscribe', async (req, res) => {
+  if (!PUSH) return bad(res, 'Los avisos no están activados en el servidor');
+  const s = req.body && req.body.sub;
+  const ok = s && typeof s.endpoint === 'string' && /^https:\/\//.test(s.endpoint) && s.endpoint.length < 2000
+    && s.keys && typeof s.keys.p256dh === 'string' && typeof s.keys.auth === 'string';
+  if (!ok) return bad(res, 'Suscripción no válida');
+  const clean = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
+  const i = db.subs.findIndex(x => x.endpoint === clean.endpoint);
+  if (i >= 0) { if (JSON.stringify(db.subs[i]) === JSON.stringify(clean)) return res.json({ ok: true }); db.subs[i] = clean; }
+  else { if (db.subs.length >= 2000) return bad(res, 'Demasiados dispositivos suscritos'); db.subs.push(clean); }
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/push/unsubscribe', async (req, res) => {
+  const ep = String((req.body && req.body.endpoint) || '');
+  const n = db.subs.length;
+  db.subs = db.subs.filter(x => x.endpoint !== ep);
+  if (db.subs.length !== n) await save();
+  res.json({ ok: true });
+});
+app.post('/api/push/send', admin, async (req, res) => {
+  if (!PUSH) return bad(res, 'Los avisos no están activados en el servidor (faltan las claves VAPID)');
+  const title = String(req.body.title || '').trim().slice(0, 80) || 'Real Garra Balonpié';
+  const body = String(req.body.body || '').trim().slice(0, 200);
+  if (!body) return bad(res, 'Escribe el texto del aviso');
+  res.json(await notifyAll(title, body));
+});
+
 // ---- Admin ----
 app.get('/api/admin/check', admin, (_, res) => res.json({ ok: true }));
 
@@ -156,10 +230,15 @@ app.delete('/api/players/:id', admin, async (req, res) => {
 app.put('/api/match', admin, async (req, res) => {
   // el escudo llega como imagen ya comprimida en base64 desde el navegador; si no se envía, se conserva el que hubiera
   const crest = typeof req.body.crest === 'string' ? req.body.crest.slice(0, 400000) : (db.next.crest || '');
+  const prev = db.next || {};
   db.next = { date: req.body.date || '', rival: String(req.body.rival || '').trim(), crest };
   if (!db.round.rival && !db.round.votes.length) db.round.rival = db.next.rival;
+  const t = db.next.date ? new Date(db.next.date) - Date.now() : -1;
+  const changed = prev.date !== db.next.date || prev.rival !== db.next.rival;
+  if (t > 0 && t <= 24 * 36e5) db.reminded = db.next.date; // si ya falta menos de un día, no mandar además el recordatorio
   await save();
   res.json({ ok: true });
+  if (changed && t > 0 && db.next.rival) notify('⚽ Nuevo partido del Garra', 'Garra vs ' + db.next.rival + ' · ' + fmtDate(db.next.date));
 });
 app.put('/api/round', admin, async (req, res) => { db.round.rival = String(req.body.rival || '').trim(); await save(); res.json({ ok: true }); });
 app.delete('/api/votes/:id', admin, async (req, res) => {
@@ -180,6 +259,7 @@ app.post('/api/round/close', admin, async (req, res) => {
   await save();
   snapshot('cierre-votacion');
   res.json({ ...entry, votes: entry.votes.map(pub) });
+  notify('🏆 MVP del Garra vs ' + entry.rival, entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' (empate)' : ''), '/#mvp');
 });
 app.delete('/api/history/:id', admin, async (req, res) => {
   const id = +req.params.id;
@@ -191,13 +271,13 @@ app.delete('/api/history/:id', admin, async (req, res) => {
 });
 app.get('/api/export', admin, (_, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=garra-datos.json');
-  res.json(db);
+  res.json({ ...db, subs: [] }); // las suscripciones de avisos no se exportan
 });
 app.post('/api/import', admin, async (req, res) => {
   const d = req.body;
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
-  db = { ...empty(), ...d, teamV2: true };
+  db = { ...empty(), ...d, teamV2: true, subs: db.subs }; // se mantienen los dispositivos suscritos a avisos
   await save();
   res.json({ ok: true });
 });
