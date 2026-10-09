@@ -14,7 +14,7 @@ fs.mkdirSync(path.join(DIR, 'backups'), { recursive: true });
 const TEAM = ['CARLOS', 'DAVID', 'ROBERT', 'ANTONIO', 'PABLO', 'JIMENEZ', 'MARIO', 'DODU', 'JORGE', 'ADRIAN', 'HUGO'];
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '' });
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -163,7 +163,10 @@ app.get('/api/state', (req, res) => {
     next: db.next,
     round: { rival: db.round.rival, votes: db.round.votes.map(pub) },
     history: db.history.map(h => ({ ...h, votes: (h.votes || []).map(pub) })),
-    mine: mine ? { playerId: mine.playerId } : null
+    mine: mine ? { playerId: mine.playerId } : null,
+    ez: db.ez.map(({ device, ...e }) => e),
+    ezPts: EZ_PTS,
+    ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
   });
 });
 
@@ -174,6 +177,28 @@ app.post('/api/vote', async (req, res) => {
   if (!pl) return bad(res, 'Elige un jugador');
   if (db.round.votes.some(v => v.device === device)) return bad(res, 'Ya has votado en esta votación');
   db.round.votes.push({ id: db.nextId++, playerId: pl.id, playerName: pl.name, device });
+  await save();
+  res.json({ ok: true });
+});
+
+
+// ---- GARRA VS EZ: quién ha bebido más (puntos por unidad) ----
+const EZ_PTS = { cigarros: 0.5, cubatas: 3, chupitos: 2, cervezas: 1, porros: 3 };
+const ezCounts = b => {
+  const o = {};
+  for (const k of Object.keys(EZ_PTS)) { const n = Math.floor(Number(b && b[k])); o[k] = Number.isFinite(n) ? Math.min(Math.max(n, 0), 999) : 0; }
+  return o;
+};
+// Cada dispositivo tiene su propia ficha: la crea y la puede cambiar cuando quiera (el nombre queda fijo)
+app.post('/api/ez', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80);
+  if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
+  const mine = db.ez.find(e => e.device === device);
+  const name = mine ? mine.name : String(req.body.name || '').trim().toUpperCase().slice(0, 30);
+  if (!name) return bad(res, 'Pon tu nombre');
+  if (!mine && db.ez.some(e => norm(e.name) === norm(name))) return bad(res, 'Ese nombre ya está en la clasificación. Si eres tú desde otro móvil, pídele al admin que lo cambie');
+  const c = ezCounts(req.body.counts);
+  if (mine) Object.assign(mine, c); else db.ez.push({ id: db.nextId++, name, device, ...c });
   await save();
   res.json({ ok: true });
 });
@@ -266,6 +291,29 @@ app.delete('/api/history/:id', admin, async (req, res) => {
   if (!db.history.some(h => h.id === id)) return bad(res, 'MVP no encontrado');
   snapshot('antes-de-borrar-mvp');
   db.history = db.history.filter(h => h.id !== id);
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/ez/:id', admin, async (req, res) => {
+  const e = db.ez.find(x => x.id === +req.params.id);
+  if (!e) return bad(res, 'Persona no encontrada');
+  if (typeof req.body.name === 'string' && req.body.name.trim()) {
+    const name = req.body.name.trim().toUpperCase().slice(0, 30);
+    if (db.ez.some(x => x !== e && norm(x.name) === norm(name))) return bad(res, 'Ese nombre ya existe');
+    e.name = name;
+  }
+  Object.assign(e, ezCounts(req.body.counts));
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/ez/:id', admin, async (req, res) => {
+  db.ez = db.ez.filter(x => x.id !== +req.params.id);
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/ez/reset', admin, async (req, res) => {
+  snapshot('antes-de-vaciar-ez');
+  db.ez = [];
   await save();
   res.json({ ok: true });
 });
