@@ -71,10 +71,16 @@ a.spon .logo{height:280px;display:flex;align-items:center;justify-content:center
 a.spon .logo img{max-width:100%;max-height:100%;object-fit:contain}
 a.spon .web{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center;overflow-wrap:anywhere}
 a.spon p{margin:0;opacity:.85;font-size:16px}
+.ezRow{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:8px 12px;margin-top:8px}
+.ezRow span{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}.ezRow small{font:400 14px Barlow,sans-serif;color:var(--ink);opacity:.7;margin-left:6px}
+.step{display:flex;gap:6px;align-items:center}.step button{width:42px;padding:8px 0;font-size:20px;line-height:1}
+.step input{width:64px;text-align:center;padding:8px 4px}
+.ezA{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin:10px 0}.ezA label{font-size:14px;opacity:.85}.ezA input{width:100%;margin-top:2px}
+.ezNum{font:800 28px "Barlow Condensed",sans-serif;color:var(--gold);white-space:nowrap}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
 </style></head><body>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">Garra vs EZ</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -92,6 +98,15 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
  <div class="pbtns" id="votos"></div>
  <h2 style="margin-top:28px">Votos de esta votación</h2><div id="ranking"></div>
  <h2 style="margin-top:28px">Clasificación de MVPs</h2><ol class="rank" id="rank"></ol>
+</section>
+
+<section id="ez" hidden><h1>GARRA VS EZ</h1>
+ <p>Pon tu nombre y apunta lo que has bebido. Puedes volver y cambiar tus cantidades cuando quieras.</p>
+ <div class="row"><input id="ezName" placeholder="Tu nombre" maxlength="30" autocomplete="off" style="flex:1;min-width:200px"></div>
+ <div id="ezForm"></div>
+ <div class="row"><button id="ezSave" type="button">Guardar</button><span class="ezNum" id="ezTotal"></span></div>
+ <p class="msg" id="ezMsg"></p>
+ <h2 style="margin-top:28px">Clasificación</h2><div id="ezRank"></div>
 </section>
 
 <section id="patrocinadores" hidden><h1>Patrocinadores</h1>
@@ -119,6 +134,7 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
+  <h2 style="margin-top:20px">Garra vs EZ</h2><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
   <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
   <div class="grid" id="adminList"></div>
@@ -132,7 +148,7 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
 <script>
 const $=s=>document.querySelector(s);
 let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
-let S={players:[],next:{},round:{votes:[]},history:[],mine:null},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
+let S={players:[],next:{},round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
 function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest');if(crestData){p.src=crestData;p.hidden=false;d.hidden=false}else{p.hidden=true;d.hidden=true}}
 $('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
  fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
@@ -155,6 +171,7 @@ function render(){
  if(showVs){$('#rivalCrest').src=S.next.crest;$('#rivalCrest').alt='Escudo de '+(S.next.rival||'el rival')}
  $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${top1(h)} de ${h.totalVotes||0} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
  try{renderMvp()}catch(e){console.error(e)}
+ try{renderEz()}catch(e){console.error(e)}
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
  $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
@@ -177,6 +194,42 @@ function renderMvp(){
   return `<div class="pv"><div class="vh"><b>${pos}. ${esc(p.name)}</b><span>${vs.length} voto${vs.length==1?'':'s'}</span></div><div class="bar"><i style="width:${vs.length/top*100}%"></i></div>${mine&&mine.playerId===p.id?'<span class="tag">Tu voto</span>':''}</div>`}).join('')||'<p>Todavía no ha votado nadie.</p>';
  const tot={};S.history.forEach(h=>mv(h).forEach(m=>tot[m.name]=(tot[m.name]||0)+1));
  $('#rank').innerHTML=Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`<li>${esc(n)} — ${c} MVP${c>1?'s':''}</li>`).join('')||'<li style="list-style:none">Todavía no hay clasificación.</li>'}
+// ---- GARRA VS EZ ----
+const EZ=[['cigarros','🚬','Cigarros'],['cubatas','🍹','Cubata'],['chupitos','🥃','Chupito'],['cervezas','🍺','Cerveza'],['porros','🌿','Porro']];
+const ezN=v=>Math.min(999,Math.max(0,Math.floor(Number(v))||0));
+const ezPts=e=>EZ.reduce((t,[k])=>t+ezN(e[k])*(S.ezPts[k]||0),0);
+const ezFmt=n=>(Math.round(n*10)/10).toString().replace('.',',');
+let ezInit=false;
+function ezBuildForm(){
+ $('#ezForm').innerHTML=EZ.map(([k,ic,l])=>`<div class="ezRow"><span>${ic} ${l}<small>${ezFmt(S.ezPts[k]||0)} pts</small></span><div class="step"><button type="button" class="ghost" data-ek="${k}" data-es="-1" aria-label="Quitar ${l}">−</button><input type="number" inputmode="numeric" min="0" max="999" id="ez-${k}" value="0" aria-label="${l}"><button type="button" data-ek="${k}" data-es="1" aria-label="Añadir ${l}">+</button></div></div>`).join('')}
+function ezDraft(){const c={};EZ.forEach(([k])=>c[k]=ezN($('#ez-'+k).value));return c}
+function ezUpdTotal(){$('#ezTotal').textContent=ezFmt(ezPts(ezDraft()))+' pts'}
+function ezBreak(e){return EZ.filter(([k])=>ezN(e[k])).map(([k,ic])=>ic+' '+ezN(e[k])).join(' · ')||'Sin apuntar nada'}
+function renderEz(){
+ if(!$('#ez-cigarros')){if(!Object.keys(S.ezPts).length)return;ezBuildForm()}
+ const mine=S.ez.find(e=>e.id===S.ezMine);
+ if(!ezInit){ezInit=true;if(mine){$('#ezName').value=mine.name;EZ.forEach(([k])=>$('#ez-'+k).value=ezN(mine[k]))}ezUpdTotal()}
+ $('#ezName').disabled=!!mine;$('#ezSave').textContent=mine?'Actualizar':'Guardar';
+ const rk=[...S.ez].map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));
+ const top=rk.length&&rk[0].p>0?rk[0].p:1;
+ $('#ezRank').innerHTML=rk.map(({e,p})=>{const pos=rk.findIndex(x=>x.p===p)+1;
+  return `<div class="pv"><div class="vh"><b>${pos}. ${esc(e.name)}</b><span class="cnt">${ezFmt(p)} pts</span></div><div class="bar"><i style="width:${p/top*100}%"></i></div><small>${ezBreak(e)}</small>${S.ezMine===e.id?' <span class="tag">Tú</span>':''}</div>`}).join('')||'<p>Todavía no ha apuntado nadie.</p>';
+ // admin: no se vuelve a pintar mientras se está escribiendo dentro
+ const ad=$('#adminEz');
+ if(!ad.contains(document.activeElement))ad.innerHTML=rk.map(({e,p})=>`<div class="pv" data-ezbox="${e.id}"><div class="vh"><b>${esc(e.name)}</b><span class="cnt">${ezFmt(p)} pts</span></div><div class="ezA">${EZ.map(([k,ic,l])=>`<label>${ic} ${l}<input type="number" min="0" max="999" inputmode="numeric" data-k="${k}" value="${ezN(e[k])}"></label>`).join('')}</div><div class="row"><button type="button" data-ezs="${e.id}">Guardar</button><button type="button" class="ghost" data-ezx="${e.id}">Borrar</button></div></div>`).join('')||'<p>Nadie ha apuntado todavía.</p>'}
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.ek){const i=$('#ez-'+b.dataset.ek);i.value=ezN(ezN(i.value)+(+b.dataset.es));ezUpdTotal()}
+  if(b.dataset.ezs){const box=b.closest('[data-ezbox]'),c={};box.querySelectorAll('input[data-k]').forEach(i=>c[i.dataset.k]=ezN(i.value));
+   await adm('/api/ez/'+b.dataset.ezs,'PUT',{counts:c});$('#amsg').textContent='Cantidades guardadas';document.activeElement.blur();await load()}
+  if(b.dataset.ezx&&confirm('¿Borrar a esta persona de la clasificación?')){await adm('/api/ez/'+b.dataset.ezx,'DELETE');await load()}
+ }catch(err){$('#amsg').textContent=err.message}});
+document.addEventListener('input',e=>{if(e.target.id&&e.target.id.startsWith('ez-'))ezUpdTotal()});
+$('#ezSave').onclick=async()=>{const m=$('#ezMsg');
+ try{await api('/api/ez','POST',{device:dev,name:$('#ezName').value,counts:ezDraft()});m.textContent='Guardado';ezInit=true;await load()}
+ catch(err){m.textContent=err.message}};
+$('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de Garra vs EZ? Se hace copia de seguridad antes.'))return;
+ try{await adm('/api/ez/reset','POST');ezInit=false;$('#ezName').value='';EZ.forEach(([k])=>{const i=$('#ez-'+k);if(i)i.value=0});$('#amsg').textContent='Clasificación vaciada';await load()}catch(err){$('#amsg').textContent=err.message}};
 function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
  if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
  const f=()=>{let d=new Date(S.next.date)-Date.now();if(d<=0){tick();return}
