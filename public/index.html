@@ -77,18 +77,32 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
 .step input{width:64px;text-align:center;padding:8px 4px}
 .ezA{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin:10px 0}.ezA label{font-size:14px;opacity:.85}.ezA input{width:100%;margin-top:2px}
 .ezNum{font:800 28px "Barlow Condensed",sans-serif;color:var(--gold);white-space:nowrap}
+.trofeo{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);text-align:center}
+.trofeo b{display:block;font:800 32px "Barlow Condensed",sans-serif;color:var(--gold);letter-spacing:.5px}
+.trofeo span{display:block;font-size:14px;opacity:.75}
+.tw{overflow-x:auto;margin-top:16px}
+table.cal{width:100%;border-collapse:collapse;min-width:560px}
+.cal th{font:800 18px "Barlow Condensed",sans-serif;color:var(--gold);text-align:left;padding:8px 10px;border-bottom:3px solid var(--gold);white-space:nowrap}
+.cal td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.cal td:first-child{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}
+.cal tr.next td{background:#2a1d0c}
+.cal tr.next td:first-child{border-left:4px solid var(--red)}
+.cal .tbc{opacity:.55}
+.calA{display:grid;grid-template-columns:110px 1fr 130px auto;gap:8px;align-items:center;margin-top:8px}
+@media(max-width:600px){.calA{grid-template-columns:1fr 1fr}}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
 </style></head><body>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">Garra vs EZ</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#calendario">Calendario</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
   <div class="vs" id="vsBox" hidden><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><span class="vsTxt">VS</span><img class="crest" id="rivalCrest" alt=""></div>
   <img class="crest" id="soloCrest" src="escudo.png" alt="Escudo Real Garra Balonpié">
-  <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p>
+  <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p><p class="sub" id="campo"></p>
   <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
- <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div></aside>
+ <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div>
+  <div class="trofeo"><b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span></div></aside>
 </div></section>
 
 <section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
@@ -100,13 +114,18 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
  <h2 style="margin-top:28px">Clasificación de MVPs</h2><ol class="rank" id="rank"></ol>
 </section>
 
-<section id="ez" hidden><h1>GARRA VS EZ</h1>
+<section id="ez" hidden><h1>GARRO DE ORO</h1>
  <p>Pon tu nombre y apunta lo que has bebido. Puedes volver y cambiar tus cantidades cuando quieras.</p>
  <div class="row"><input id="ezName" placeholder="Tu nombre" maxlength="30" autocomplete="off" style="flex:1;min-width:200px"></div>
  <div id="ezForm"></div>
  <div class="row"><button id="ezSave" type="button">Guardar</button><span class="ezNum" id="ezTotal"></span></div>
  <p class="msg" id="ezMsg"></p>
  <h2 style="margin-top:28px">Clasificación</h2><div id="ezRank"></div>
+</section>
+
+<section id="calendario" hidden><h1>Calendario</h1>
+ <p>Todos los partidos de la temporada. La hora y el campo se irán confirmando.</p>
+ <div class="tw"><table class="cal"><thead><tr><th>Jornada</th><th>Fecha</th><th>Horario</th><th>Partido</th><th>Resultado</th><th>Campo</th></tr></thead><tbody id="calBody"></tbody></table></div>
 </section>
 
 <section id="patrocinadores" hidden><h1>Patrocinadores</h1>
@@ -129,12 +148,13 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
  <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña"><button id="login">Entrar</button></div>
  <div id="panel" hidden>
   <h2>Próximo partido</h2>
-  <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"></div>
+  <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
   <div class="row">Escudo del rival: <input id="crestFile" type="file" accept="image/*"><img id="crestPreview" class="crestPrev" hidden><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button></div>
   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
-  <h2 style="margin-top:20px">Garra vs EZ</h2><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
+  <h2 style="margin-top:20px">GARRO DE ORO</h2><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
+  <h2 style="margin-top:20px">Calendario</h2><p class="sub" style="font-size:15px">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
   <div class="grid" id="adminList"></div>
@@ -148,7 +168,7 @@ a.spon p{margin:0;opacity:.85;font-size:16px}
 <script>
 const $=s=>document.querySelector(s);
 let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
-let S={players:[],next:{},round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
+let S={players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
 function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest');if(crestData){p.src=crestData;p.hidden=false;d.hidden=false}else{p.hidden=true;d.hidden=true}}
 $('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
  fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
@@ -166,16 +186,18 @@ function render(){
  const fut=S.next.date&&new Date(S.next.date)>Date.now();
  $('#rival').textContent=fut&&S.next.rival?'Garra vs '+S.next.rival:'';
  $('#fecha').textContent=fut?new Date(S.next.date).toLocaleString('es-ES',{dateStyle:'full',timeStyle:'short'}):'';
+ $('#campo').textContent=fut&&S.next.field?'📍 Campo: '+S.next.field:'';
  const showVs=fut&&S.next.crest;
  $('#vsBox').hidden=!showVs;$('#soloCrest').hidden=!!showVs;
  if(showVs){$('#rivalCrest').src=S.next.crest;$('#rivalCrest').alt='Escudo de '+(S.next.rival||'el rival')}
  $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${top1(h)} de ${h.totalVotes||0} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
  try{renderMvp()}catch(e){console.error(e)}
  try{renderEz()}catch(e){console.error(e)}
+ try{renderCal()}catch(e){console.error(e)}
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
  $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
- if(!filled){$('#fecha-in').value=loc(S.next.date);$('#rivalIn').value=S.next.rival||'';$('#roundRival').value=S.round.rival||'';crestData=S.next.crest||'';$('#crestFile').value='';updateCrestPreview();filled=true}
+ if(!filled){$('#fecha-in').value=loc(S.next.date);$('#rivalIn').value=S.next.rival||'';$('#campoIn').value=S.next.field||'';$('#roundRival').value=S.round.rival||'';crestData=S.next.crest||'';$('#crestFile').value='';updateCrestPreview();filled=true}
  tick()}
 function renderMvp(){
  $('#mvpTitulo').textContent=S.round.rival?'MVP del Garra vs '+S.round.rival:'MVP del partido';
@@ -194,7 +216,7 @@ function renderMvp(){
   return `<div class="pv"><div class="vh"><b>${pos}. ${esc(p.name)}</b><span>${vs.length} voto${vs.length==1?'':'s'}</span></div><div class="bar"><i style="width:${vs.length/top*100}%"></i></div>${mine&&mine.playerId===p.id?'<span class="tag">Tu voto</span>':''}</div>`}).join('')||'<p>Todavía no ha votado nadie.</p>';
  const tot={};S.history.forEach(h=>mv(h).forEach(m=>tot[m.name]=(tot[m.name]||0)+1));
  $('#rank').innerHTML=Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`<li>${esc(n)} — ${c} MVP${c>1?'s':''}</li>`).join('')||'<li style="list-style:none">Todavía no hay clasificación.</li>'}
-// ---- GARRA VS EZ ----
+// ---- GARRO DE ORO (antes Garra vs EZ) ----
 const EZ=[['cigarros','🚬','Cigarros'],['cubatas','🍹','Cubata'],['chupitos','🥃','Chupito'],['cervezas','🍺','Cerveza'],['porros','🌿','Porro']];
 const ezN=v=>Math.min(999,Math.max(0,Math.floor(Number(v))||0));
 const ezPts=e=>EZ.reduce((t,[k])=>t+ezN(e[k])*(S.ezPts[k]||0),0);
@@ -228,8 +250,22 @@ document.addEventListener('input',e=>{if(e.target.id&&e.target.id.startsWith('ez
 $('#ezSave').onclick=async()=>{const m=$('#ezMsg');
  try{await api('/api/ez','POST',{device:dev,name:$('#ezName').value,counts:ezDraft()});m.textContent='Guardado';ezInit=true;await load()}
  catch(err){m.textContent=err.message}};
-$('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de Garra vs EZ? Se hace copia de seguridad antes.'))return;
+$('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de GARRO DE ORO? Se hace copia de seguridad antes.'))return;
  try{await adm('/api/ez/reset','POST');ezInit=false;$('#ezName').value='';EZ.forEach(([k])=>{const i=$('#ez-'+k);if(i)i.value=0});$('#amsg').textContent='Clasificación vaciada';await load()}catch(err){$('#amsg').textContent=err.message}};
+// ---- Calendario ----
+const dmy=d=>d.split('-').reverse().join('/');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function renderCal(){
+ const cal=S.calendar||[],nx=cal.find(m=>m.date>=today());
+ $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td>J${m.j}</td><td>${dmy(m.date)}</td><td${m.time?'':' class="tbc"'}>${m.time?esc(m.time):'Por confirmar'}</td><td>Real Garra vs <b>${esc(m.rival)}</b></td><td>${m.result?esc(m.result):'-'}</td><td${m.field?'':' class="tbc"'}>${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
+ // admin: no se vuelve a pintar mientras se está escribiendo dentro
+ const ad=$('#adminCal');
+ if(!ad.contains(document.activeElement))ad.innerHTML=cal.map(m=>`<div class="pv" data-calbox="${m.j}"><b>J${m.j} · ${dmy(m.date)} · vs ${esc(m.rival)}</b><div class="calA"><input type="time" data-c="time" value="${esc(m.time)}" aria-label="Hora"><input data-c="field" placeholder="Campo" maxlength="80" value="${esc(m.field)}"><input data-c="result" placeholder="Resultado" maxlength="20" value="${esc(m.result)}"><button type="button" data-cals="${m.j}">Guardar</button></div></div>`).join('')||'<p>No hay calendario.</p>'}
+document.addEventListener('click',async e=>{const b=e.target.closest('button[data-cals]');if(!b)return;
+ try{const box=b.closest('[data-calbox]'),g=k=>box.querySelector('[data-c='+k+']').value;
+  await adm('/api/calendar/'+b.dataset.cals,'PUT',{time:g('time'),field:g('field'),result:g('result')});
+  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';document.activeElement.blur();await load()}
+ catch(err){$('#amsg').textContent=err.message}});
 function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
  if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
  const f=()=>{let d=new Date(S.next.date)-Date.now();if(d<=0){tick();return}
@@ -248,9 +284,9 @@ function showPanel(){$('#panel').hidden=false;$('#loginRow').hidden=true}
 $('#login').onclick=async()=>{pw=$('#pw').value;try{await adm('/api/admin/check');sessionStorage.pw=pw;showPanel();$('#amsg').textContent=''}catch{pw='';$('#amsg').textContent='Contraseña incorrecta'}};
 if(pw)adm('/api/admin/check').then(showPanel).catch(()=>{pw='';sessionStorage.removeItem('pw')});
 const act=(sel,fn,ok)=>$(sel).onclick=async()=>{try{await fn();if(ok)$('#amsg').textContent=ok;await load()}catch(e){$('#amsg').textContent=e.message}};
-act('#saveMatch',()=>adm('/api/match','PUT',{date:$('#fecha-in').value?new Date($('#fecha-in').value).toISOString():'',rival:$('#rivalIn').value,crest:crestData}),'Partido guardado');
+act('#saveMatch',()=>adm('/api/match','PUT',{date:$('#fecha-in').value?new Date($('#fecha-in').value).toISOString():'',rival:$('#rivalIn').value,crest:crestData,field:$('#campoIn').value}),'Partido guardado');
 $('#delMatch').onclick=async()=>{if(!confirm('¿Borrar el próximo partido (fecha, rival y escudo)?'))return;
- try{await adm('/api/match','PUT',{date:'',rival:'',crest:''});$('#fecha-in').value='';$('#rivalIn').value='';crestData='';$('#crestFile').value='';updateCrestPreview();$('#amsg').textContent='Partido borrado';await load()}catch(e){$('#amsg').textContent=e.message}};
+ try{await adm('/api/match','PUT',{date:'',rival:'',crest:'',field:''});$('#fecha-in').value='';$('#rivalIn').value='';$('#campoIn').value='';crestData='';$('#crestFile').value='';updateCrestPreview();$('#amsg').textContent='Partido borrado';await load()}catch(e){$('#amsg').textContent=e.message}};
 act('#saveRound',()=>adm('/api/round','PUT',{rival:$('#roundRival').value}),'Rival de la votación guardado');
 act('#addP',async()=>{await adm('/api/players','POST',{name:$('#pn').value});$('#pn').value=''},'Jugador añadido');
 $('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;

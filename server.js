@@ -14,7 +14,17 @@ fs.mkdirSync(path.join(DIR, 'backups'), { recursive: true });
 const TEAM = ['CARLOS', 'DAVID', 'ROBERT', 'ANTONIO', 'PABLO', 'JIMENEZ', 'MARIO', 'DODU', 'JORGE', 'ADRIAN', 'HUGO'];
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [] });
+// ---- Calendario de la liga (la hora, el campo y el resultado se rellenan desde Admin) ----
+const CAL_SEED = [
+  ['2026-10-25', 'ASTON BIRRA CD DT'], ['2026-11-08', 'Solfamidas FC'], ['2026-11-15', 'Oliver 3.0 pro max'], ['2026-11-22', 'Jaire 25'],
+  ['2026-11-29', 'VRS Galactics'], ['2026-12-13', 'Naranja Mecánica FC'], ['2026-12-20', 'Discípulos de Tama'], ['2027-01-10', 'Malakito de Memphis'],
+  ['2027-01-17', 'La Charca FC'], ['2027-01-24', 'DUCKS F.C.'], ['2027-02-07', 'Vinos Brumete'], ['2027-02-14', 'ASTON BIRRA CD DT'],
+  ['2027-02-21', 'Solfamidas FC'], ['2027-02-28', 'Oliver 3.0 pro max'], ['2027-03-14', 'Jaire 25'], ['2027-03-21', 'VRS Galactics'],
+  ['2027-04-11', 'Naranja Mecánica FC'], ['2027-04-18', 'Discípulos de Tama'], ['2027-05-09', 'Malakito de Memphis'], ['2027-05-16', 'La Charca FC'],
+  ['2027-05-23', 'DUCKS F.C.'], ['2027-05-30', 'Vinos Brumete']
+].map(([date, rival], i) => ({ j: i + 1, date, rival, time: '', field: '', result: '' }));
+
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], calendar: [], calV1: false });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -103,6 +113,12 @@ async function init() {
     db.round.votes = db.round.votes.filter(v => ids.has(v.playerId));
     db.teamV2 = true;
   }
+  // Migración de una sola vez: carga el calendario si todavía no existe (no toca nada más)
+  if (!db.calV1) {
+    if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m }));
+    db.calV1 = true;
+  }
+  if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   await save();
 }
 
@@ -161,6 +177,7 @@ app.get('/api/state', (req, res) => {
   res.json({
     players: db.players,
     next: db.next,
+    calendar: db.calendar,
     round: { rival: db.round.rival, votes: db.round.votes.map(pub) },
     history: db.history.map(h => ({ ...h, votes: (h.votes || []).map(pub) })),
     mine: mine ? { playerId: mine.playerId } : null,
@@ -256,7 +273,7 @@ app.put('/api/match', admin, async (req, res) => {
   // el escudo llega como imagen ya comprimida en base64 desde el navegador; si no se envía, se conserva el que hubiera
   const crest = typeof req.body.crest === 'string' ? req.body.crest.slice(0, 400000) : (db.next.crest || '');
   const prev = db.next || {};
-  db.next = { date: req.body.date || '', rival: String(req.body.rival || '').trim(), crest };
+  db.next = { date: req.body.date || '', rival: String(req.body.rival || '').trim(), crest, field: String(req.body.field || '').trim().slice(0, 80) };
   if (!db.round.rival && !db.round.votes.length) db.round.rival = db.next.rival;
   const t = db.next.date ? new Date(db.next.date) - Date.now() : -1;
   const changed = prev.date !== db.next.date || prev.rival !== db.next.rival;
@@ -264,6 +281,17 @@ app.put('/api/match', admin, async (req, res) => {
   await save();
   res.json({ ok: true });
   if (changed && t > 0 && db.next.rival) notify('⚽ Nuevo partido del Garra', 'Garra vs ' + db.next.rival + ' · ' + fmtDate(db.next.date));
+});
+app.put('/api/calendar/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  const time = String(req.body.time || '').trim();
+  if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return bad(res, 'Hora no válida');
+  m.time = time;
+  m.field = String(req.body.field || '').trim().slice(0, 80);
+  m.result = String(req.body.result || '').trim().slice(0, 20);
+  await save();
+  res.json({ ok: true });
 });
 app.put('/api/round', admin, async (req, res) => { db.round.rival = String(req.body.rival || '').trim(); await save(); res.json({ ok: true }); });
 app.delete('/api/votes/:id', admin, async (req, res) => {
@@ -325,7 +353,9 @@ app.post('/api/import', admin, async (req, res) => {
   const d = req.body;
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
-  db = { ...empty(), ...d, teamV2: true, subs: db.subs }; // se mantienen los dispositivos suscritos a avisos
+  db = { ...empty(), ...d, teamV2: true, subs: db.subs };
+  if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
+  db.calV1 = true; // se mantienen los dispositivos suscritos a avisos
   await save();
   res.json({ ok: true });
 });
