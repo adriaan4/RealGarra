@@ -1,6 +1,31 @@
-// Service worker: recibe los avisos push y los muestra (Android, iPhone y ordenador)
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+// Service worker: app instalable + avisos push (Android, iPhone y ordenador)
+const CACHE = 'garra-v3';
+const SHELL = ['/', '/escudo.png', '/icon-192.png', '/icon-512.png', '/badge.png', '/manifest.json'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+  await self.clients.claim();
+})()));
+
+// Red primero (los datos siempre frescos); si no hay conexión, se abre la última versión guardada. Nunca se guarda /api.
+self.addEventListener('fetch', e => {
+  const r = e.request, u = new URL(r.url);
+  if (r.method !== 'GET' || u.origin !== self.location.origin || u.pathname.startsWith('/api/') || u.pathname === '/healthz') return;
+  e.respondWith((async () => {
+    try {
+      const res = await fetch(r);
+      if (res.ok) { const c = await caches.open(CACHE); c.put(r, res.clone()); }
+      return res;
+    } catch (err) {
+      const hit = await caches.match(r, { ignoreSearch: true }) || (r.mode === 'navigate' ? await caches.match('/') : null);
+      return hit || Response.error();
+    }
+  })());
+});
 
 self.addEventListener('push', e => {
   let d = {};
@@ -8,6 +33,12 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(d.title || 'Real Garra Balonpié', {
     body: d.body || '',
     icon: '/icon-192.png',
+    badge: '/badge.png',
+    tag: d.tag || 'garra',
+    renotify: true,
+    vibrate: [120, 60, 120, 60, 240],
+    timestamp: Date.now(),
+    lang: 'es',
     data: { url: d.url || '/' }
   }));
 });

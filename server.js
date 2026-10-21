@@ -24,7 +24,7 @@ const CAL_SEED = [
   ['2027-05-23', 'DUCKS F.C.'], ['2027-05-30', 'Vinos Brumete']
 ].map(([date, rival], i) => ({ j: i + 1, date, rival, time: '', field: '', result: '' }));
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], calendar: [], calV1: false });
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -140,9 +140,9 @@ if (PUSH) {
 const TZ = process.env.TZ_AVISOS || 'Europe/Madrid';
 const fmtDate = iso => new Date(iso).toLocaleString('es-ES', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
-async function notifyAll(title, body, url = '/#inicio') {
+async function notifyAll(title, body, url = '/#inicio', tag = 'garra') {
   if (!PUSH || !db.subs.length) return { sent: 0, removed: 0 };
-  const payload = JSON.stringify({ title, body, url });
+  const payload = JSON.stringify({ title, body, url, tag });
   let sent = 0;
   const dead = new Set();
   await Promise.all(db.subs.map(async s => {
@@ -166,7 +166,7 @@ setInterval(async () => {
     if (t <= 0 || t > 24 * 36e5) return;
     db.reminded = d;
     await save();
-    notify('⚽ Hoy o mañana juega el Garra', 'Garra vs ' + (db.next.rival || 'rival por confirmar') + ' · ' + fmtDate(d));
+    notify('⏰ ¡Que juega el Garra!', '🦁 Garra vs ' + (db.next.rival || 'rival por confirmar') + ' · ' + fmtDate(d) + '. ¡No faltes!', '/#inicio', 'recordatorio');
   } catch (e) { console.error('Recordatorio: ' + e.message); }
 }, 5 * 60 * 1000);
 
@@ -183,6 +183,7 @@ app.get('/api/state', (req, res) => {
     mine: mine ? { playerId: mine.playerId } : null,
     ez: db.ez.map(({ device, ...e }) => e),
     ezPts: EZ_PTS,
+    garro: db.garro || null,
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
   });
 });
@@ -280,7 +281,7 @@ app.put('/api/match', admin, async (req, res) => {
   if (t > 0 && t <= 24 * 36e5) db.reminded = db.next.date; // si ya falta menos de un día, no mandar además el recordatorio
   await save();
   res.json({ ok: true });
-  if (changed && t > 0 && db.next.rival) notify('⚽ Nuevo partido del Garra', 'Garra vs ' + db.next.rival + ' · ' + fmtDate(db.next.date));
+  if (changed && t > 0 && db.next.rival) notify('⚽ ¡Hay partido, Garra!', '🦁 Garra vs ' + db.next.rival + ' · ' + fmtDate(db.next.date), '/#inicio', 'partido');
 });
 app.put('/api/calendar/:j', admin, async (req, res) => {
   const m = db.calendar.find(x => x.j === +req.params.j);
@@ -312,7 +313,7 @@ app.post('/api/round/close', admin, async (req, res) => {
   await save();
   snapshot('cierre-votacion');
   res.json({ ...entry, votes: entry.votes.map(pub) });
-  notify('🏆 MVP del Garra vs ' + entry.rival, entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' (empate)' : ''), '/#mvp');
+  notify('🏆 ¡Ya hay MVP!', entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' se reparten el MVP' : ' es el MVP') + ' contra ' + entry.rival + ' 👏', '/#mvp', 'mvp');
 });
 app.delete('/api/history/:id', admin, async (req, res) => {
   const id = +req.params.id;
@@ -342,6 +343,26 @@ app.delete('/api/ez/:id', admin, async (req, res) => {
 app.post('/api/ez/reset', admin, async (req, res) => {
   snapshot('antes-de-vaciar-ez');
   db.ez = [];
+  await save();
+  res.json({ ok: true });
+});
+
+// ---- GARRO DE ORO: el que más puntos suma en la clasificación (se proclama desde Admin y sale en el inicio) ----
+const ezScore = e => { const c = ezCounts(e); return Object.keys(EZ_PTS).reduce((t, k) => t + c[k] * EZ_PTS[k], 0); };
+app.post('/api/garro/close', admin, async (req, res) => {
+  const rk = db.ez.map(e => ({ e, p: ezScore(e) }));
+  const max = Math.max(0, ...rk.map(x => x.p));
+  if (!max) return bad(res, 'Todavía nadie tiene puntos en la clasificación');
+  snapshot('antes-de-garro-de-oro');
+  db.garro = { at: new Date().toISOString(), pts: max, winners: rk.filter(x => x.p === max).map(x => ({ name: x.e.name, counts: ezCounts(x.e) })) };
+  await save();
+  res.json(db.garro);
+  const names = db.garro.winners.map(w => w.name).join(' y ');
+  notify('🍺🏆 ¡Tenemos GARRO DE ORO!', names + (db.garro.winners.length > 1 ? ' se lo reparten' : ' se lleva el trofeo') + ' con ' + max + ' puntos. ¡Salud! 🥂', '/#inicio', 'garro');
+});
+app.delete('/api/garro', admin, async (req, res) => {
+  snapshot('antes-de-quitar-garro');
+  db.garro = null;
   await save();
   res.json({ ok: true });
 });

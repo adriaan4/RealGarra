@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Real Garra Balonpié</title>
 <link rel="icon" href="escudo.png">
 <link rel="manifest" href="manifest.json">
@@ -9,6 +9,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Real Garra">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>try{if(sessionStorage.splash)document.documentElement.classList.add("nosplash");sessionStorage.splash=1}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
 <style>
 :root{--bg:#0d0b09;--ink:#f6eedb;--gold:#e2ab2c;--red:#a01f22;--card:#1a1512;--line:#3b2e1f}
@@ -90,9 +92,29 @@ table.cal{width:100%;border-collapse:collapse;min-width:560px}
 .cal .tbc{opacity:.55}
 .calA{display:grid;grid-template-columns:110px 1fr 130px auto;gap:8px;align-items:center;margin-top:8px}
 @media(max-width:600px){.calA{grid-template-columns:1fr 1fr}}
+
+#splash{position:fixed;inset:0;z-index:99;background:radial-gradient(700px 500px at 50% 40%,#2a1d0c,#0d0b09 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s}
+#splash.out{opacity:0;pointer-events:none}
+.nosplash #splash{display:none}
+#splash img{width:min(240px,56vw);filter:drop-shadow(0 10px 34px rgba(226,171,44,.4));animation:spIn .9s cubic-bezier(.2,.9,.3,1.2) both}
+#splash b{font:800 clamp(26px,8vw,40px) "Barlow Condensed",Impact,sans-serif;letter-spacing:3px;color:var(--gold);animation:spUp .7s .35s both}
+#splash i{display:block;width:120px;height:4px;border-radius:4px;background:var(--line);overflow:hidden;animation:spUp .7s .5s both}
+#splash i::after{content:"";display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--red),var(--gold));border-radius:4px;animation:spBar 1.1s ease-in-out infinite}
+@keyframes spIn{from{opacity:0;transform:scale(.6) rotate(-6deg)}to{opacity:1;transform:none}}
+@keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes spBar{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+@media(prefers-reduced-motion:reduce){#splash img,#splash b,#splash i,#splash i::after{animation:none}}
+nav{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+.garroName{font:800 clamp(38px,10vw,54px)/1 "Barlow Condensed",Impact,sans-serif;color:var(--gold);margin:8px 0 2px;text-shadow:0 0 22px rgba(226,171,44,.45);overflow-wrap:anywhere}
+.garroBox{background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:12px 16px;margin:10px 0}
+.garroBox b{font:800 30px "Barlow Condensed",sans-serif}
+.podio{display:grid;gap:6px;margin:8px 0}
+.podio div{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
 </style></head><body>
+<div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
 <nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#calendario">Calendario</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
@@ -100,9 +122,10 @@ table.cal{width:100%;border-collapse:collapse;min-width:560px}
   <div class="vs" id="vsBox" hidden><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><span class="vsTxt">VS</span><img class="crest" id="rivalCrest" alt=""></div>
   <img class="crest" id="soloCrest" src="escudo.png" alt="Escudo Real Garra Balonpié">
   <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p><p class="sub" id="campo"></p>
+  <div id="installBox" hidden style="margin-top:18px"><button id="installBtn" type="button">📲 Instalar la app</button><p class="sub" id="installMsg"></p></div>
   <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
  <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div>
-  <div class="trofeo"><b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span></div></aside>
+  <div class="trofeo" id="trofeo"><b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span></div></aside>
 </div></section>
 
 <section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
@@ -153,7 +176,7 @@ table.cal{width:100%;border-collapse:collapse;min-width:560px}
   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
-  <h2 style="margin-top:20px">GARRO DE ORO</h2><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
+  <h2 style="margin-top:20px">GARRO DE ORO</h2><div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
   <h2 style="margin-top:20px">Calendario</h2><p class="sub" style="font-size:15px">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
@@ -193,6 +216,7 @@ function render(){
  $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${top1(h)} de ${h.totalVotes||0} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
  try{renderMvp()}catch(e){console.error(e)}
  try{renderEz()}catch(e){console.error(e)}
+ try{renderGarro()}catch(e){console.error(e)}
  try{renderCal()}catch(e){console.error(e)}
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
@@ -323,7 +347,8 @@ $('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
   else{
    if(await Notification.requestPermission()!=='granted'){msg.textContent='No has dado permiso para los avisos.';return pushUI()}
    const s=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
-   await sendSub(s)}
+   await sendSub(s);
+   try{await reg.showNotification('¡Avisos activados! 🔔',{body:'Te avisaremos de partidos, MVP y del Garro de Oro. ¡Vamos Garra! 🦁',icon:'/icon-192.png',badge:'/badge.png',vibrate:[120,60,120],tag:'bienvenida'})}catch{}}
   await pushUI()
  }catch(e){msg.textContent='No se pudieron activar los avisos: '+e.message}};
 (async()=>{
@@ -336,5 +361,37 @@ $('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
   await pushUI()
  }catch(e){console.error(e)}
 })();
+
+// ---- Garro de Oro: quién gana según lo bebido (se proclama desde Admin y sale en el Inicio) ----
+function ezLeaders(){const rk=S.ez.map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));const max=rk.length?rk[0].p:0;return{rk,max,top:max>0?rk.filter(x=>x.p===max):[]}}
+function renderGarro(){
+ const g=S.garro,tr=$('#trofeo');
+ if(g&&g.winners&&g.winners.length){
+  const nm=g.winners.map(w=>esc(w.name)).join(' y ')+(g.winners.length>1?' (empate)':'');
+  const w0=g.winners[0],pts=+g.pts||0;
+  const det=EZ.filter(([k])=>ezN(w0.counts&&w0.counts[k])).map(([k,ic])=>ic+' '+ezN(w0.counts[k])).join(' · ');
+  tr.innerHTML=`<b>🏆 GARRO DE ORO</b><div class="garroName">${nm}</div><span>${ezFmt(pts)} pts${g.winners.length===1&&det?' · '+det:''}</span>`}
+ else tr.innerHTML='<b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span>';
+ const L=ezLeaders(),medals=['🥇','🥈','🥉'];
+ $('#garroAdmin').innerHTML=(L.top.length?`<div class="garroBox"><small>Ahora mismo va ganando</small><b>${L.top.map(x=>esc(x.e.name)).join(' y ')}${L.top.length>1?' (empate)':''} · ${ezFmt(L.max)} pts</b></div><div class="podio">${L.rk.slice(0,3).map((x,i)=>`<div><span>${medals[i]} ${esc(x.e.name)}</span><b>${ezFmt(x.p)} pts</b></div>`).join('')}</div>`:'<p>Todavía nadie tiene puntos.</p>')
+  +(g&&g.winners&&g.winners.length?`<p class="msg">En el inicio sale: ${g.winners.map(w=>esc(w.name)).join(' y ')}</p>`:'<p class="sub" style="font-size:15px">Aún no hay Garro de Oro proclamado: en el inicio sale «a final de temporada».</p>');
+ $('#garroDel').hidden=!(g&&g.winners&&g.winners.length)}
+$('#garroClose').onclick=async()=>{const L=ezLeaders();if(!L.top.length){$('#amsg').textContent='Todavía nadie tiene puntos';return}
+ if(!confirm('¿Proclamar GARRO DE ORO a '+L.top.map(x=>x.e.name).join(' y ')+'? Saldrá en el inicio y se avisará a todos.'))return;
+ try{await adm('/api/garro/close','POST');$('#amsg').textContent='Garro de Oro proclamado';await load()}catch(e){$('#amsg').textContent=e.message}};
+$('#garroDel').onclick=async()=>{if(!confirm('¿Quitar el Garro de Oro del inicio? La clasificación no se toca.'))return;
+ try{await adm('/api/garro','DELETE');$('#amsg').textContent='Garro de Oro quitado del inicio';await load()}catch(e){$('#amsg').textContent=e.message}};
+// ---- Instalar como app + splash ----
+let instEv=null;
+const instBox=$('#installBox'),instBtn=$('#installBtn'),instMsg=$('#installMsg');
+if(!standaloneNow()){
+ if(isIOSnow()){instBox.hidden=false;instBtn.hidden=true;instMsg.textContent='Para instalarla en iPhone: pulsa Compartir → «Añadir a pantalla de inicio».'}
+ addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;instBox.hidden=false;instBtn.hidden=false;instMsg.textContent='Ábrela como una app, con su icono en el móvil.'});
+}
+function standaloneNow(){return navigator.standalone||matchMedia('(display-mode: standalone)').matches}
+function isIOSnow(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+instBtn.onclick=async()=>{if(!instEv)return;instEv.prompt();try{await instEv.userChoice}catch{}instEv=null;instBox.hidden=true};
+addEventListener('appinstalled',()=>{instBox.hidden=true;instEv=null});
+addEventListener('load',()=>{const sp=$('#splash');if(!sp||document.documentElement.classList.contains('nosplash'))return;setTimeout(()=>{sp.classList.add('out');setTimeout(()=>sp.remove(),600)},1500)});
 $('#sendPush').onclick=async()=>{try{const r=await adm('/api/push/send','POST',{title:$('#pushTitle').value,body:$('#pushBody').value});$('#pushBody').value='';$('#amsg').textContent='Aviso enviado a '+r.sent+' dispositivo'+(r.sent==1?'':'s')}catch(e){$('#amsg').textContent=e.message}};
 </script></body></html>
