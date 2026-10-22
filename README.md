@@ -32,3 +32,9 @@ En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la 
 - El servidor se llama a sí mismo cada 4 min (`/healthz`) usando `RENDER_EXTERNAL_URL`, que Render define solo.
 - En plan gratuito eso ayuda pero no es 100 % fiable. Añade además un pinger externo gratis (UptimeRobot o cron-job.org) que abra `https://TU-APP.onrender.com/healthz` cada 5 min.
 - Con plan de pago (el que ya necesitas para el disco persistente) Render no duerme la web.
+
+## GarraBet: pavos
+- Cada persona empieza con 100 pavos. Para apostar hay que poner un importe (mínimo 1, máximo su saldo).
+- Al ganar se cobra importe × cuota; al perder se pierde el importe. Si quita una apuesta pendiente, recupera los pavos.
+- El saldo se calcula siempre a partir de las apuestas, así que no se descuadra. Las apuestas antiguas (sin importe) no afectan al saldo.
+- Admin → «GarraBet · apuestas de la gente»: cada persona tiene su saldo y un campo para ingresarle pavos (con número negativo se le quitan), y arriba hay «Ingresar a todos».

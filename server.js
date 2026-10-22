@@ -454,6 +454,8 @@ app.post('/api/import', admin, async (req, res) => {
 const gbRange = (from, n) => Array.from({ length: n }, (_, i) => (from + i + 0.5).toFixed(1));
 const GB_LINES = { scored: gbRange(0, 8), conceded: gbRange(0, 8), total: gbRange(1, 11) }; // 0.5–7.5 / 0.5–7.5 / 1.5–11.5
 const GB_MAX_SELS = 8, GB_MAX_TICKETS = 60, GB_EX_MAX = 5, GB_EX_MARGIN = 1.12, GB_EX_CAP = 150;
+const GB_START = 100, GB_MIN_STAKE = 1; // pavos con los que empieza cada jugador y apuesta mínima
+const gbMoney = n => Math.round(n * 100) / 100;
 const gbOdd = v => { // '' o null = sin cuota; acepta coma decimal
   if (v === '' || v == null) return null;
   const n = Number(String(v).replace(',', '.'));
@@ -499,15 +501,22 @@ const gbSelStatus = x => { const r = gbResult(db.calendar.find(m => m.j === x.j)
 function gbTicketOut(t) {
   const sels = t.sels.map(x => ({ ...x, status: gbSelStatus(x) }));
   const status = sels.some(x => x.status === 'lose') ? 'lose' : sels.every(x => x.status === 'win') ? 'win' : 'pending';
-  return { id: t.id, at: t.at, odd: t.odd, sels, status };
+  const stake = gbMoney(Number(t.stake) || 0); // las apuestas antiguas (sin importe) cuentan como 0 y no tocan el saldo
+  return { id: t.id, at: t.at, odd: t.odd, sels, status, stake, payout: status === 'win' ? gbMoney(stake * t.odd) : 0 };
 }
 const gbUser = d => db.garrabet.users.find(u => u.device === d);
+// Saldo = 100 iniciales + ingresos del admin − importes apostados + premios de apuestas ganadas (se calcula siempre desde las apuestas, así nunca se descuadra)
+function gbBalance(u) {
+  let b = GB_START + (Number(u.bonus) || 0);
+  for (const t of db.garrabet.tickets) if (t.device === u.device) { const o = gbTicketOut(t); b += -o.stake + o.payout; }
+  return gbMoney(b);
+}
 function gbPublic(d) {
   const results = {}, exact = {};
   db.calendar.forEach(m => { const r = gbResult(m); if (r) results[m.j] = r; });
   Object.keys(db.garrabet.odds).forEach(j => { const ex = gbExactFor(j); if (ex) exact[j] = ex; });
   const me = d && gbUser(d);
-  return { odds: db.garrabet.odds, exact, results, lines: GB_LINES, me: me ? me.name : null, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
+  return { odds: db.garrabet.odds, exact, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
 }
 app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
   const j = +req.params.j;
@@ -538,7 +547,11 @@ app.post('/api/garrabet/name', async (req, res) => {
 app.post('/api/garrabet/ticket', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), raw = Array.isArray(req.body.sels) ? req.body.sels : [];
   if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
-  if (!gbUser(device)) return bad(res, 'Pon tu nombre para apostar');
+  const user = gbUser(device);
+  if (!user) return bad(res, 'Pon tu nombre para apostar');
+  const stake = gbMoney(Number(String(req.body.stake == null ? '' : req.body.stake).replace(',', '.')));
+  if (!Number.isFinite(stake) || stake < GB_MIN_STAKE) return bad(res, 'Pon cuántos pavos apuestas (mínimo ' + GB_MIN_STAKE + ')');
+  if (stake > gbBalance(user)) return bad(res, 'No tienes tantos pavos. Te quedan ' + gbBalance(user));
   if (!raw.length) return bad(res, 'El boleto está vacío');
   if (raw.length > GB_MAX_SELS) return bad(res, 'Máximo ' + GB_MAX_SELS + ' selecciones por boleto');
   if (db.garrabet.tickets.filter(t => t.device === device).length >= GB_MAX_TICKETS) return bad(res, 'Has llegado al máximo de apuestas');
@@ -559,7 +572,7 @@ app.post('/api/garrabet/ticket', async (req, res) => {
   const sig = t => t.sels.map(x => [x.j, x.market, x.line, x.side].join(':')).sort().join(',');
   const dupe = { sels };
   if (db.garrabet.tickets.some(t => t.device === device && sig(t) === sig(dupe) && gbTicketOut(t).status === 'pending')) return bad(res, 'Ya tienes ese mismo boleto');
-  db.garrabet.tickets.push({ id: db.nextId++, device, at: new Date().toISOString(), sels, odd });
+  db.garrabet.tickets.push({ id: db.nextId++, device, at: new Date().toISOString(), sels, odd, stake });
   await save();
   res.json({ ok: true });
 });
@@ -575,7 +588,7 @@ app.delete('/api/garrabet/ticket/:id', async (req, res) => { // el usuario puede
 app.get('/api/garrabet-admin/all', admin, (_, res) => {
   const name = d => (gbUser(d) || {}).name || 'SIN NOMBRE';
   res.json({
-    users: db.garrabet.users.map(({ id, name }) => ({ id, name })),
+    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name, balance: gbBalance(u) })),
     tickets: db.garrabet.tickets.slice().sort((a, b) => b.id - a.id).map(t => ({ ...gbTicketOut(t), name: name(t.device), userId: (gbUser(t.device) || {}).id || 0 }))
   });
 });
@@ -587,6 +600,23 @@ app.put('/api/garrabet-admin/user/:id', admin, async (req, res) => {
   u.name = name;
   await save();
   res.json({ ok: true });
+});
+// Admin: ingresar pavos (o quitarlos con un número negativo) a una persona o a todas
+const gbAmount = v => { const n = Number(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) && n !== 0 && Math.abs(n) <= 100000 ? gbMoney(n) : null; };
+app.post('/api/garrabet-admin/money-all', admin, async (req, res) => {
+  const amt = gbAmount(req.body.amount);
+  if (amt === null) return bad(res, 'Cantidad no válida');
+  db.garrabet.users.forEach(u => { u.bonus = gbMoney((Number(u.bonus) || 0) + amt); });
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/garrabet-admin/user/:id/money', admin, async (req, res) => {
+  const u = db.garrabet.users.find(x => x.id === +req.params.id), amt = gbAmount(req.body.amount);
+  if (!u) return bad(res, 'Persona no encontrada');
+  if (amt === null) return bad(res, 'Cantidad no válida');
+  u.bonus = gbMoney((Number(u.bonus) || 0) + amt);
+  await save();
+  res.json({ ok: true, balance: gbBalance(u) });
 });
 app.delete('/api/garrabet-admin/ticket/:id', admin, async (req, res) => {
   const n = db.garrabet.tickets.length;
