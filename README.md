@@ -20,7 +20,7 @@ Al arrancar lee de Upstash; en cada cambio (voto, jugador, cierre...) guarda all
 Consumo: solo escribe cuando alguien vota/edita, muy por debajo de los 500.000 comandos/mes gratis.
 
 ## Escudos de equipos
-En Admin → «Escudos de equipos» subes el escudo de cada rival una vez (se reduce solo en el móvil). Se guardan dentro de los datos (Upstash o `data/data.json`) y salen solos en el Inicio cuando el próximo partido es contra ese equipo, y en el calendario. Si en «Próximo partido» subes un escudo a mano, ese manda.
+En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la liga. Si aún no tiene escudo, te pide la foto y la guarda una sola vez (se reduce sola en el móvil) dentro de los datos (Upstash o `data/data.json`). Después sale solo en el Inicio y en el calendario. «Subir otro escudo» vale solo para ese partido.
 
 ## Votación MVP
 - Sin campo de nombre: se pulsa el botón del jugador y el voto entra en la lista. Cada dispositivo vota una sola vez y, al votar, desaparecen los botones.

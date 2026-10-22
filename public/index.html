@@ -125,6 +125,9 @@ main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
 .crestImg img{max-width:100%;max-height:100%;object-fit:contain}
 .crestImg span{font-size:12px;opacity:.6}
 .crestCard .row{justify-content:center;margin:0}
+.crestPickBtn{background:none;border:0;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;width:100%;cursor:pointer}
+.crestCard button.ghost{font-size:13px;padding:4px 8px}
+#crestDlg{width:min(620px,94vw);max-height:88vh;overflow:auto}
 img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-right:6px}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
@@ -188,12 +191,11 @@ img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-
  <div id="panel" hidden>
   <h2>Próximo partido</h2>
   <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
-  <div class="row">Escudo del rival: <input id="crestFile" type="file" accept="image/*"><img id="crestPreview" class="crestPrev" hidden><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button></div>
+  <div class="row">Escudo del rival: <button id="crestSel" type="button">Seleccionar escudo</button><img id="crestPreview" class="crestPrev" hidden><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button><input id="crestFile" type="file" accept="image/*" hidden></div>
   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
   <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
   <h2 style="margin-top:20px">GARRO DE ORO</h2><div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
-  <h2 style="margin-top:20px">Escudos de equipos</h2><p class="sub" style="font-size:15px">Sube una vez el escudo de cada rival y saldrá solo en el Inicio cuando toque ese partido y en el calendario. Se guardan con el resto de datos.</p><div class="crestGrid" id="crestGrid"></div><div class="row"><input id="crestNew" placeholder="Otro equipo (nombre)" maxlength="40"><button id="crestNewBtn" type="button">Elegir escudo</button></div><input id="crestPick" type="file" accept="image/*" hidden>
   <h2 style="margin-top:20px">Calendario</h2><p class="sub" style="font-size:15px">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
   <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
@@ -204,12 +206,14 @@ img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-
  <p class="msg" id="amsg"></p>
 </section>
 </main>
+<input id="crestPick" type="file" accept="image/*" hidden>
+<dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
 <script>
 const $=s=>document.querySelector(s);
 let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
 let S={players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
-function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest');if(crestData){p.src=crestData;p.hidden=false;d.hidden=false}else{p.hidden=true;d.hidden=true}}
+function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest'),lc=crestFor($('#rivalIn').value),src=crestData||(lc?crestUrl(lc):'');if(src){p.src=src;p.hidden=false}else p.hidden=true;d.hidden=!crestData}
 $('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
  fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
  fr.readAsDataURL(f)};
@@ -410,19 +414,21 @@ function ezCountTick(){
  else{el.innerHTML='<div class="ezCount"><h3>🏆 ¡Hoy es la gala del GARRO DE ORO!</h3></div>';return}
  el.innerHTML='<div class="ezCount '+cls+'"><h3>'+head+'</h3><div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'+(foot?'<p>'+foot+'</p>':'')+'</div>'}
 ezCountTick();setInterval(ezCountTick,1000);
-// ---- Escudos de equipos (carpeta de escudos) ----
+// ---- Escudos de equipos: se eligen en «Próximo partido → Seleccionar escudo» y se guardan una sola vez ----
 function nrm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()}
 function crestFor(n){const k=nrm(n);return k?(S.crests||[]).find(c=>nrm(c.name)===k):null}
 function crestUrl(c){return '/api/crest/'+c.id+'?v='+c.v}
 function crestImg(n){const c=crestFor(n);return c?`<img class="mini" src="${crestUrl(c)}" alt="">`:''}
-let crestTarget='';
+let crestTarget='',crestPickIt=false;
+const cm=t=>{$('#crestMsg').textContent=t;$('#amsg').textContent=t};
 function renderCrests(){
- const g=$('#crestGrid');if(!g)return;
+ const g=$('#crestPickGrid');if(!g)return;
  const teams=new Map();
  (S.calendar||[]).forEach(m=>teams.set(nrm(m.rival),m.rival));
  (S.crests||[]).forEach(c=>{if(!teams.has(nrm(c.name)))teams.set(nrm(c.name),c.name)});
  g.innerHTML=[...teams.values()].sort((a,b)=>a.localeCompare(b)).map(n=>{const c=crestFor(n);
-  return `<div class="crestCard"><div class="crestImg">${c?`<img src="${crestUrl(c)}" alt="Escudo de ${esc(n)}">`:'<span>Sin escudo</span>'}</div><b>${esc(n)}</b><div class="row"><button type="button" data-cu="${esc(n)}">${c?'Cambiar':'Subir'}</button>${c?`<button type="button" class="ghost" data-cx="${c.id}">Quitar</button>`:''}</div></div>`}).join('')||'<p>Aún no hay equipos.</p>'}
+  return `<div class="crestCard"><button type="button" class="crestPickBtn" data-ct="${esc(n)}"><span class="crestImg">${c?`<img src="${crestUrl(c)}" alt="">`:'<span>Sin escudo<br>(pulsa para subirlo)</span>'}</span><b>${esc(n)}</b></button>${c?`<button type="button" class="ghost" data-cc="${esc(n)}">Cambiar foto</button>`:''}</div>`}).join('')||'<p>Aún no hay equipos en el calendario.</p>';
+ updateCrestPreview()}
 // reduce la imagen en el móvil antes de subirla (WebP pequeño; si el navegador no lo admite, PNG)
 function crestPack(file){return new Promise((ok,ko)=>{const fr=new FileReader();fr.onerror=()=>ko(Error('No se pudo leer la imagen'));
  fr.onload=()=>{const img=new Image();img.onerror=()=>ko(Error('Esa imagen no es válida'));
@@ -431,13 +437,18 @@ function crestPack(file){return new Promise((ok,ko)=>{const fr=new FileReader();
     let d=c.toDataURL('image/webp',.85);if(d.indexOf('data:image/webp')!==0)d=c.toDataURL('image/png');if(d.length<=110000)return ok(d)}
    ko(Error('La imagen pesa demasiado, prueba con otra'))};
   img.src=fr.result};fr.readAsDataURL(file)})}
+function crestChoose(n){$('#rivalIn').value=n;crestData='';$('#crestFile').value='';updateCrestPreview();$('#crestMsg').textContent='';$('#crestDlg').close()}
+function crestUpload(n,andPick){crestTarget=n;crestPickIt=andPick;$('#crestPick').value='';$('#crestPick').click()}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
- if(b.dataset.cu!==undefined){crestTarget=b.dataset.cu;$('#crestPick').value='';$('#crestPick').click()}
- if(b.dataset.cx&&confirm('¿Quitar este escudo?'))adm('/api/crests/'+b.dataset.cx,'DELETE').then(load).catch(err=>$('#amsg').textContent=err.message)});
-$('#crestNewBtn').onclick=()=>{const n=$('#crestNew').value.trim();if(!n){$('#amsg').textContent='Escribe primero el nombre del equipo';return}crestTarget=n;$('#crestPick').value='';$('#crestPick').click()};
+ if(b.dataset.ct!==undefined){const n=b.dataset.ct;if(crestFor(n))crestChoose(n);else crestUpload(n,true)}
+ if(b.dataset.cc!==undefined)crestUpload(b.dataset.cc,false)});
+$('#crestSel').onclick=()=>{renderCrests();$('#crestMsg').textContent='';$('#crestDlg').showModal()};
+$('#crestClose').onclick=()=>$('#crestDlg').close();
+$('#crestOther').onclick=()=>{$('#crestDlg').close();$('#crestFile').click()};
 $('#crestPick').onchange=async e=>{const f=e.target.files[0];if(!f||!crestTarget)return;
- try{$('#amsg').textContent='Subiendo escudo...';const img=await crestPack(f);await adm('/api/crests','PUT',{name:crestTarget,img});$('#crestNew').value='';$('#amsg').textContent='Escudo de '+crestTarget+' guardado';await load()}
- catch(err){$('#amsg').textContent=err.message}};
+ try{cm('Subiendo escudo...');const img=await crestPack(f);await adm('/api/crests','PUT',{name:crestTarget,img});cm('Escudo de '+crestTarget+' guardado');await load();if(crestPickIt)crestChoose(crestTarget)}
+ catch(err){cm(err.message)}};
+$('#rivalIn').addEventListener('input',updateCrestPreview);
 // ---- Instalar como app + splash ----
 let instEv=null;
 const instBox=$('#installBox'),instBtn=$('#installBtn'),instMsg=$('#installMsg');
