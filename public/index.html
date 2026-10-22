@@ -106,12 +106,6 @@ table.cal{width:100%;border-collapse:collapse;min-width:560px}
 @media(prefers-reduced-motion:reduce){#splash img,#splash b,#splash i,#splash i::after{animation:none}}
 nav{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
-.ezCount{text-align:center;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:12px 10px;margin:12px 0 16px}
-.ezCount .tit{font:800 clamp(18px,5vw,24px) "Barlow Condensed",sans-serif;color:var(--gold);letter-spacing:.5px}
-.ezCount .units{margin-top:4px}
-.ezCount .big{font-size:clamp(30px,9vw,46px)}
-.ezCount .units small{font-size:12px}
-.ezCount>small{display:block;margin-top:6px;font-size:14px;opacity:.75}
 .garroName{font:800 clamp(38px,10vw,54px)/1 "Barlow Condensed",Impact,sans-serif;color:var(--gold);margin:8px 0 2px;text-shadow:0 0 22px rgba(226,171,44,.45);overflow-wrap:anywhere}
 .garroBox{background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:12px 16px;margin:10px 0}
 .garroBox b{font:800 30px "Barlow Condensed",sans-serif}
@@ -120,10 +114,10 @@ main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
 .ezCount{text-align:center;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:14px 10px;margin:14px 0}
 .ezCount h3{margin:0;font:800 clamp(20px,5vw,28px) "Barlow Condensed",sans-serif;color:var(--gold)}
 .ezCount .units small{font-size:13px}
-.ezBig .big{font-size:clamp(40px,11vw,76px)}
-.ezSmall .big{font-size:clamp(26px,7vw,40px)}
 .ezCount p{margin:6px 0 0;opacity:.85}
 .ezSmall p{font:800 clamp(18px,4.5vw,24px) "Barlow Condensed",sans-serif;color:var(--ink);opacity:1}
+.ezBig .big{font-size:clamp(40px,11vw,76px)}
+.ezSmall .big{font-size:clamp(26px,7vw,40px)}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
 </style></head><body>
@@ -152,7 +146,6 @@ main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
 
 <section id="ez" hidden><h1>GARRO DE ORO</h1>
  <div id="ezCount"></div>
- <div class="ezCount"><div id="ezCountTit"></div><div id="ezCountNum"></div><small>🍻 Venga chavales, a beber</small></div>
  <p>Pon tu nombre y apunta lo que has bebido. Puedes volver y cambiar tus cantidades cuando quieras.</p>
  <div class="row"><input id="ezName" placeholder="Tu nombre" maxlength="30" autocomplete="off" style="flex:1;min-width:200px"></div>
  <div id="ezForm"></div>
@@ -397,18 +390,6 @@ $('#garroClose').onclick=async()=>{const L=ezLeaders();if(!L.top.length){$('#ams
 $('#garroDel').onclick=async()=>{if(!confirm('¿Quitar el Garro de Oro del inicio? La clasificación no se toca.'))return;
  try{await adm('/api/garro','DELETE');$('#amsg').textContent='Garro de Oro quitado del inicio';await load()}catch(e){$('#amsg').textContent=e.message}};
 
-// ---- Cuenta atrás del Garro de Oro: hasta el inicio de temporada y luego hasta la gala ----
-const T_INI=new Date(2026,9,25,0,0,0),T_GALA=new Date(2027,5,1,0,0,0);
-function ezCountTick(){
- const now=Date.now(),tit=$('#ezCountTit'),num=$('#ezCountNum');if(!tit||!num)return;
- let target,label;
- if(now<T_INI){target=T_INI;label='⏳ Empieza la temporada el 25 de octubre'}
- else if(now<T_GALA){target=T_GALA;label='🏆 Gala del Garro de Oro · 1 de junio de 2027'}
- else{tit.innerHTML='<span class="tit">🏆 ¡Hoy es la gala del Garro de Oro!</span>';num.innerHTML='';return}
- tit.innerHTML='<span class="tit">'+label+'</span>';
- let d=target-now;
- num.innerHTML='<div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'}
-ezCountTick();setInterval(ezCountTick,1000);
 // ---- Cuenta atrás de GARRO DE ORO: inicio de temporada (25/10/2026 16:00) y después gala (1/6/2027) ----
 const EZ_START=new Date('2026-10-25T16:00:00+01:00'),EZ_GALA=new Date('2027-06-01T00:00:00+02:00');
 function ezCountTick(){
