@@ -23,7 +23,15 @@ const CAL_SEED = [
   [19, '2027-05-09', 'Atlético Sheriff'], [20, '2027-05-16', 'Los Chicos Del Patio'], [21, '2027-05-23', 'Gazilion'], [22, '2027-05-30', 'Potrero FC']
 ].map(([j, date, rival]) => ({ j, date, rival, time: '', field: '', result: '' }));
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false, crests: [] });
+// ---- Plantilla oficial: dorsal, nombre y posición en el campo (x/y en % del césped, portería propia abajo) ----
+const SQUAD_SEED = [
+  [9, 'CARLOS', 50, 10, true], [10, 'PABLO', 50, 24], [8, 'DAVID', 50, 37],
+  [30, 'DODU', 18, 47], [21, 'ROBER', 82, 47], [19, 'ADRI', 50, 57], [16, 'JORGE', 82, 57],
+  [6, 'JIMÉNEZ', 30, 66], [11, 'MARIO', 72, 64], [3, 'HUGO', 30, 78], [24, 'PAJARES', 72, 75], [29, 'JUAN', 72, 86],
+  [1, 'ANTONIO', 50, 95]
+].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
+
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -124,6 +132,7 @@ async function init() {
     db.calV1 = true;
   }
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
+  if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
   await save();
 }
 
@@ -189,6 +198,7 @@ app.get('/api/state', (req, res) => {
     ez: db.ez.map(({ device, ...e }) => e),
     ezPts: EZ_PTS,
     garro: db.garro || null,
+    squad: db.squad,
     crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
   });
@@ -273,6 +283,23 @@ app.delete('/api/players/:id', admin, async (req, res) => {
   const id = +req.params.id;
   db.players = db.players.filter(p => p.id !== id);
   db.round.votes = db.round.votes.filter(v => v.playerId !== id); // el historial de MVPs no se toca
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/squad', admin, async (req, res) => {
+  const a = req.body && req.body.squad;
+  if (!Array.isArray(a) || !a.length || a.length > 30) return bad(res, 'Plantilla no válida');
+  const clamp = (v, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v * 10) / 10)) : d; };
+  const out = [];
+  for (const p of a) {
+    const name = String((p && p.name) || '').trim().toUpperCase().slice(0, 14);
+    const n = Math.floor(Number(p && p.n));
+    if (!name) return bad(res, 'Hay un jugador sin nombre');
+    if (!Number.isFinite(n) || n < 0 || n > 99) return bad(res, 'Dorsal no válido en ' + name + ' (0 a 99)');
+    out.push({ n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c });
+  }
+  if (out.some(p => p.c)) { const i = out.findIndex(p => p.c); out.forEach((p, k) => (p.c = k === i)); } // un solo capitán
+  db.squad = out;
   await save();
   res.json({ ok: true });
 });

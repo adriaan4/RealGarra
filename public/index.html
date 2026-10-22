@@ -15,7 +15,9 @@
 <style>
 :root{--bg:#0d0b09;--ink:#f6eedb;--gold:#e2ab2c;--red:#a01f22;--card:#1a1512;--line:#3b2e1f}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1200px 500px at 50% -100px,#2a1d0c,var(--bg));background-attachment:fixed;color:var(--ink);font:400 17px/1.5 Barlow,system-ui,sans-serif}
+html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+body{margin:0;overflow-x:hidden;min-height:100vh;color:var(--ink);font:400 17px/1.5 Barlow,system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(1200px 500px at 50% -100px,#2a1d0c,var(--bg))}
 h1,h2,.big{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;margin:0}
 h1,h2{color:var(--gold)}
 nav{display:flex;gap:6px;align-items:center;padding:10px 18px;border-bottom:3px solid var(--gold);position:sticky;top:0;background:var(--bg);flex-wrap:wrap;z-index:2}
@@ -131,9 +133,86 @@ main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
 img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-right:6px}
 [hidden]{display:none}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
+/* ===== Móvil: sin saltos, controles grandes, nada se sale de la pantalla ===== */
+img{max-width:100%}
+button,a,input,summary,select{touch-action:manipulation}
+input{min-width:0;max-width:100%}
+input[type=datetime-local],input[type=time],input[type=number]{-webkit-appearance:none;appearance:none;min-height:44px}
+input[type=number]{-moz-appearance:textfield}
+button{min-height:44px}
+nav{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;gap:4px;padding-left:12px;padding-right:12px;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}
+nav img{height:38px;flex:none;margin-right:4px}
+nav a{flex:none;white-space:nowrap;font-size:19px;padding:6px 13px}
+.toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:200;max-width:520px;margin:0 auto;background:var(--ink);color:#0d0b09;font-weight:500;border-radius:12px;padding:12px 16px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.55);pointer-events:none}
+.toast:empty{display:none}
+details.ad{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;margin:12px 0;overflow:hidden}
+details.ad>summary{list-style:none;cursor:pointer;padding:12px 16px;min-height:54px;font:800 24px "Barlow Condensed",Impact,sans-serif;color:var(--gold);display:flex;justify-content:space-between;align-items:center;gap:10px}
+details.ad>summary::-webkit-details-marker{display:none}
+details.ad>summary::after{content:"▾";font-size:20px;transition:transform .2s}
+details.ad[open]>summary::after{transform:rotate(180deg)}
+details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.adb{padding:0 14px 14px}
+.adb h3{margin:14px 0 4px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.adb .pv{background:#120e0b}
+.adb .sub{font-size:15px}
+.calA button{min-width:104px}
+.calA input{width:100%}
+.sqRow{display:grid;gap:8px}
+.sqTop{display:grid;grid-template-columns:72px 1fr auto;gap:8px;align-items:center}
+.sqBot{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
+.sqBot label,.sqc{display:flex;align-items:center;gap:6px;font-size:15px;opacity:.9}
+.sqBot input{width:100%}
+.sqm{text-transform:uppercase}
+.sqc input{width:22px;height:22px;min-height:0;padding:0;accent-color:var(--gold)}
+.sqHead{text-align:center;margin-bottom:6px}
+.sqHead h1{font-style:italic;letter-spacing:1px;font-size:clamp(34px,10vw,54px);line-height:1.05;text-shadow:0 0 24px rgba(226,171,44,.35)}
+.sqHead p{margin:2px 0 0;opacity:.75;font-size:15px}
+#pitch{position:relative;width:100%;max-width:460px;margin:12px auto 0;aspect-ratio:583/948;border-radius:16px;overflow:hidden;border:3px solid var(--gold);background:#1d5f27 url(cesped.jpg) center/100% 100% no-repeat;container-type:inline-size;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.pl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:25%;pointer-events:none}
+.pl i{position:relative;display:grid;place-items:center;font-style:normal;font-weight:800;font-family:"Barlow Condensed",Impact,sans-serif;line-height:1;width:27px;height:27px;font-size:15px;width:max(27px,8.2cqw);height:max(27px,8.2cqw);font-size:max(15px,4.7cqw);border-radius:50%;background:var(--gold);color:#0d0b09;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.65)}
+.pl span{margin-top:3px;max-width:100%;white-space:nowrap;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;line-height:1.1;letter-spacing:.3px;color:#fff;background:rgba(10,8,6,.72);padding:1px 7px;border-radius:99px;font-size:12px;font-size:max(12px,3.9cqw)}
+.pl.cap i::after{content:"C";position:absolute;right:-7px;top:-7px;display:grid;place-items:center;width:15px;height:15px;font-size:10px;width:max(15px,4.4cqw);height:max(15px,4.4cqw);font-size:max(10px,2.9cqw);border-radius:50%;background:var(--red);color:#fff;border:1.5px solid #fff}
+.sqEmpty{text-align:center;opacity:.7}
+@media(max-width:640px){
+ body{font-size:16px}
+ main{padding:16px 12px calc(70px + env(safe-area-inset-bottom,0px))}
+ h1{font-size:32px;line-height:1.1}
+ .row{gap:8px}
+ .row>input:not([type=file]):not([type=checkbox]):not([type=radio]){flex:1 1 100%}
+ .row>button{flex:1 1 auto}
+ .calA{grid-template-columns:1fr 1fr;grid-template-areas:"t r" "f f" "b b"}
+ .calA [data-c=time]{grid-area:t}.calA [data-c=result]{grid-area:r}.calA [data-c=field]{grid-area:f}.calA button{grid-area:b}
+ .pbtns{grid-template-columns:1fr 1fr}
+ .cands{gap:8px}
+ .ezA{grid-template-columns:repeat(3,1fr)}
+ .ezRow{padding:8px 10px}
+ .salon{padding:14px}
+ dialog{width:min(94vw,520px);padding:18px 14px}
+ dialog b{font-size:clamp(34px,11vw,56px)}
+ .crestGrid{grid-template-columns:repeat(2,1fr)}
+ a.spon .logo{height:200px}
+ .tw{overflow:visible;margin-top:12px}
+ table.cal,.cal tbody{display:block;min-width:0;width:100%}
+ .cal thead{display:none}
+ .cal tbody{display:grid;gap:10px}
+ .cal tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"j d r" "m m m" "h f f";gap:2px 10px;align-items:center;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:10px 12px}
+ .cal td{display:block;padding:0;border:0;min-width:0}
+ .cal td.cj{grid-area:j;font-size:26px}
+ .cal td.cd{grid-area:d;opacity:.85}
+ .cal td.cr{grid-area:r;font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}
+ .cal td.cm{grid-area:m;font:800 22px/1.2 "Barlow Condensed",sans-serif;padding:4px 0}
+ .cal td.ch{grid-area:h;font-size:15px}
+ .cal td.cf{grid-area:f;font-size:15px;overflow-wrap:anywhere}
+ .cal td.ch::before{content:"🕒 "}.cal td.cf::before{content:"📍 "}
+ .cal tr.next{border-color:var(--gold);background:#2a1d0c}
+ .cal tr.next td,.cal tr.next td:first-child{background:none;border-left:0}
+ #pitch{border-width:2px;border-radius:14px}
+}
+@media(max-width:360px){nav a{font-size:18px;padding:6px 10px}.units{gap:8px}}
 </style></head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#calendario">Calendario</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -170,6 +249,11 @@ img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-
  <div class="tw"><table class="cal"><thead><tr><th>Jornada</th><th>Fecha</th><th>Horario</th><th>Partido</th><th>Resultado</th><th>Campo</th></tr></thead><tbody id="calBody"></tbody></table></div>
 </section>
 
+<section id="plantilla" hidden>
+ <div class="sqHead"><h1>PLANTILLA OFICIAL</h1><p>Real Garra Balonpié</p></div>
+ <div id="pitch" role="img" aria-label="Plantilla oficial colocada sobre el campo"></div>
+</section>
+
 <section id="patrocinadores" hidden><h1>Patrocinadores</h1>
  <p>Gracias a quienes apoyan al Real Garra Balonpié. Pulsa en cualquiera para visitar su web.</p>
  <div class="spons">
@@ -187,25 +271,44 @@ img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-
 </section>
 
 <section id="admin" hidden><h1>Administración</h1>
- <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña"><button id="login">Entrar</button></div>
+ <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button id="login">Entrar</button></div>
  <div id="panel" hidden>
-  <h2>Próximo partido</h2>
-  <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
-  <div class="row">Escudo del rival: <button id="crestSel" type="button">Seleccionar escudo</button><img id="crestPreview" class="crestPrev" hidden><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button><input id="crestFile" type="file" accept="image/*" hidden></div>
-  <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
-  <h2>Votación MVP</h2><div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
-  <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
-  <h2 style="margin-top:20px">GARRO DE ORO</h2><div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div><div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
-  <h2 style="margin-top:20px">Calendario</h2><p class="sub" style="font-size:15px">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
-  <h2 style="margin-top:20px">Enviar aviso a todos</h2><div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso" style="flex:1;min-width:200px"><button id="sendPush">Enviar aviso</button></div>
-  <h2 style="margin-top:20px">Jugadores</h2><div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
-  <div class="grid" id="adminList"></div>
-  <h2 style="margin-top:20px">MVPs anteriores</h2><div id="adminHist"></div>
-  <h2 style="margin-top:20px">Copia de seguridad</h2><div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
+  <details class="ad" open><summary>⚽ Próximo partido</summary><div class="adb">
+   <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
+   <div class="row">Escudo del rival: <button id="crestSel" type="button">Seleccionar escudo</button><img id="crestPreview" class="crestPrev" hidden alt=""><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button><input id="crestFile" type="file" accept="image/*" hidden></div>
+   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
+  </div></details>
+  <details class="ad"><summary>📋 Plantilla</summary><div class="adb">
+   <p class="sub">Dorsal, nombre y posición de cada jugador en el campo. ↔ es izquierda–derecha y ↕ es arriba–abajo (0 a 100; arriba es el ataque, abajo la portería). La «C» marca al capitán.</p>
+   <div id="adminSquad"></div>
+   <div class="row"><button id="addSq" type="button" class="ghost">+ Añadir jugador</button><button id="saveSq" type="button">Guardar plantilla</button></div>
+  </div></details>
+  <details class="ad"><summary>🗳️ Votación MVP</summary><div class="adb">
+   <div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
+   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
+  </div></details>
+  <details class="ad"><summary>🏆 GARRO DE ORO</summary><div class="adb">
+   <div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div>
+   <div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
+  </div></details>
+  <details class="ad"><summary>📅 Calendario</summary><div class="adb">
+   <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
+  </div></details>
+  <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
+   <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
+  </div></details>
+  <details class="ad"><summary>👥 Jugadores (votación MVP)</summary><div class="adb">
+   <div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
+   <div class="grid" id="adminList"></div>
+  </div></details>
+  <details class="ad"><summary>🏅 MVPs anteriores</summary><div class="adb"><div id="adminHist"></div></div></details>
+  <details class="ad"><summary>💾 Copia de seguridad</summary><div class="adb">
+   <div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
+  </div></details>
  </div>
- <p class="msg" id="amsg"></p>
 </section>
 </main>
+<div id="amsg" class="toast" role="status" aria-live="polite"></div>
 <input id="crestPick" type="file" accept="image/*" hidden>
 <dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
@@ -225,7 +328,11 @@ const mv=h=>Array.isArray(h.mvps)?h.mvps:[];
 const names=h=>mv(h).map(m=>esc(m.name)).join(' y ')+(mv(h).length>1?' (empate)':'');
 const top1=h=>(mv(h)[0]||{}).votes||0;
 const loc=iso=>{if(!iso)return'';const d=new Date(iso);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
-async function load(){S=await api('/api/state?d='+encodeURIComponent(dev));render()}
+let lastJ='';
+// solo se vuelve a pintar si los datos han cambiado: así la pantalla no se mueve cada 30 s mientras escribes o te desplazas
+async function load(){const d=await api('/api/state?d='+encodeURIComponent(dev)),j=JSON.stringify(d);if(j===lastJ&&filled)return;lastJ=j;S=d;render()}
+{const t=$('#amsg');let h;new MutationObserver(()=>{clearTimeout(h);if(t.textContent)h=setTimeout(()=>{t.textContent=''},3200)}).observe(t,{childList:true,characterData:true,subtree:true})}
+function flash(b,t='✓ Guardado'){if(!b)return;const o=b.dataset.o||(b.dataset.o=b.textContent);b.textContent=t;clearTimeout(b._t);b._t=setTimeout(()=>{b.textContent=o},1600)}
 function render(){
  const fut=S.next.date&&new Date(S.next.date)>Date.now();
  $('#rival').textContent=fut&&S.next.rival?'Garra vs '+S.next.rival:'';
@@ -240,6 +347,7 @@ function render(){
  try{renderGarro()}catch(e){console.error(e)}
  try{renderCal()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
+ try{renderSquad()}catch(e){console.error(e)}
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
  $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
@@ -289,7 +397,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
  try{
   if(b.dataset.ek){const i=$('#ez-'+b.dataset.ek);i.value=ezN(ezN(i.value)+(+b.dataset.es));ezUpdTotal()}
   if(b.dataset.ezs){const box=b.closest('[data-ezbox]'),c={};box.querySelectorAll('input[data-k]').forEach(i=>c[i.dataset.k]=ezN(i.value));
-   await adm('/api/ez/'+b.dataset.ezs,'PUT',{counts:c});$('#amsg').textContent='Cantidades guardadas';document.activeElement.blur();await load()}
+   await adm('/api/ez/'+b.dataset.ezs,'PUT',{counts:c});$('#amsg').textContent='Cantidades guardadas';flash(b);const pe=box.querySelector('.cnt');if(pe)pe.textContent=ezFmt(ezPts(c))+' pts';await load()}
   if(b.dataset.ezx&&confirm('¿Borrar a esta persona de la clasificación?')){await adm('/api/ez/'+b.dataset.ezx,'DELETE');await load()}
  }catch(err){$('#amsg').textContent=err.message}});
 document.addEventListener('input',e=>{if(e.target.id&&e.target.id.startsWith('ez-'))ezUpdTotal()});
@@ -303,14 +411,14 @@ const dmy=d=>d.split('-').reverse().join('/');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function renderCal(){
  const cal=S.calendar||[],nx=cal.find(m=>m.date>=today());
- $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td>J${m.j}</td><td>${dmy(m.date)}</td><td${m.time?'':' class="tbc"'}>${m.time?esc(m.time):'Por confirmar'}</td><td>Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td>${m.result?esc(m.result):'-'}</td><td${m.field?'':' class="tbc"'}>${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
+ $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td class="cj">J${m.j}</td><td class="cd">${dmy(m.date)}</td><td class="ch${m.time?'':' tbc'}">${m.time?esc(m.time):'Por confirmar'}</td><td class="cm">Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td class="cr">${m.result?esc(m.result):'-'}</td><td class="cf${m.field?'':' tbc'}">${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
  // admin: no se vuelve a pintar mientras se está escribiendo dentro
  const ad=$('#adminCal');
  if(!ad.contains(document.activeElement))ad.innerHTML=cal.map(m=>`<div class="pv" data-calbox="${m.j}"><b>J${m.j} · ${dmy(m.date)} · vs ${esc(m.rival)}</b><div class="calA"><input type="time" data-c="time" value="${esc(m.time)}" aria-label="Hora"><input data-c="field" placeholder="Campo" maxlength="80" value="${esc(m.field)}"><input data-c="result" placeholder="Resultado" maxlength="20" value="${esc(m.result)}"><button type="button" data-cals="${m.j}">Guardar</button></div></div>`).join('')||'<p>No hay calendario.</p>'}
 document.addEventListener('click',async e=>{const b=e.target.closest('button[data-cals]');if(!b)return;
  try{const box=b.closest('[data-calbox]'),g=k=>box.querySelector('[data-c='+k+']').value;
   await adm('/api/calendar/'+b.dataset.cals,'PUT',{time:g('time'),field:g('field'),result:g('result')});
-  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';document.activeElement.blur();await load()}
+  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';flash(b);await load()}
  catch(err){$('#amsg').textContent=err.message}});
 function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
  if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
@@ -341,8 +449,10 @@ $('#dlgOk').onclick=()=>$('#dlg').close();
 $('#exportBtn').onclick=async()=>{const r=await fetch('/api/export',{headers:{'x-admin':pw}});const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='garra-datos.json';a.click()};
 $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('Esto reemplaza todos los datos actuales por los del archivo. ¿Seguro?'))return;
  try{await adm('/api/import','POST',JSON.parse(await f.text()));filled=false;$('#amsg').textContent='Datos restaurados';await load()}catch(err){$('#amsg').textContent=err.message}};
-function route(){const h=(location.hash||'#inicio').slice(1);document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==h);document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h))}
-addEventListener('hashchange',route);route();load();setInterval(load,30000);
+function route(first){const h=(location.hash||'#inicio').slice(1);document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==h);document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h));
+ const nv=$('nav'),on=nv.querySelector('a.on');if(on)nv.scrollTo({left:on.offsetLeft-(nv.clientWidth-on.offsetWidth)/2,behavior:first===true?'auto':'smooth'});
+ if(first!==true)scrollTo(0,0)}
+addEventListener('hashchange',()=>route());route(true);load();setInterval(load,30000);
 
 // ---- Avisos push ----
 const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -449,6 +559,23 @@ $('#crestPick').onchange=async e=>{const f=e.target.files[0];if(!f||!crestTarget
  try{cm('Subiendo escudo...');const img=await crestPack(f);await adm('/api/crests','PUT',{name:crestTarget,img});cm('Escudo de '+crestTarget+' guardado');await load();if(crestPickIt)crestChoose(crestTarget)}
  catch(err){cm(err.message)}};
 $('#rivalIn').addEventListener('input',updateCrestPreview);
+
+// ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
+let squadDirty=false;
+function renderSquad(){
+ const sq=S.squad||[];
+ $('#pitch').innerHTML=sq.map(p=>`<div class="pl${p.c?' cap':''}" style="left:${(8.1+p.x*.834).toFixed(2)}%;top:${(4.85+p.y*.903).toFixed(2)}%"><i>${esc(p.n)}</i><span>${esc(p.name)}${p.c?' (C)':''}</span></div>`).join('');
+ $('#pitch').setAttribute('aria-label','Plantilla oficial: '+sq.map(p=>p.n+' '+p.name+(p.c?' (capitán)':'')).join(', '));
+ const ad=$('#adminSquad');if(!ad)return;
+ if(!squadDirty&&!ad.contains(document.activeElement))ad.innerHTML=sq.map(sqRow).join('')||'<p>No hay jugadores.</p>'}
+const sqRow=(p={n:'',name:'',x:50,y:50,c:false})=>`<div class="pv sqRow"><div class="sqTop"><input class="sqn" type="number" inputmode="numeric" min="0" max="99" placeholder="Nº" value="${esc(p.n)}" aria-label="Dorsal"><input class="sqm" maxlength="14" placeholder="Nombre" value="${esc(p.name)}" aria-label="Nombre"><label class="sqc"><input type="radio" name="sqcap"${p.c?' checked':''}> C</label></div><div class="sqBot"><label>↔<input class="sqx" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.x)}" aria-label="Izquierda a derecha"></label><label>↕<input class="sqy" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.y)}" aria-label="Arriba a abajo"></label><button type="button" class="ghost" data-sqdel>Quitar</button></div></div>`;
+$('#adminSquad').addEventListener('input',()=>{squadDirty=true});
+$('#addSq').onclick=()=>{const ad=$('#adminSquad');if(!ad.querySelector('.sqRow'))ad.innerHTML='';ad.insertAdjacentHTML('beforeend',sqRow());squadDirty=true;const l=ad.lastElementChild;l.scrollIntoView({block:'center',behavior:'smooth'});l.querySelector('.sqn').focus({preventScroll:true})};
+document.addEventListener('click',e=>{const b=e.target.closest('button[data-sqdel]');if(!b)return;b.closest('.sqRow').remove();squadDirty=true});
+$('#saveSq').onclick=async e=>{const b=e.currentTarget;
+ try{const squad=[...document.querySelectorAll('#adminSquad .sqRow')].map(r=>({n:r.querySelector('.sqn').value,name:r.querySelector('.sqm').value,x:r.querySelector('.sqx').value,y:r.querySelector('.sqy').value,c:r.querySelector('.sqc input').checked}));
+  await adm('/api/squad','PUT',{squad});squadDirty=false;$('#amsg').textContent='Plantilla guardada';flash(b);await load()}
+ catch(err){$('#amsg').textContent=err.message}};
 // ---- Instalar como app + splash ----
 let instEv=null;
 const instBox=$('#installBox'),instBtn=$('#installBtn'),instMsg=$('#installMsg');
