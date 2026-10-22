@@ -31,7 +31,7 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 95]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
-const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false, crests: [] });
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, bets: [] }, calendar: [], calV1: false, calV2: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -131,6 +131,9 @@ async function init() {
     if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m }));
     db.calV1 = true;
   }
+  if (!db.garrabet || typeof db.garrabet !== 'object') db.garrabet = { odds: {}, bets: [] };
+  if (!db.garrabet.odds || typeof db.garrabet.odds !== 'object') db.garrabet.odds = {};
+  if (!Array.isArray(db.garrabet.bets)) db.garrabet.bets = [];
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
   await save();
@@ -198,6 +201,7 @@ app.get('/api/state', (req, res) => {
     ez: db.ez.map(({ device, ...e }) => e),
     ezPts: EZ_PTS,
     garro: db.garro || null,
+    garrabet: gbPublic(d),
     squad: db.squad,
     crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
@@ -441,6 +445,59 @@ app.post('/api/import', admin, async (req, res) => {
   db = { ...empty(), ...d, teamV2: true, subs: db.subs };
   if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
+  await save();
+  res.json({ ok: true });
+});
+
+// ---- GARRABET: mercados Over/Under (goles anotados, encajados y totales) + 1X2, con cuotas manuales por partido ----
+const gbRange = (from, n) => Array.from({ length: n }, (_, i) => (from + i + 0.5).toFixed(1));
+const GB_LINES = { scored: gbRange(0, 8), conceded: gbRange(0, 8), total: gbRange(1, 11) }; // 0.5–7.5 / 0.5–7.5 / 1.5–11.5
+const gbOdd = v => { // '' o null = sin cuota; acepta coma decimal
+  if (v === '' || v == null) return null;
+  const n = Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) && n >= 1.01 && n <= 1000 ? Math.round(n * 100) / 100 : undefined;
+};
+const gbResult = m => { const r = /(\d+)\s*[-–:]\s*(\d+)/.exec((m && m.result) || ''); return r ? { gf: +r[1], gc: +r[2] } : null; }; // «3-1» = Real Garra 3, rival 1
+const gbWin = (market, line, side, r) => {
+  if (market === 'res') return (side === '1' ? r.gf > r.gc : side === '2' ? r.gf < r.gc : r.gf === r.gc);
+  const t = market === 'scored' ? r.gf : market === 'conceded' ? r.gc : r.gf + r.gc;
+  return side === 'o' ? t > Number(line) : t < Number(line);
+};
+const gbStatus = b => { const m = db.calendar.find(x => x.j === b.j), r = gbResult(m); return r ? (gbWin(b.market, b.line, b.side, r) ? 'win' : 'lose') : 'pending'; };
+function gbPublic(d) {
+  const results = {};
+  db.calendar.forEach(m => { const r = gbResult(m); if (r) results[m.j] = r; });
+  const mine = d ? db.garrabet.bets.filter(b => b.device === d).map(({ device, ...b }) => ({ ...b, status: gbStatus(b) })) : [];
+  return { odds: db.garrabet.odds, results, mine, lines: GB_LINES };
+}
+app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
+  const j = +req.params.j;
+  if (!db.calendar.some(m => m.j === j)) return bad(res, 'Jornada no encontrada');
+  const body = req.body || {}, out = { res: {}, scored: {}, conceded: {}, total: {} };
+  for (const k of ['1', 'X', '2']) { const o = gbOdd(body.res && body.res[k]); if (o === undefined) return bad(res, 'Cuota no válida en Resultado (mínimo 1,01)'); out.res[k] = o; }
+  for (const mk of Object.keys(GB_LINES)) for (const l of GB_LINES[mk]) {
+    const src = (body[mk] && body[mk][l]) || {}, o = gbOdd(src.o), u = gbOdd(src.u);
+    if (o === undefined || u === undefined) return bad(res, 'Cuota no válida en ' + mk + ' ' + l + ' (mínimo 1,01)');
+    out[mk][l] = { o, u };
+  }
+  db.garrabet.odds[j] = out;
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/garrabet/bet', async (req, res) => { // una selección por dispositivo y mercado/línea; cuota fijada al apostar
+  const device = String(req.body.device || '').slice(0, 80), j = +req.body.j, market = String(req.body.market || ''), line = String(req.body.line || ''), side = String(req.body.side || '');
+  if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
+  const m = db.calendar.find(x => x.j === j), od = db.garrabet.odds[j];
+  if (!m || !od) return bad(res, 'Este partido todavía no tiene cuotas');
+  if (gbResult(m)) return bad(res, 'Este partido ya está cerrado');
+  let odd;
+  if (market === 'res') { if (!['1', 'X', '2'].includes(side)) return bad(res, 'Selección no válida'); odd = od.res[side]; }
+  else { if (!GB_LINES[market] || !GB_LINES[market].includes(line) || !['o', 'u'].includes(side)) return bad(res, 'Selección no válida'); odd = od[market][line] && od[market][line][side]; }
+  if (!odd) return bad(res, 'Esa selección no tiene cuota');
+  const bets = db.garrabet.bets, key = b => b.device === device && b.j === j && b.market === market && (market === 'res' || b.line === line);
+  const same = bets.find(b => key(b) && b.side === side);
+  db.garrabet.bets = bets.filter(b => !key(b)); // elegir otra opción de la misma línea sustituye; repetir la misma la quita
+  if (!same) db.garrabet.bets.push({ id: db.nextId++, device, j, market, line: market === 'res' ? '' : line, side, odd, at: new Date().toISOString() });
   await save();
   res.json({ ok: true });
 });

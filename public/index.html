@@ -210,9 +210,36 @@ details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3p
  #pitch{border-width:2px;border-radius:14px}
 }
 @media(max-width:360px){nav a{font-size:18px;padding:6px 10px}.units{gap:8px}}
+
+/* GarraBet */
+select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:44px;max-width:100%}
+.gbm{background:linear-gradient(160deg,#4a2a12,#2a1608);border:1px solid var(--line);border-radius:16px;padding:14px;margin:14px 0}
+.gbm h3{margin:0 0 10px;font:800 22px "Barlow Condensed",sans-serif;color:var(--ink)}
+.gbbtns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gbbtns.three{grid-template-columns:1fr 1fr 1fr}
+.gbb{background:#fff;color:#2b2b2b;border:3px solid #fff;border-radius:10px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;line-height:1.25;position:relative;min-height:62px}
+.gbb small{font-size:15px;opacity:.85}.gbb b{font:800 22px "Barlow Condensed",sans-serif;color:#c3000b}
+.gbb.on{border-color:#e0121b;box-shadow:0 0 0 2px #e0121b66}
+.gbb.win{background:#d8f5dd}.gbb.lose{background:#f3d6d6;opacity:.8}
+.gbb:disabled{opacity:.55;cursor:default}
+.gbb i{position:absolute;top:-9px;right:-4px;font:700 12px/1 Barlow,sans-serif;font-style:normal;background:#e0121b;color:#fff;padding:3px 6px;border-radius:5px}
+.gbs{width:100%;margin:16px 0 4px;padding:0;min-height:28px;border:0;background:transparent;-webkit-appearance:none;appearance:none;--p:0%}
+.gbs::-webkit-slider-runnable-track{height:5px;border-radius:9px;background:linear-gradient(90deg,#fff var(--p),#ffffff40 var(--p))}
+.gbs::-moz-range-track{height:5px;border-radius:9px;background:#ffffff40}.gbs::-moz-range-progress{height:5px;border-radius:9px;background:#fff}
+.gbs::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #fff;margin-top:-10px;box-shadow:0 1px 5px #0008}
+.gbs::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #fff}
+.gbnone{opacity:.75;margin:0}
+.gbmine{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.gbchip{font-weight:700;border-radius:99px;padding:2px 12px;font-size:15px;background:#3b2e1f}.gbchip.win{background:#1f7a33}.gbchip.lose{background:#a01f22}
+.gbadm{background:#120e0b;border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0}
+.gbadm h4{margin:0 0 8px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.gbgrid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 8px;align-items:center}
+.gbgrid.r3{grid-template-columns:repeat(3,1fr)}
+.gbgrid input{width:100%;min-height:40px;padding:6px 8px}
+.gbgrid span{font-size:16px}.gbgrid .h{opacity:.7;font-size:14px}
 </style></head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -242,6 +269,13 @@ details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3p
  <div class="row"><button id="ezSave" type="button">Guardar</button><span class="ezNum" id="ezTotal"></span></div>
  <p class="msg" id="ezMsg"></p>
  <h2 style="margin-top:28px">Clasificación</h2><div id="ezRank"></div>
+</section>
+
+<section id="garrabet" hidden><h1>GarraBet</h1>
+ <p class="sub">Elige partido y mueve la barra para cambiar de línea. Toca una cuota para marcarla (otra vez para quitarla).</p>
+ <div class="row"><select id="gbMatch" aria-label="Partido"></select></div>
+ <div id="gbMarkets"></div>
+ <h2 style="margin-top:22px">Mis selecciones</h2><div id="gbMine"></div>
 </section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
@@ -291,6 +325,11 @@ details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3p
    <div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div>
    <div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
   </div></details>
+  <details class="ad"><summary>🎲 GarraBet · cuotas del partido</summary><div class="adb">
+   <p class="sub">Elige la jornada y escribe las cuotas a mano (mínimo 1,01; vacío = no se ofrece esa opción). El resultado de cada selección se calcula solo cuando pones el resultado en Admin → Calendario (formato «3-1», Real Garra primero).</p>
+   <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
+   <div id="gbAdmForm"></div>
+  </div></details>
   <details class="ad"><summary>📅 Calendario</summary><div class="adb">
    <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   </div></details>
@@ -315,7 +354,7 @@ details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3p
 <script>
 const $=s=>document.querySelector(s);
 let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
-let S={players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
+let S={garrabet:{odds:{},results:{},mine:[],lines:{}},players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
 function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest'),lc=crestFor($('#rivalIn').value),src=crestData||(lc?crestUrl(lc):'');if(src){p.src=src;p.hidden=false}else p.hidden=true;d.hidden=!crestData}
 $('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
  fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
@@ -346,6 +385,7 @@ function render(){
  try{renderEz()}catch(e){console.error(e)}
  try{renderGarro()}catch(e){console.error(e)}
  try{renderCal()}catch(e){console.error(e)}
+ try{renderGB()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
  try{renderSquad()}catch(e){console.error(e)}
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
@@ -560,6 +600,60 @@ $('#crestPick').onchange=async e=>{const f=e.target.files[0];if(!f||!crestTarget
  catch(err){cm(err.message)}};
 $('#rivalIn').addEventListener('input',updateCrestPreview);
 
+
+// ---- GarraBet: líneas Over/Under con barra deslizante (estilo Winamax) + cuotas desde Admin ----
+const GBM=[['scored','Goles anotados – Real Garra'],['conceded','Goles encajados – Real Garra'],['total','Goles totales']];
+const gbL=l=>String(l).replace('.',','),gbO=n=>Number(n).toFixed(2).replace('.',','),gbN=v=>v==null?'':String(v).replace('.',',');
+const gbRes=j=>((S.garrabet||{}).results||{})[j],gbOdds=j=>((S.garrabet||{}).odds||{})[j];
+function gbWin(m,l,sd,r){if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
+const gbIdx={};let gbDrag=false;
+function gbPick(j,m,l,sd){return((S.garrabet||{}).mine||[]).find(b=>b.j===j&&b.market===m&&b.side===sd&&(m==='res'||b.line===l))}
+function gbBtn(j,m,l,sd,label,odd){
+ const r=gbRes(j),on=gbPick(j,m,l,sd),cls=['gbb'];if(on)cls.push('on');
+ if(r&&odd){cls.push(gbWin(m,l,sd,r)?'win':'lose')}
+ return `<button type="button" class="${cls.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>MI SELECCIÓN</i>':''}<small>${label}</small><b>${odd?gbO(odd):'—'}</b></button>`}
+function gbMarket(j,k,t){
+ const od=gbOdds(j),L=(S.garrabet.lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
+ if(!ok.length)return `<div class="gbm"><h3>${t}</h3><p class="gbnone">Sin cuotas todavía.</p></div>`;
+ const key=j+k;if(!(key in gbIdx)){ // línea inicial: la más equilibrada entre Más y Menos
+  let best=0,bd=1e9;ok.forEach((l,i)=>{const c=od[k][l];if(c.o&&c.u){const d=Math.abs(c.o-c.u);if(d<bd){bd=d;best=i}}});gbIdx[key]=best}
+ const i=Math.min(gbIdx[key],ok.length-1),l=ok[i],c=od[k][l];
+ return `<div class="gbm" data-gbm="${j}|${k}"><h3>${t}</h3>
+  <div class="gbbtns">${gbBtn(j,k,l,'o','Más de '+gbL(l),c.o)}${gbBtn(j,k,l,'u','Menos de '+gbL(l),c.u)}</div>
+  ${ok.length>1?`<input class="gbs" type="range" min="0" max="${ok.length-1}" step="1" value="${i}" style="--p:${i/(ok.length-1)*100}%" aria-label="Línea de ${t}">`:''}</div>`}
+function gbMarketRes(j){
+ const od=gbOdds(j);if(!od||!['1','X','2'].some(k=>od.res[k]))return '';
+ const rv=((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
+ return `<div class="gbm"><h3>Resultado</h3><div class="gbbtns three">${gbBtn(j,'res','','1','Real Garra',od.res['1'])}${gbBtn(j,'res','','X','Empate',od.res.X)}${gbBtn(j,'res','','2',esc(rv),od.res['2'])}</div></div>`}
+function renderGB(){
+ const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;
+ const nx=cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
+ if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill()}
+ if(gbDrag||$('#gbMarkets').contains(document.activeElement)&&document.activeElement.type==='range')return;
+ const j=+sel.value;if(!j){$('#gbMarkets').innerHTML='<p>Todavía no hay calendario.</p>';return}
+ const r=gbRes(j),hasOdds=gbOdds(j);
+ $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(hasOdds?gbMarketRes(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join(''):'<p>Este partido todavía no tiene cuotas.</p>');
+ const mine=(S.garrabet.mine||[]).slice().sort((a,b)=>b.id-a.id),nm=m=>m==='res'?'Resultado':(GBM.find(x=>x[0]===m)||[])[1]||m;
+ const sl=b=>b.market==='res'?({1:'Gana Real Garra',X:'Empate',2:'Gana el rival'})[b.side]:(b.side==='o'?'Más de ':'Menos de ')+gbL(b.line);
+ $('#gbMine').innerHTML=mine.map(b=>{const m=cal.find(x=>x.j===b.j)||{};return `<div class="pv gbmine"><span><b>${sl(b)}</b> @ ${gbO(b.odd)}<br><small>J${b.j} vs ${esc(m.rival||'')} · ${nm(b.market)}</small></span><span class="gbchip ${b.status}">${b.status==='win'?'GANADA':b.status==='lose'?'PERDIDA':'Pendiente'}</span></div>`}).join('')||'<p class="gbnone">Aún no has marcado ninguna selección.</p>'}
+function gbAdmFill(){
+ const ad=$('#gbAdmForm'),j=+$('#gbAdmMatch').value;if(!ad||!j)return;
+ const od=gbOdds(j)||{res:{},scored:{},conceded:{},total:{}},inp=(a,v)=>`<input inputmode="decimal" placeholder="—" data-gbi="${a}" value="${gbN(v)}">`;
+ ad.innerHTML=`<div class="gbadm"><h4>Resultado</h4><div class="gbgrid r3"><span class="h">Local (Real Garra)</span><span class="h">Empate</span><span class="h">Visitante</span>${inp('res|1',od.res['1'])}${inp('res|X',od.res.X)}${inp('res|2',od.res['2'])}</div></div>`+
+ GBM.map(([k,t])=>`<div class="gbadm"><h4>${t}</h4><div class="gbgrid"><span class="h">Línea</span><span class="h">Más (+)</span><span class="h">Menos (−)</span>${((S.garrabet||{}).lines||{})[k].map(l=>{const c=(od[k]||{})[l]||{};return `<span>${gbL(l)}</span>${inp(k+'|'+l+'|o',c.o)}${inp(k+'|'+l+'|u',c.u)}`}).join('')}</div></div>`).join('')}
+$('#gbAdmMatch').onchange=gbAdmFill;
+$('#gbMatch').onchange=renderGB;
+$('#gbSave').onclick=async e=>{const b=e.currentTarget,j=+$('#gbAdmMatch').value;
+ try{const o={res:{},scored:{},conceded:{},total:{}};
+  document.querySelectorAll('#gbAdmForm [data-gbi]').forEach(i=>{const p=i.dataset.gbi.split('|');if(p[0]==='res')o.res[p[1]]=i.value;else(o[p[0]][p[1]]=o[p[0]][p[1]]||{})[p[2]]=i.value});
+  await adm('/api/garrabet/'+j,'PUT',o);$('#amsg').textContent='Cuotas de la jornada '+j+' guardadas';flash(b);lastJ='';await load()}
+ catch(err){$('#amsg').textContent=err.message}};
+$('#gbMarkets').addEventListener('input',e=>{const r=e.target.closest('.gbs');if(!r)return;const box=r.closest('[data-gbm]'),[j,k]=box.dataset.gbm.split('|');gbIdx[j+k]=+r.value;
+ const t=(GBM.find(x=>x[0]===k)||[])[1],tmp=document.createElement('div');tmp.innerHTML=gbMarket(+j,k,t);const nb=tmp.firstElementChild.querySelector('.gbbtns');box.querySelector('.gbbtns').replaceWith(nb);r.style.setProperty('--p',(r.value/r.max*100)+'%')});
+$('#gbMarkets').addEventListener('pointerdown',e=>{if(e.target.closest('.gbs'))gbDrag=true});
+addEventListener('pointerup',()=>{gbDrag=false});
+$('#gbMarkets').addEventListener('click',async e=>{const b=e.target.closest('button[data-gb]');if(!b)return;const[j,m,l,sd]=b.dataset.gb.split('|');
+ try{await api('/api/garrabet/bet','POST',{device:dev,j:+j,market:m,line:l,side:sd});lastJ='';await load()}catch(err){$('#amsg').textContent=err.message}});
 // ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
 let squadDirty=false;
 function renderSquad(){
