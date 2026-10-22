@@ -23,7 +23,7 @@ const CAL_SEED = [
   [19, '2027-05-09', 'Atlético Sheriff'], [20, '2027-05-16', 'Los Chicos Del Patio'], [21, '2027-05-23', 'Gazilion'], [22, '2027-05-30', 'Potrero FC']
 ].map(([j, date, rival]) => ({ j, date, rival, time: '', field: '', result: '' }));
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false });
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -189,6 +189,7 @@ app.get('/api/state', (req, res) => {
     ez: db.ez.map(({ device, ...e }) => e),
     ezPts: EZ_PTS,
     garro: db.garro || null,
+    crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
   });
 });
@@ -368,6 +369,37 @@ app.post('/api/garro/close', admin, async (req, res) => {
 app.delete('/api/garro', admin, async (req, res) => {
   snapshot('antes-de-quitar-garro');
   db.garro = null;
+  await save();
+  res.json({ ok: true });
+});
+
+// ---- Escudos de equipos (carpeta de escudos): se suben una vez en Admin y salen solos en el Inicio y el calendario ----
+// Se guardan dentro de los datos (Upstash o disco local), así que no se pierden con deploys.
+app.get('/api/crest/:id', (req, res) => {
+  const c = db.crests.find(x => x.id === +req.params.id);
+  const m = c && /^data:(image\/(?:png|jpeg|webp|gif));base64,(.+)$/.exec(c.img);
+  if (!m) return res.status(404).end();
+  res.set('Content-Type', m[1]);
+  res.set('Cache-Control', 'public, max-age=31536000, immutable'); // la URL lleva ?v= y cambia al subir otro escudo
+  res.send(Buffer.from(m[2], 'base64'));
+});
+app.put('/api/crests', admin, async (req, res) => {
+  const name = String(req.body.name || '').trim().slice(0, 40);
+  const img = String(req.body.img || '');
+  if (!name) return bad(res, 'Falta el nombre del equipo');
+  if (img.length > 150000 || !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(img)) return bad(res, 'Imagen no válida o demasiado pesada');
+  const rest = db.crests.filter(c => norm(c.name) !== norm(name));
+  if (rest.reduce((t, c) => t + c.img.length, 0) + img.length > 600000) return bad(res, 'Hay demasiados escudos guardados; quita alguno');
+  const cur = db.crests.find(c => norm(c.name) === norm(name));
+  if (cur) { cur.img = img; cur.v = Date.now(); } // se conserva el nombre con el que se creó
+  else db.crests.push({ id: db.nextId++, name, img, v: Date.now() });
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/crests/:id', admin, async (req, res) => {
+  const id = +req.params.id;
+  if (!db.crests.some(c => c.id === id)) return bad(res, 'Escudo no encontrado');
+  db.crests = db.crests.filter(c => c.id !== id);
   await save();
   res.json({ ok: true });
 });
