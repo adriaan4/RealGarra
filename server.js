@@ -526,8 +526,8 @@ const gbSelStatus = x => {
 };
 function gbTicketOut(t) {
   const sels = t.sels.map(x => ({ ...x, status: gbSelStatus(x) }));
-  const forced = t.forced === 'win' || t.forced === 'void' ? t.forced : ''; // el admin puede dar la apuesta por ganada o anularla (se devuelve el importe)
-  const status = forced === 'void' ? 'void' : forced === 'win' ? 'win' : sels.some(x => x.status === 'lose') ? 'lose' : sels.every(x => x.status === 'win') ? 'win' : 'pending';
+  const forced = ['win', 'lose', 'void'].includes(t.forced) ? t.forced : ''; // el admin puede dar la apuesta por ganada o anularla (se devuelve el importe)
+  const status = forced === 'void' ? 'void' : forced === 'win' ? 'win' : forced === 'lose' ? 'lose' : sels.some(x => x.status === 'lose') ? 'lose' : sels.every(x => x.status === 'win') ? 'win' : 'pending';
   const stake = gbMoney(Number(t.stake) || 0); // las apuestas antiguas (sin importe) cuentan como 0 y no tocan el saldo
   return { id: t.id, at: t.at, odd: t.odd, sels, status, stake, payout: status === 'win' ? gbMoney(stake * t.odd) : status === 'void' ? stake : 0, forced };
 }
@@ -659,7 +659,7 @@ app.post('/api/garrabet-admin/user/:id/money', admin, async (req, res) => {
 app.post('/api/garrabet-admin/ticket/:id/settle', admin, async (req, res) => {
   const t = db.garrabet.tickets.find(x => x.id === +req.params.id), a = String(req.body.action || '');
   if (!t) return bad(res, 'Apuesta no encontrada');
-  if (!['win', 'void', 'reset'].includes(a)) return bad(res, 'Acción no válida');
+  if (!['win', 'lose', 'void', 'reset'].includes(a)) return bad(res, 'Acción no válida');
   if (a === 'reset') delete t.forced; else t.forced = a;
   await save();
   res.json({ ok: true });

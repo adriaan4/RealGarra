@@ -42,4 +42,4 @@ En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la 
 ## GarraBet: doble oportunidad, goleadores y resolver a mano
 - Doble oportunidad (1X, 12, X2): se liquida sola con el resultado del calendario. Si no pones cuota, sale sola a partir de las cuotas 1/X/2.
 - Goleadores (marca en cualquier momento): cuotas por defecto de menor a mayor (Mario, Jiménez, Carlos, Pablo, Dodu, ...), editables por jornada. Tras el partido, en Admin → GarraBet · cuotas → «¿Quién marcó?» marca a los goleadores y guarda. Se pueden combinar goleadores entre sí.
-- Admin → apuestas de la gente: «Dar por ganada» (se paga importe × cuota), «Anular» (se devuelve el importe) y «Quitar marca».
+- Admin → apuestas de la gente: «Dar por ganada» (se paga importe × cuota), «Dar por perdida» (pierde el importe), «Anular» (se devuelve el importe) y «Quitar marca».
