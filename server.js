@@ -16,15 +16,14 @@ const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '
 
 // ---- Calendario de la liga (la hora, el campo y el resultado se rellenan desde Admin) ----
 const CAL_SEED = [
-  ['2026-10-25', 'ASTON BIRRA CD DT'], ['2026-11-08', 'Solfamidas FC'], ['2026-11-15', 'Oliver 3.0 pro max'], ['2026-11-22', 'Jaire 25'],
-  ['2026-11-29', 'VRS Galactics'], ['2026-12-13', 'Naranja Mecánica FC'], ['2026-12-20', 'Discípulos de Tama'], ['2027-01-10', 'Malakito de Memphis'],
-  ['2027-01-17', 'La Charca FC'], ['2027-01-24', 'DUCKS F.C.'], ['2027-02-07', 'Vinos Brumete'], ['2027-02-14', 'ASTON BIRRA CD DT'],
-  ['2027-02-21', 'Solfamidas FC'], ['2027-02-28', 'Oliver 3.0 pro max'], ['2027-03-14', 'Jaire 25'], ['2027-03-21', 'VRS Galactics'],
-  ['2027-04-11', 'Naranja Mecánica FC'], ['2027-04-18', 'Discípulos de Tama'], ['2027-05-09', 'Malakito de Memphis'], ['2027-05-16', 'La Charca FC'],
-  ['2027-05-23', 'DUCKS F.C.'], ['2027-05-30', 'Vinos Brumete']
-].map(([date, rival], i) => ({ j: i + 1, date, rival, time: '', field: '', result: '' }));
+  [1, '2026-10-25', 'Huerta FC'], [2, '2026-11-08', 'Bricomaniacos FC'], [4, '2026-11-22', 'Piso Piloto FC'], [5, '2026-11-29', 'ValdeCity'],
+  [6, '2026-12-13', 'Pachanga FC'], [7, '2026-12-20', 'THE OFFICE'], [8, '2027-01-10', 'Atlético Sheriff'], [9, '2027-01-17', 'Los Chicos Del Patio'],
+  [10, '2027-01-24', 'Gazilion'], [11, '2027-02-07', 'Potrero FC'], [12, '2027-02-14', 'Huerta FC'], [13, '2027-02-21', 'Bricomaniacos FC'],
+  [15, '2027-03-14', 'Piso Piloto FC'], [16, '2027-03-21', 'ValdeCity'], [17, '2027-04-11', 'Pachanga FC'], [18, '2027-04-18', 'THE OFFICE'],
+  [19, '2027-05-09', 'Atlético Sheriff'], [20, '2027-05-16', 'Los Chicos Del Patio'], [21, '2027-05-23', 'Gazilion'], [22, '2027-05-30', 'Potrero FC']
+].map(([j, date, rival]) => ({ j, date, rival, time: '', field: '', result: '' }));
 
-const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false });
+const empty = () => ({ nextId: 1, players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, calendar: [], calV1: false, calV2: false });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -112,6 +111,12 @@ async function init() {
     const ids = new Set(db.players.map(p => p.id));
     db.round.votes = db.round.votes.filter(v => ids.has(v.playerId));
     db.teamV2 = true;
+  }
+  // Migración de una sola vez: calendario nuevo (otros rivales). Reemplaza el anterior, con copia previa; hora, campo y resultado quedan por confirmar.
+  if (!db.calV2) {
+    if (Array.isArray(db.calendar) && db.calendar.length) snapshot('antes-de-cambiar-calendario');
+    db.calendar = CAL_SEED.map(m => ({ ...m }));
+    db.calV1 = db.calV2 = true;
   }
   // Migración de una sola vez: carga el calendario si todavía no existe (no toca nada más)
   if (!db.calV1) {
@@ -376,7 +381,7 @@ app.post('/api/import', admin, async (req, res) => {
   snapshot('antes-de-importar');
   db = { ...empty(), ...d, teamV2: true, subs: db.subs };
   if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
-  db.calV1 = true; // se mantienen los dispositivos suscritos a avisos
+  db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
   await save();
   res.json({ ok: true });
 });

@@ -395,10 +395,10 @@ const EZ_START=new Date('2026-10-25T16:00:00+01:00'),EZ_GALA=new Date('2027-06-0
 function ezCountTick(){
  const el=$('#ezCount');if(!el)return;
  const now=Date.now();let d,cls,head,foot;
- if(now<EZ_START){d=EZ_START-now;cls='ezBig';head='⏳ Empieza la temporada';foot='Domingo 25 de octubre · 16:00'}
- else if(now<EZ_GALA){d=EZ_GALA-now;cls='ezSmall';head='🏆 Gala del GARRO DE ORO · 1 de junio de 2027';foot='🍻 ¡Venga chavales, a beber!'}
+ if(now<EZ_START){d=EZ_START-now;cls='ezBig';head='⏳ Empieza la temporada';foot=''}
+ else if(now<EZ_GALA){d=EZ_GALA-now;cls='ezSmall';head='🏆 Gala del GARRO DE ORO';foot='🍻 ¡Venga chavales, a beber!'}
  else{el.innerHTML='<div class="ezCount"><h3>🏆 ¡Hoy es la gala del GARRO DE ORO!</h3></div>';return}
- el.innerHTML='<div class="ezCount '+cls+'"><h3>'+head+'</h3><div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div><p>'+foot+'</p></div>'}
+ el.innerHTML='<div class="ezCount '+cls+'"><h3>'+head+'</h3><div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'+(foot?'<p>'+foot+'</p>':'')+'</div>'}
 ezCountTick();setInterval(ezCountTick,1000);
 // ---- Instalar como app + splash ----
 let instEv=null;
