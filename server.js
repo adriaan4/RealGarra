@@ -456,6 +456,20 @@ const GB_LINES = { scored: gbRange(0, 8), conceded: gbRange(0, 8), total: gbRang
 const GB_MAX_SELS = 8, GB_MAX_TICKETS = 60, GB_EX_MAX = 5, GB_EX_MARGIN = 1.12, GB_EX_CAP = 150;
 const GB_START = 100, GB_MIN_STAKE = 1; // pavos con los que empieza cada jugador y apuesta mínima
 const gbMoney = n => Math.round(n * 100) / 100;
+// Goleadores (marca en cualquier momento): cuotas por defecto, de la más baja a la más alta. El admin las puede cambiar por jornada
+const GB_SC_DEF = { MARIO: 2.5, 'JIMÉNEZ': 3, CARLOS: 3.5, PABLO: 4.5, DODU: 5.5, DAVID: 7, ADRI: 8.5, JORGE: 9.5, ROBER: 11, HUGO: 13, PAJARES: 15, JUAN: 17, ANTONIO: 30 };
+const gbScNames = () => [...new Set((db.squad || []).map(p => String(p.name).toUpperCase()))];
+const gbScDef = n => { const k = Object.keys(GB_SC_DEF).find(x => norm(x) === norm(n)); return k ? GB_SC_DEF[k] : 15; };
+const gbScorerDefault = () => { const o = {}; gbScNames().forEach(n => { o[n] = gbScDef(n); }); return o; };
+const gbScorerOdds = od => { const o = {}; gbScNames().forEach(n => { const v = od && od.scorer ? od.scorer[n] : gbScDef(n); if (v) o[n] = v; }); return o; };
+// Doble oportunidad: si el admin no pone cuota, sale sola a partir de 1/X/2
+const GB_DC = { '1X': ['1', 'X'], '12': ['1', '2'], 'X2': ['X', '2'] };
+function gbDcOdd(od, side) {
+  if (!od || !GB_DC[side]) return null;
+  if (od.dc && od.dc[side]) return od.dc[side];
+  const [a, b] = GB_DC[side].map(k => od.res && od.res[k]);
+  return a && b ? Math.max(1.01, gbMoney(1 / (1 / a + 1 / b))) : null;
+}
 const gbOdd = v => { // '' o null = sin cuota; acepta coma decimal
   if (v === '' || v == null) return null;
   const n = Number(String(v).replace(',', '.'));
@@ -465,6 +479,7 @@ const gbResult = m => { const r = /(\d+)\s*[-–:]\s*(\d+)/.exec((m && m.result)
 const gbWin = (market, line, side, r) => {
   if (market === 'res') return (side === '1' ? r.gf > r.gc : side === '2' ? r.gf < r.gc : r.gf === r.gc);
   if (market === 'exact') return line === r.gf + '-' + r.gc;
+  if (market === 'dc') return side === '1X' ? r.gf >= r.gc : side === '2X' || side === 'X2' ? r.gf <= r.gc : r.gf !== r.gc;
   const t = market === 'scored' ? r.gf : market === 'conceded' ? r.gc : r.gf + r.gc;
   return side === 'o' ? t > Number(line) : t < Number(line);
 };
@@ -492,17 +507,29 @@ function gbSelOdd(j, market, line, side) { // cuota vigente de una selección (n
   const od = db.garrabet.odds[j];
   if (!od) return null;
   if (market === 'res') return ['1', 'X', '2'].includes(side) ? (od.res[side] || null) : null;
+  if (market === 'dc') return gbDcOdd(od, side);
+  if (market === 'scorer') return side === 's' ? (gbScorerOdds(od)[line] || null) : null;
   if (market === 'exact') { const ex = gbExactFor(j); return side === 's' && ex ? (ex[line] || null) : null; }
   if (!GB_LINES[market] || !GB_LINES[market].includes(line) || !['o', 'u'].includes(side)) return null;
   const c = od[market][line];
   return (c && c[side]) || null;
 }
-const gbSelStatus = x => { const r = gbResult(db.calendar.find(m => m.j === x.j)); return r ? (gbWin(x.market, x.line, x.side, r) ? 'win' : 'lose') : 'pending'; };
+const gbSelStatus = x => {
+  const m = db.calendar.find(c => c.j === x.j), r = gbResult(m);
+  if (!r) return 'pending';
+  if (x.market === 'scorer') { // sin goles del Garra pierde; si el admin aún no ha marcado goleadores, queda pendiente
+    if (r.gf === 0) return 'lose';
+    if (!Array.isArray(m.scorers)) return 'pending';
+    return m.scorers.includes(x.line) ? 'win' : 'lose';
+  }
+  return gbWin(x.market, x.line, x.side, r) ? 'win' : 'lose';
+};
 function gbTicketOut(t) {
   const sels = t.sels.map(x => ({ ...x, status: gbSelStatus(x) }));
-  const status = sels.some(x => x.status === 'lose') ? 'lose' : sels.every(x => x.status === 'win') ? 'win' : 'pending';
+  const forced = t.forced === 'win' || t.forced === 'void' ? t.forced : ''; // el admin puede dar la apuesta por ganada o anularla (se devuelve el importe)
+  const status = forced === 'void' ? 'void' : forced === 'win' ? 'win' : sels.some(x => x.status === 'lose') ? 'lose' : sels.every(x => x.status === 'win') ? 'win' : 'pending';
   const stake = gbMoney(Number(t.stake) || 0); // las apuestas antiguas (sin importe) cuentan como 0 y no tocan el saldo
-  return { id: t.id, at: t.at, odd: t.odd, sels, status, stake, payout: status === 'win' ? gbMoney(stake * t.odd) : 0 };
+  return { id: t.id, at: t.at, odd: t.odd, sels, status, stake, payout: status === 'win' ? gbMoney(stake * t.odd) : status === 'void' ? stake : 0, forced };
 }
 const gbUser = d => db.garrabet.users.find(u => u.device === d);
 // Saldo = 100 iniciales + ingresos del admin − importes apostados + premios de apuestas ganadas (se calcula siempre desde las apuestas, así nunca se descuadra)
@@ -515,8 +542,11 @@ function gbPublic(d) {
   const results = {}, exact = {};
   db.calendar.forEach(m => { const r = gbResult(m); if (r) results[m.j] = r; });
   Object.keys(db.garrabet.odds).forEach(j => { const ex = gbExactFor(j); if (ex) exact[j] = ex; });
+  const dc = {}, scorerOdds = {}, scorers = {};
+  Object.keys(db.garrabet.odds).forEach(j => { const od = db.garrabet.odds[j]; dc[j] = {}; Object.keys(GB_DC).forEach(k => { dc[j][k] = gbDcOdd(od, k); }); scorerOdds[j] = gbScorerOdds(od); });
+  db.calendar.forEach(m => { if (Array.isArray(m.scorers)) scorers[m.j] = m.scorers; });
   const me = d && gbUser(d);
-  return { odds: db.garrabet.odds, exact, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
+  return { odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
 }
 app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
   const j = +req.params.j;
@@ -527,6 +557,12 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
     const src = (body[mk] && body[mk][l]) || {}, o = gbOdd(src.o), u = gbOdd(src.u);
     if (o === undefined || u === undefined) return bad(res, 'Cuota no válida en ' + mk + ' ' + l + ' (mínimo 1,01)');
     out[mk][l] = { o, u };
+  }
+  out.dc = {};
+  for (const k of Object.keys(GB_DC)) { const o = gbOdd(body.dc && body.dc[k]); if (o === undefined) return bad(res, 'Cuota no válida en Doble oportunidad (mínimo 1,01)'); out.dc[k] = o; }
+  if (body.scorer) { // si no viene, se mantienen las cuotas por defecto
+    out.scorer = {};
+    for (const n of gbScNames()) { const o = gbOdd(body.scorer[n]); if (o === undefined) return bad(res, 'Cuota no válida en goleador ' + n + ' (mínimo 1,01)'); out.scorer[n] = o; }
   }
   db.garrabet.odds[j] = out;
   await save();
@@ -563,8 +599,8 @@ app.post('/api/garrabet/ticket', async (req, res) => {
     if (gbResult(m)) return bad(res, 'La jornada ' + j + ' ya está cerrada');
     const odd = gbSelOdd(j, market, line, side);
     if (!odd) return bad(res, 'Una de las selecciones ya no tiene cuota');
-    const k = j + '|' + market;
-    if (seen.has(k)) return bad(res, 'No puedes combinar dos selecciones del mismo mercado en un partido (por ejemplo +2,5 y +3,5 de goles totales)');
+    const k = j + '|' + market + (market === 'scorer' ? '|' + line : '');
+    if (seen.has(k)) return bad(res, 'No puedes combinar dos selecciones del mismo mercado en un partido (por ejemplo +2,5 y +3,5 de goles totales). Solo los goleadores se pueden combinar entre sí');
     seen.add(k);
     sels.push({ j, market, line, side, odd });
   }
@@ -579,6 +615,7 @@ app.post('/api/garrabet/ticket', async (req, res) => {
 app.delete('/api/garrabet/ticket/:id', async (req, res) => { // el usuario puede quitar su boleto mientras ningún partido suyo esté cerrado
   const device = String(req.query.d || '').slice(0, 80), t = db.garrabet.tickets.find(x => x.id === +req.params.id && x.device === device);
   if (!t) return bad(res, 'Apuesta no encontrada');
+  if (t.forced) return bad(res, 'El admin ya ha resuelto esta apuesta: no se puede quitar');
   if (t.sels.some(x => gbResult(db.calendar.find(m => m.j === x.j)))) return bad(res, 'Ya hay resultado en alguno de esos partidos: no se puede quitar');
   db.garrabet.tickets = db.garrabet.tickets.filter(x => x !== t);
   await save();
@@ -617,6 +654,24 @@ app.post('/api/garrabet-admin/user/:id/money', admin, async (req, res) => {
   u.bonus = gbMoney((Number(u.bonus) || 0) + amt);
   await save();
   res.json({ ok: true, balance: gbBalance(u) });
+});
+// Admin: dar una apuesta por ganada, anularla (se devuelve el importe) o quitar la marca
+app.post('/api/garrabet-admin/ticket/:id/settle', admin, async (req, res) => {
+  const t = db.garrabet.tickets.find(x => x.id === +req.params.id), a = String(req.body.action || '');
+  if (!t) return bad(res, 'Apuesta no encontrada');
+  if (!['win', 'void', 'reset'].includes(a)) return bad(res, 'Acción no válida');
+  if (a === 'reset') delete t.forced; else t.forced = a;
+  await save();
+  res.json({ ok: true });
+});
+// Admin: quién marcó en cada partido (para liquidar los goleadores). Lista vacía = no marcó nadie del Garra
+app.put('/api/garrabet-admin/scorers/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  const names = gbScNames();
+  m.scorers = [...new Set((Array.isArray(req.body.scorers) ? req.body.scorers : []).map(n => String(n).toUpperCase()).filter(n => names.includes(n)))];
+  await save();
+  res.json({ ok: true });
 });
 app.delete('/api/garrabet-admin/ticket/:id', admin, async (req, res) => {
   const n = db.garrabet.tickets.length;

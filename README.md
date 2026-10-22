@@ -38,3 +38,8 @@ En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la 
 - Al ganar se cobra importe × cuota; al perder se pierde el importe. Si quita una apuesta pendiente, recupera los pavos.
 - El saldo se calcula siempre a partir de las apuestas, así que no se descuadra. Las apuestas antiguas (sin importe) no afectan al saldo.
 - Admin → «GarraBet · apuestas de la gente»: cada persona tiene su saldo y un campo para ingresarle pavos (con número negativo se le quitan), y arriba hay «Ingresar a todos».
+
+## GarraBet: doble oportunidad, goleadores y resolver a mano
+- Doble oportunidad (1X, 12, X2): se liquida sola con el resultado del calendario. Si no pones cuota, sale sola a partir de las cuotas 1/X/2.
+- Goleadores (marca en cualquier momento): cuotas por defecto de menor a mayor (Mario, Jiménez, Carlos, Pablo, Dodu, ...), editables por jornada. Tras el partido, en Admin → GarraBet · cuotas → «¿Quién marcó?» marca a los goleadores y guarda. Se pueden combinar goleadores entre sí.
+- Admin → apuestas de la gente: «Dar por ganada» (se paga importe × cuota), «Anular» (se devuelve el importe) y «Quitar marca».
