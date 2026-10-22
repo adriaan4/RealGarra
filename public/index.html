@@ -237,6 +237,21 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .gbgrid.r3{grid-template-columns:repeat(3,1fr)}
 .gbgrid input{width:100%;min-height:40px;padding:6px 8px}
 .gbgrid span{font-size:16px}.gbgrid .h{opacity:.7;font-size:14px}
+
+.gbslip{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;background:#1a1512;border:2px solid var(--gold);border-radius:14px;padding:12px;margin:14px 0;box-shadow:0 6px 24px #000a}
+.gbslip h3{margin:0 0 6px;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}
+.gbsl{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:16px}
+.gbsl button{min-height:34px;padding:2px 10px}
+.gbtot{display:flex;justify-content:space-between;align-items:center;margin:10px 0 8px;font:800 22px "Barlow Condensed",sans-serif}
+.gbtot b{color:var(--gold);font-size:28px}
+.gbex{overflow-x:auto}
+.gbexg{display:grid;grid-template-columns:34px repeat(6,minmax(48px,1fr));gap:5px;min-width:340px;align-items:stretch}
+.gbexg .h{font-size:13px;text-align:center;opacity:.85;align-self:center}
+.gbexg .gbb{min-height:42px;padding:3px 2px;border-width:2px;border-radius:8px}
+.gbexg .gbb b{font-size:16px}.gbexg .gbb i{display:none}
+.gbtk{margin:8px 0}.gbtk ul{margin:6px 0 0;padding-left:18px;font-size:15px}
+.gbtk li{margin:2px 0}
+.gbtk .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 </style></head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
 <nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
@@ -272,10 +287,12 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </section>
 
 <section id="garrabet" hidden><h1>GarraBet</h1>
- <p class="sub">Elige partido y mueve la barra para cambiar de línea. Toca una cuota para marcarla (otra vez para quitarla).</p>
+ <p class="sub">Toca las cuotas para armar tu boleto: una selección es sencilla y varias, combinada (se multiplican). Solo una selección por mercado y partido.</p>
+ <div id="gbName"></div>
  <div class="row"><select id="gbMatch" aria-label="Partido"></select></div>
  <div id="gbMarkets"></div>
- <h2 style="margin-top:22px">Mis selecciones</h2><div id="gbMine"></div>
+ <div id="gbSlip"></div>
+ <h2 style="margin-top:22px">Mis apuestas</h2><div id="gbMine"></div>
 </section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
@@ -330,6 +347,10 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
    <div id="gbAdmForm"></div>
   </div></details>
+  <details class="ad" id="gbAdmDet"><summary>🎟️ GarraBet · apuestas de la gente</summary><div class="adb">
+   <div class="row"><select id="gbFJ" aria-label="Filtrar por jornada"></select><select id="gbFU" aria-label="Filtrar por persona"></select><button id="gbRefresh" type="button" class="ghost">Actualizar</button></div>
+   <div id="gbAdmUsers"></div><div id="gbAdmBets"></div>
+  </div></details>
   <details class="ad"><summary>📅 Calendario</summary><div class="adb">
    <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   </div></details>
@@ -354,7 +375,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 <script>
 const $=s=>document.querySelector(s);
 let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
-let S={garrabet:{odds:{},results:{},mine:[],lines:{}},players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
+let S={garrabet:{odds:{},exact:{},results:{},mine:[],lines:{},me:null},players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
 function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest'),lc=crestFor($('#rivalIn').value),src=crestData||(lc?crestUrl(lc):'');if(src){p.src=src;p.hidden=false}else p.hidden=true;d.hidden=!crestData}
 $('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
  fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
@@ -601,59 +622,122 @@ $('#crestPick').onchange=async e=>{const f=e.target.files[0];if(!f||!crestTarget
 $('#rivalIn').addEventListener('input',updateCrestPreview);
 
 
-// ---- GarraBet: líneas Over/Under con barra deslizante (estilo Winamax) + cuotas desde Admin ----
+// ---- GarraBet: líneas Over/Under con barra (estilo Winamax), resultado exacto, boleto sencillo/combinado y nombre por dispositivo ----
 const GBM=[['scored','Goles anotados – Real Garra'],['conceded','Goles encajados – Real Garra'],['total','Goles totales']];
 const gbL=l=>String(l).replace('.',','),gbO=n=>Number(n).toFixed(2).replace('.',','),gbN=v=>v==null?'':String(v).replace('.',',');
-const gbRes=j=>((S.garrabet||{}).results||{})[j],gbOdds=j=>((S.garrabet||{}).odds||{})[j];
-function gbWin(m,l,sd,r){if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
-const gbIdx={};let gbDrag=false;
-function gbPick(j,m,l,sd){return((S.garrabet||{}).mine||[]).find(b=>b.j===j&&b.market===m&&b.side===sd&&(m==='res'||b.line===l))}
-function gbBtn(j,m,l,sd,label,odd){
- const r=gbRes(j),on=gbPick(j,m,l,sd),cls=['gbb'];if(on)cls.push('on');
- if(r&&odd){cls.push(gbWin(m,l,sd,r)?'win':'lose')}
- return `<button type="button" class="${cls.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>MI SELECCIÓN</i>':''}<small>${label}</small><b>${odd?gbO(odd):'—'}</b></button>`}
+const GBS=()=>S.garrabet||{},gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
+const gbRival=j=>((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
+function gbWin(m,l,sd,r){if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;if(m==='exact')return l===r.gf+'-'+r.gc;const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
+function gbSelTxt(s){
+ if(s.market==='res')return ({1:'Gana Real Garra',X:'Empate',2:'Gana '+gbRival(s.j)})[s.side];
+ if(s.market==='exact')return 'Resultado exacto '+s.line.replace('-',' - ');
+ return ((GBM.find(x=>x[0]===s.market)||[])[1]||s.market).replace(' – Real Garra','')+(s.market==='total'?'':' Garra')+' · '+(s.side==='o'?'Más de ':'Menos de ')+gbL(s.line)}
+function gbOddNow(s){const od=gbOdds(s.j);if(!od)return null;
+ if(s.market==='res')return od.res[s.side]||null;
+ if(s.market==='exact')return(gbEx(s.j)||{})[s.line]||null;
+ const c=(od[s.market]||{})[s.line];return(c&&c[s.side])||null}
+let gbSlip=[],gbIdx={},gbDrag=false;
+const gbInSlip=(j,m,l,sd)=>gbSlip.find(x=>x.j===j&&x.market===m&&x.line===(m==='res'?'':l)&&x.side===sd);
+const gbTot=a=>Math.round(a.reduce((p,x)=>p*x.odd,1)*100)/100;
+function gbBtn(j,m,l,sd,label,odd,c0){
+ const r=gbRes(j),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd)c.push(gbWin(m,l,sd,r)?'win':'lose');
+ return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
 function gbMarket(j,k,t){
- const od=gbOdds(j),L=(S.garrabet.lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
+ const od=gbOdds(j),L=(GBS().lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
  if(!ok.length)return `<div class="gbm"><h3>${t}</h3><p class="gbnone">Sin cuotas todavía.</p></div>`;
- const key=j+k;if(!(key in gbIdx)){ // línea inicial: la más equilibrada entre Más y Menos
-  let best=0,bd=1e9;ok.forEach((l,i)=>{const c=od[k][l];if(c.o&&c.u){const d=Math.abs(c.o-c.u);if(d<bd){bd=d;best=i}}});gbIdx[key]=best}
+ const key=j+k;if(!(key in gbIdx)){let best=0,bd=1e9;ok.forEach((l,i)=>{const c=od[k][l];if(c.o&&c.u){const d=Math.abs(c.o-c.u);if(d<bd){bd=d;best=i}}});gbIdx[key]=best}
  const i=Math.min(gbIdx[key],ok.length-1),l=ok[i],c=od[k][l];
  return `<div class="gbm" data-gbm="${j}|${k}"><h3>${t}</h3>
   <div class="gbbtns">${gbBtn(j,k,l,'o','Más de '+gbL(l),c.o)}${gbBtn(j,k,l,'u','Menos de '+gbL(l),c.u)}</div>
   ${ok.length>1?`<input class="gbs" type="range" min="0" max="${ok.length-1}" step="1" value="${i}" style="--p:${i/(ok.length-1)*100}%" aria-label="Línea de ${t}">`:''}</div>`}
 function gbMarketRes(j){
  const od=gbOdds(j);if(!od||!['1','X','2'].some(k=>od.res[k]))return '';
- const rv=((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
- return `<div class="gbm"><h3>Resultado</h3><div class="gbbtns three">${gbBtn(j,'res','','1','Real Garra',od.res['1'])}${gbBtn(j,'res','','X','Empate',od.res.X)}${gbBtn(j,'res','','2',esc(rv),od.res['2'])}</div></div>`}
+ return `<div class="gbm"><h3>Resultado</h3><div class="gbbtns three">${gbBtn(j,'res','','1','Real Garra',od.res['1'])}${gbBtn(j,'res','','X','Empate',od.res.X)}${gbBtn(j,'res','','2',esc(gbRival(j)),od.res['2'])}</div></div>`}
+function gbMarketExact(j){
+ const ex=gbEx(j);if(!ex)return '';let h='<span></span>';
+ for(let b=0;b<=5;b++)h+=`<span class="h">${b}</span>`;
+ for(let a=0;a<=5;a++){h+=`<span class="h">${a}</span>`;for(let b=0;b<=5;b++)h+=gbBtn(j,'exact',a+'-'+b,'s','',ex[a+'-'+b])}
+ return `<div class="gbm"><h3>Resultado exacto</h3><p class="sub" style="margin:0 0 8px">Filas: goles de Real Garra · Columnas: goles de ${esc(gbRival(j))}</p><div class="gbex"><div class="gbexg">${h}</div></div></div>`}
+function gbTicketHtml(t,del){
+ const n=t.sels.length;
+ return `<div class="pv gbtk"><div class="top"><span><b>${n>1?'Combinada ×'+n:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b></span><span class="gbchip ${t.status}">${t.status==='win'?'GANADA':t.status==='lose'?'PERDIDA':'Pendiente'}</span></div>
+  <ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}</li>`).join('')}</ul>${del||''}</div>`}
 function renderGB(){
  const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;
  const nx=cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
- if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill()}
- if(gbDrag||$('#gbMarkets').contains(document.activeElement)&&document.activeElement.type==='range')return;
- const j=+sel.value;if(!j){$('#gbMarkets').innerHTML='<p>Todavía no hay calendario.</p>';return}
- const r=gbRes(j),hasOdds=gbOdds(j);
- $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(hasOdds?gbMarketRes(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join(''):'<p>Este partido todavía no tiene cuotas.</p>');
- const mine=(S.garrabet.mine||[]).slice().sort((a,b)=>b.id-a.id),nm=m=>m==='res'?'Resultado':(GBM.find(x=>x[0]===m)||[])[1]||m;
- const sl=b=>b.market==='res'?({1:'Gana Real Garra',X:'Empate',2:'Gana el rival'})[b.side]:(b.side==='o'?'Más de ':'Menos de ')+gbL(b.line);
- $('#gbMine').innerHTML=mine.map(b=>{const m=cal.find(x=>x.j===b.j)||{};return `<div class="pv gbmine"><span><b>${sl(b)}</b> @ ${gbO(b.odd)}<br><small>J${b.j} vs ${esc(m.rival||'')} · ${nm(b.market)}</small></span><span class="gbchip ${b.status}">${b.status==='win'?'GANADA':b.status==='lose'?'PERDIDA':'Pendiente'}</span></div>`}).join('')||'<p class="gbnone">Aún no has marcado ninguna selección.</p>'}
+ if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill();gbFilters()}
+ // nombre
+ const nb=$('#gbName');if(!(document.activeElement&&document.activeElement.id==='gbNameIn')){const me=GBS().me;
+  nb.innerHTML=me?`<p class="sub">Apostando como <b>${esc(me)}</b></p>`:`<div class="row"><input id="gbNameIn" maxlength="20" placeholder="Tu nombre para apostar" autocomplete="off"><button id="gbNameBtn" type="button">Guardar nombre</button></div><p class="sub" style="font-size:15px">Se queda fijo en este dispositivo.</p>`}
+ // boleto: se actualizan cuotas y se quitan selecciones de partidos cerrados o sin cuota
+ gbSlip=gbSlip.map(x=>({...x,odd:gbOddNow(x)})).filter(x=>x.odd&&!gbRes(x.j));
+ if(!(gbDrag||($('#gbMarkets').contains(document.activeElement)&&document.activeElement.type==='range'))){
+  const j=+sel.value;if(!j){$('#gbMarkets').innerHTML='<p>Todavía no hay calendario.</p>'}
+  else{const r=gbRes(j),has=gbOdds(j);
+   $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(has?gbMarketRes(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join('')+gbMarketExact(j):'<p>Este partido todavía no tiene cuotas.</p>')}}
+ $('#gbSlip').innerHTML=gbSlip.length?`<div class="gbslip"><h3>Tu boleto · ${gbSlip.length>1?'Combinada ×'+gbSlip.length:'Sencilla'}</h3>${gbSlip.map((x,i)=>`<div class="gbsl"><span>J${x.j} · ${esc(gbSelTxt(x))} @ <b>${gbO(x.odd)}</b></span><button type="button" class="ghost" data-gbrm="${i}" aria-label="Quitar">✕</button></div>`).join('')}<div class="gbtot"><span>Cuota total</span><b>${gbO(gbTot(gbSlip))}</b></div><button type="button" id="gbPlace" style="width:100%">Apostar</button></div>`:'';
+ const mine=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id);
+ $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,t.sels.some(x=>gbRes(x.j))?'':`<div class="row" style="margin:6px 0 0"><button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button></div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
+const gbToast=t=>{$('#amsg').textContent=t};
+function gbToggle(j,m,l,sd){
+ const ex=gbInSlip(j,m,l,sd);
+ if(ex){gbSlip=gbSlip.filter(x=>x!==ex);return}
+ const cl=gbSlip.find(x=>x.j===j&&x.market===m);
+ if(cl){gbToast('Ya tienes «'+gbSelTxt(cl)+'» en este mercado del partido. Quítala del boleto para elegir otra.');return}
+ if(gbSlip.length>=8){gbToast('Máximo 8 selecciones por boleto');return}
+ const s={j,market:m,line:m==='res'?'':l,side:sd},odd=gbOddNow(s);if(!odd)return;gbSlip.push({...s,odd})}
 function gbAdmFill(){
  const ad=$('#gbAdmForm'),j=+$('#gbAdmMatch').value;if(!ad||!j)return;
  const od=gbOdds(j)||{res:{},scored:{},conceded:{},total:{}},inp=(a,v)=>`<input inputmode="decimal" placeholder="—" data-gbi="${a}" value="${gbN(v)}">`;
- ad.innerHTML=`<div class="gbadm"><h4>Resultado</h4><div class="gbgrid r3"><span class="h">Local (Real Garra)</span><span class="h">Empate</span><span class="h">Visitante</span>${inp('res|1',od.res['1'])}${inp('res|X',od.res.X)}${inp('res|2',od.res['2'])}</div></div>`+
- GBM.map(([k,t])=>`<div class="gbadm"><h4>${t}</h4><div class="gbgrid"><span class="h">Línea</span><span class="h">Más (+)</span><span class="h">Menos (−)</span>${((S.garrabet||{}).lines||{})[k].map(l=>{const c=(od[k]||{})[l]||{};return `<span>${gbL(l)}</span>${inp(k+'|'+l+'|o',c.o)}${inp(k+'|'+l+'|u',c.u)}`}).join('')}</div></div>`).join('')}
+ const ex=gbEx(j),top=ex?Object.entries(ex).sort((a,b)=>a[1]-b[1]).slice(0,10).map(([k,v])=>k.replace('-','–')+' → '+gbO(v)).join(' · '):'';
+ ad.innerHTML=`<div class="gbadm"><h4>Resultado</h4><div class="gbgrid r3"><span class="h">Local (Real Garra)</span><span class="h">Empate</span><span class="h">Visitante</span>${inp('res|1',od.res['1'])}${inp('res|X',od.res.X)}${inp('res|2',od.res['2'])}</div><p class="sub">El <b>resultado exacto</b> se genera solo con estas tres cuotas (no hay que rellenarlo).${top?'<br>Marcadores más probables: '+top:''}</p></div>`+
+ GBM.map(([k,t])=>`<div class="gbadm"><h4>${t}</h4><div class="gbgrid"><span class="h">Línea</span><span class="h">Más (+)</span><span class="h">Menos (−)</span>${((GBS().lines||{})[k]||[]).map(l=>{const c=(od[k]||{})[l]||{};return `<span>${gbL(l)}</span>${inp(k+'|'+l+'|o',c.o)}${inp(k+'|'+l+'|u',c.u)}`}).join('')}</div></div>`).join('')}
+// ---- Admin: apuestas de todos (sencillas y combinadas) ----
+let gbAdm={users:[],tickets:[]};
+function gbFilters(){const fj=$('#gbFJ'),fu=$('#gbFU');if(!fj||!fu)return;const vj=fj.value,vu=fu.value;
+ fj.innerHTML='<option value="">Todas las jornadas</option>'+(S.calendar||[]).map(m=>`<option value="${m.j}">J${m.j} · vs ${esc(m.rival)}</option>`).join('');fj.value=vj;
+ fu.innerHTML='<option value="">Todas las personas</option>'+gbAdm.users.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');fu.value=vu}
+function gbAdmRender(){
+ const box=$('#gbAdmBets'),ub=$('#gbAdmUsers');if(!box)return;
+ if(!ub.contains(document.activeElement))ub.innerHTML='<h3>Personas</h3>'+(gbAdm.users.map(u=>{const t=gbAdm.tickets.filter(x=>x.userId===u.id),c=s=>t.filter(x=>x.status===s).length;
+  return `<div class="pv gbmine"><span><b>${esc(u.name)}</b><br><small>${t.length} apuesta${t.length===1?'':'s'} · ${c('win')} ganada${c('win')===1?'':'s'} · ${c('lose')} perdida${c('lose')===1?'':'s'} · ${c('pending')} pendiente${c('pending')===1?'':'s'}</small></span><span class="row" style="margin:0"><input data-gbrn="${u.id}" value="${esc(u.name)}" maxlength="20" style="width:130px"><button type="button" class="ghost" data-gbren="${u.id}">Cambiar nombre</button></span></div>`}).join('')||'<p>Todavía nadie ha puesto su nombre.</p>');
+ gbFilters();
+ const fj=$('#gbFJ').value,fu=$('#gbFU').value;
+ const list=gbAdm.tickets.filter(t=>(!fj||t.sels.some(x=>x.j===+fj))&&(!fu||t.userId===+fu));
+ box.innerHTML=`<h3>Apuestas (${list.length})</h3>`+(list.map(t=>`<div class="pv gbtk"><div class="top"><span><b>${esc(t.name)}</b> · <b>${t.sels.length>1?'Combinada ×'+t.sels.length:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b></span><span class="gbchip ${t.status}">${t.status==='win'?'GANADA':t.status==='lose'?'PERDIDA':'Pendiente'}</span></div><ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}</li>`).join('')}</ul><div class="row" style="margin:6px 0 0"><small>${new Date(t.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}</small><button type="button" class="ghost" data-gbadel="${t.id}">Borrar</button></div></div>`).join('')||'<p>No hay apuestas con ese filtro.</p>')}
+async function gbAdmLoad(){if(!pw)return;try{gbAdm=await adm('/api/garrabet-admin/all');gbAdmRender()}catch(e){}}
+$('#gbAdmDet').addEventListener('toggle',()=>{if($('#gbAdmDet').open)gbAdmLoad()});
+setInterval(()=>{if($('#gbAdmDet').open&&!$('#gbAdmDet').contains(document.activeElement))gbAdmLoad()},15000);
+$('#gbRefresh').onclick=gbAdmLoad;$('#gbFJ').onchange=gbAdmRender;$('#gbFU').onchange=gbAdmRender;
+$('#gbAdmDet').addEventListener('click',async e=>{
+ const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]');
+ try{
+  if(d){if(!confirm('¿Borrar esta apuesta?'))return;await adm('/api/garrabet-admin/ticket/'+d.dataset.gbadel,'DELETE');await gbAdmLoad();return}
+  if(r){const v=$('#gbAdmDet').querySelector('input[data-gbrn="'+r.dataset.gbren+'"]').value;await adm('/api/garrabet-admin/user/'+r.dataset.gbren,'PUT',{name:v});gbToast('Nombre cambiado');await gbAdmLoad();lastJ='';await load()}
+ }catch(err){gbToast(err.message)}});
 $('#gbAdmMatch').onchange=gbAdmFill;
 $('#gbMatch').onchange=renderGB;
 $('#gbSave').onclick=async e=>{const b=e.currentTarget,j=+$('#gbAdmMatch').value;
  try{const o={res:{},scored:{},conceded:{},total:{}};
   document.querySelectorAll('#gbAdmForm [data-gbi]').forEach(i=>{const p=i.dataset.gbi.split('|');if(p[0]==='res')o.res[p[1]]=i.value;else(o[p[0]][p[1]]=o[p[0]][p[1]]||{})[p[2]]=i.value});
-  await adm('/api/garrabet/'+j,'PUT',o);$('#amsg').textContent='Cuotas de la jornada '+j+' guardadas';flash(b);lastJ='';await load()}
- catch(err){$('#amsg').textContent=err.message}};
+  await adm('/api/garrabet/'+j,'PUT',o);gbToast('Cuotas de la jornada '+j+' guardadas');flash(b);lastJ='';await load();gbAdmFill()}
+ catch(err){gbToast(err.message)}};
 $('#gbMarkets').addEventListener('input',e=>{const r=e.target.closest('.gbs');if(!r)return;const box=r.closest('[data-gbm]'),[j,k]=box.dataset.gbm.split('|');gbIdx[j+k]=+r.value;
- const t=(GBM.find(x=>x[0]===k)||[])[1],tmp=document.createElement('div');tmp.innerHTML=gbMarket(+j,k,t);const nb=tmp.firstElementChild.querySelector('.gbbtns');box.querySelector('.gbbtns').replaceWith(nb);r.style.setProperty('--p',(r.value/r.max*100)+'%')});
+ const t=(GBM.find(x=>x[0]===k)||[])[1],tmp=document.createElement('div');tmp.innerHTML=gbMarket(+j,k,t);box.querySelector('.gbbtns').replaceWith(tmp.firstElementChild.querySelector('.gbbtns'));r.style.setProperty('--p',(r.value/r.max*100)+'%')});
 $('#gbMarkets').addEventListener('pointerdown',e=>{if(e.target.closest('.gbs'))gbDrag=true});
 addEventListener('pointerup',()=>{gbDrag=false});
-$('#gbMarkets').addEventListener('click',async e=>{const b=e.target.closest('button[data-gb]');if(!b)return;const[j,m,l,sd]=b.dataset.gb.split('|');
- try{await api('/api/garrabet/bet','POST',{device:dev,j:+j,market:m,line:l,side:sd});lastJ='';await load()}catch(err){$('#amsg').textContent=err.message}});
+$('#garrabet').addEventListener('click',async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.gb){const[j,m,l,sd]=b.dataset.gb.split('|');gbToggle(+j,m,l,sd);renderGB();return}
+  if(b.dataset.gbrm!==undefined){gbSlip.splice(+b.dataset.gbrm,1);renderGB();return}
+  if(b.id==='gbNameBtn'){await api('/api/garrabet/name','POST',{device:dev,name:$('#gbNameIn').value});lastJ='';await load();gbToast('Nombre guardado');return}
+  if(b.id==='gbPlace'){
+   if(!GBS().me){gbToast('Pon tu nombre arriba para poder apostar');const i=$('#gbNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
+   await api('/api/garrabet/ticket','POST',{device:dev,sels:gbSlip.map(({j,market,line,side})=>({j,market,line,side}))});
+   gbSlip=[];gbToast('¡Apuesta realizada!');lastJ='';await load();return}
+  if(b.dataset.gbdel){if(!confirm('¿Quitar esta apuesta?'))return;await api('/api/garrabet/ticket/'+b.dataset.gbdel+'?d='+encodeURIComponent(dev),'DELETE');lastJ='';await load()}
+ }catch(err){gbToast(err.message)}});
 // ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
 let squadDirty=false;
 function renderSquad(){
