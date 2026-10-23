@@ -371,6 +371,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 <div id="amsg" class="toast" role="status" aria-live="polite"></div>
 <input id="crestPick" type="file" accept="image/*" hidden>
 <dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
+<dialog id="gbShareDlg"><h2>Tu boleto</h2><img id="gbShareImg" alt="Boleto de GarraBet" style="width:100%;max-width:420px;border-radius:10px;display:block;margin:10px auto"><div class="row" style="justify-content:center"><button id="gbShareBtn" type="button">📤 Compartir</button><button id="gbDlBtn" type="button" class="ghost">⬇️ Descargar</button><button id="gbShareClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
 <script>
 const $=s=>document.querySelector(s);
@@ -690,7 +691,7 @@ function renderGB(){
    $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(has?gbMarketRes(j)+gbMarketDc(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join('')+gbMarketScorer(j)+gbMarketExact(j):'<p>Este partido todavía no tiene cuotas.</p>')}}
  if(!(document.activeElement&&document.activeElement.id==='gbStake'))$('#gbSlip').innerHTML=gbSlip.length?`<div class="gbslip"><h3>Tu boleto · ${gbSlip.length>1?'Combinada ×'+gbSlip.length:'Sencilla'}</h3>${gbSlip.map((x,i)=>`<div class="gbsl"><span>J${x.j} · ${esc(gbSelTxt(x))} @ <b>${gbO(x.odd)}</b></span><button type="button" class="ghost" data-gbrm="${i}" aria-label="Quitar">✕</button></div>`).join('')}<div class="gbtot"><span>Cuota total</span><b>${gbO(gbTot(gbSlip))}</b></div><div class="row" style="margin:6px 0"><label for="gbStake">Pavos a apostar</label><input id="gbStake" inputmode="decimal" autocomplete="off" placeholder="10" value="${esc(gbStake)}" style="width:110px"><button type="button" class="ghost" id="gbAll">Todo</button></div><div class="gbtot"><span>Ganarías</span><b id="gbWin">${gbM(gbStakeN()*gbTot(gbSlip))}</b></div><button type="button" id="gbPlace" style="width:100%">Apostar</button></div>`:'';
  const mine=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id);
- $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,(t.forced||t.sels.some(x=>gbRes(x.j)))?'':`<div class="row" style="margin:6px 0 0"><button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button></div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
+ $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,`<div class="row" style="margin:6px 0 0"><button type="button" data-gbshare="${t.id}">📤 Compartir imagen</button>${(t.forced||t.sels.some(x=>gbRes(x.j)))?'':`<button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button>`}</div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
 const gbToast=t=>{$('#amsg').textContent=t};
 function gbToggle(j,m,l,sd){
  const ex=gbInSlip(j,m,l,sd);
@@ -756,9 +757,69 @@ $('#garrabet').addEventListener('click',async e=>{
   if(b.id==='gbPlace'){
    if(!GBS().me){gbToast('Pon tu nombre arriba para poder apostar');const i=$('#gbNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
    await api('/api/garrabet/ticket','POST',{device:dev,stake:gbStake,sels:gbSlip.map(({j,market,line,side})=>({j,market,line,side}))});
-   gbSlip=[];gbToast('¡Apuesta realizada!');lastJ='';await load();return}
+   gbSlip=[];gbToast('¡Apuesta realizada!');lastJ='';await load();try{const nt=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id)[0];if(nt)await gbShowImg(nt)}catch(e2){console.error(e2)}return}
+  if(b.dataset.gbshare){const t=(GBS().mine||[]).find(x=>x.id===+b.dataset.gbshare);if(t)await gbShowImg(t);return}
   if(b.dataset.gbdel){if(!confirm('¿Quitar esta apuesta?'))return;await api('/api/garrabet/ticket/'+b.dataset.gbdel+'?d='+encodeURIComponent(dev),'DELETE');lastJ='';await load()}
  }catch(err){gbToast(err.message)}});
+
+// ---- GarraBet: imagen compartible del boleto (canvas, mismo formato que las casas de apuestas) ----
+const gbPv=n=>{n=Math.round(Number(n||0)*100)/100;const [i,d]=n.toFixed(2).split('.');return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(d==='00'?'':','+d)};
+function gbSelParts(x){const t=gbSelTxt(x),k=t.indexOf(' · '),rv=gbRival(x.j),m=x.market;
+ let big=t,sm='';
+ if(k>0){sm=t.slice(0,k);big=t.slice(k+3)}
+ else if(m==='res')sm='Resultado del partido';
+ else if(m==='scorer')sm='Goleador';
+ else if(m==='exact')sm='Resultado exacto',big=x.line.replace('-',' - ');
+ return {big,sm:(sm?sm+' · ':'')+'J'+x.j+' vs '+rv}}
+async function gbTicketCanvas(t){
+ try{await Promise.all([document.fonts.load('800 40px "Barlow Condensed"'),document.fonts.load('600 40px "Barlow Condensed"')])}catch{}
+ const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src='escudo.png'});
+ const GOLD='#e2ab2c',INK='#0d0b09',RED='#a01f22',CREAM='#f6eedb',BROWN='#2a1d0c',F='"Barlow Condensed",Impact,sans-serif';
+ const W=1080,M=36,IN=44,rows=t.sels.length,ROW=134,HEAD=158,TOP=162,BOX=150,H=M+HEAD+TOP+rows*ROW+BOX+60+M;
+ const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');g.textBaseline='alphabetic';
+ const rect=(x,y,w,h,f,st,lw)=>{g.beginPath();g.rect(x,y,w,h);if(f){g.fillStyle=f;g.fill()}if(st){g.lineWidth=lw||4;g.strokeStyle=st;g.stroke()}};
+ const fit=(txt,font,max,min)=>{let sz=min[1];while(sz>min[0]){g.font=font(sz);if(g.measureText(txt).width<=max)break;sz-=2}g.font=font(sz);return sz};
+ // fondo dorado + sombra dura
+ rect(0,0,W,H,GOLD);rect(M+10,M+10,W-2*M,H-2*M,INK);rect(M,M,W-2*M,H-2*M,CREAM);
+ // cabecera oscura
+ rect(M,M,W-2*M,HEAD,INK);
+ let lx=M+IN;if(img){const h=112,w=h*img.width/img.height;g.drawImage(img,lx,M+23,w,h);lx+=w+22}
+ fit('GARRABET',s=>'italic 800 '+s+'px '+F,W-M-IN-340-lx,[48,96]);g.fillStyle=CREAM;g.fillText('GARRA',lx,M+110);const gw=g.measureText('GARRA').width;g.fillStyle=GOLD;g.fillText('BET',lx+gw,M+110);
+ g.textAlign='right';g.font='800 30px '+F;g.fillStyle=GOLD;g.fillText('SALDO',W-M-IN,M+62);
+ const bal=gbPv(GBS().balance)+' PAVOS';fit(bal,s=>'italic 800 '+s+'px '+F,300,[34,56]);g.fillStyle=CREAM;g.fillText(bal,W-M-IN,M+116);g.textAlign='left';
+ // nombre + estado
+ const y0=M+HEAD,who=(GBS().me||'').toUpperCase();
+ fit(who,s=>'800 '+s+'px '+F,560,[44,84]);g.fillStyle=INK;g.fillText(who,M+IN,y0+78);
+ const n=rows,sub=(n>1?'COMBINADA ×'+n:'SENCILLA')+'  ·  '+new Date(t.at).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ g.font='600 38px '+F;g.fillStyle='#555';g.fillText(sub,M+IN,y0+126);
+ const st=t.status,lab={win:'GANADA',lose:'PERDIDA',void:'ANULADA'}[st]||'PENDIENTE',bg={win:'#bfe8c6',lose:'#f1c6c6',void:'#ddd'}[st]||'#f7dd8a';
+ g.font='800 44px '+F;const cw=g.measureText(lab).width+48;rect(W-M-IN-cw,y0+22,cw,70,bg,INK,5);g.fillStyle=INK;g.textAlign='center';g.fillText(lab,W-M-IN-cw/2,y0+72);g.textAlign='left';
+ // selecciones
+ let y=y0+TOP;rect(M+IN,y-14,W-2*M-2*IN,4,INK);
+ t.sels.forEach(x=>{const {big,sm}=gbSelParts(x),oddTxt='x'+Number(x.odd).toFixed(2);
+  const col=x.status==='win'?'#1f7a33':x.status==='lose'?RED:GOLD;
+  g.beginPath();g.arc(M+IN+14,y+38,14,0,7);g.fillStyle=col;g.fill();
+  g.textAlign='right';g.font='italic 800 62px '+F;g.fillStyle=RED;g.fillText(oddTxt,W-M-IN,y+58);const ow=g.measureText(oddTxt).width;g.textAlign='left';
+  const mx=W-2*M-2*IN-44-ow-24;fit(big,s=>'800 '+s+'px '+F,mx,[34,64]);g.fillStyle=INK;g.fillText(big,M+IN+44,y+58);
+  fit(sm,s=>'600 '+s+'px '+F,mx,[24,36]);g.fillStyle='#555';g.fillText(sm,M+IN+44,y+100);
+  rect(M+IN,y+ROW-14,W-2*M-2*IN,4,INK);y+=ROW});
+ // cajas apostado / cuota / premio
+ y+=14;const bx=M+IN,bw=(W-2*M-2*IN)/3,pay=st==='win'?t.payout:t.stake*t.odd;
+ rect(bx,y,bw*3,BOX,null,INK,5);rect(bx+bw,y,4,BOX,INK);rect(bx+2*bw,y,4,BOX,INK);
+ const cell=(i,l,v,col)=>{g.textAlign='center';g.font='800 30px '+F;g.fillStyle='#555';g.fillText(l,bx+bw*i+bw/2,y+46);fit(v,s=>'italic 800 '+s+'px '+F,bw-30,[34,72]);g.fillStyle=col;g.fillText(v,bx+bw*i+bw/2,y+112)};
+ cell(0,'APOSTADO',gbPv(t.stake)+' PAVOS',INK);cell(1,'CUOTA','X'+Number(t.odd).toFixed(2),RED);cell(2,st==='win'?'PREMIO COBRADO':st==='void'?'DEVUELTO':'PREMIO POSIBLE',gbPv(st==='void'?t.stake:pay)+' PAVOS',INK);
+ g.textAlign='left';return c}
+let gbBlob=null,gbBlobName='boleto-garrabet.png';
+async function gbShowImg(t){
+ const c=await gbTicketCanvas(t);gbBlob=await new Promise(r=>c.toBlob(r,'image/png'));if(!gbBlob)return;
+ gbBlobName='garrabet-'+(GBS().me||'boleto').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+t.id+'.png';
+ const im=$('#gbShareImg');if(im.dataset.u)URL.revokeObjectURL(im.dataset.u);im.dataset.u=URL.createObjectURL(gbBlob);im.src=im.dataset.u;
+ const d=$('#gbShareDlg');if(!d.open)d.showModal()}
+$('#gbShareClose').onclick=()=>$('#gbShareDlg').close();
+$('#gbDlBtn').onclick=()=>{if(!gbBlob)return;const a=document.createElement('a');a.href=URL.createObjectURL(gbBlob);a.download=gbBlobName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+$('#gbShareBtn').onclick=async()=>{if(!gbBlob)return;const f=new File([gbBlob],gbBlobName,{type:'image/png'});
+ try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Mi apuesta en GarraBet'});return}}catch(e){if(e&&e.name==='AbortError')return}
+ $('#gbDlBtn').click()};
 // ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
 let squadDirty=false;
 function renderSquad(){
