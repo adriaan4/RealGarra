@@ -447,7 +447,7 @@ function renderEz(){
  if(!$('#ez-cigarros')){if(!Object.keys(S.ezPts).length)return;ezBuildForm()}
  const mine=S.ez.find(e=>e.id===S.ezMine);
  if(!ezInit){ezInit=true;if(mine){$('#ezName').value=mine.name;EZ.forEach(([k])=>$('#ez-'+k).value=ezN(mine[k]))}ezUpdTotal()}
- $('#ezName').disabled=!!mine;$('#ezSave').textContent=mine?'Actualizar':'Guardar';
+ $('#ezName').disabled=!!mine;$('#ezSave').textContent=mine?'Actualizar':'Guardar';ezLock();
  const rk=[...S.ez].map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));
  const top=rk.length&&rk[0].p>0?rk[0].p:1;
  $('#ezRank').innerHTML=rk.map(({e,p})=>{const pos=rk.findIndex(x=>x.p===p)+1;
@@ -576,10 +576,17 @@ $('#garroClose').onclick=async()=>{const L=ezLeaders();if(!L.top.length){$('#ams
 $('#garroDel').onclick=async()=>{if(!confirm('¿Quitar el Garro de Oro del inicio? La clasificación no se toca.'))return;
  try{await adm('/api/garro','DELETE');$('#amsg').textContent='Garro de Oro quitado del inicio';await load()}catch(e){$('#amsg').textContent=e.message}};
 
-// ---- Cuenta atrás de GARRO DE ORO: inicio de temporada (25/10/2026 16:00) y después gala (1/6/2027) ----
-const EZ_START=new Date('2026-10-25T16:00:00+01:00'),EZ_GALA=new Date('2027-06-01T00:00:00+02:00');
+// ---- Cuenta atrás de GARRO DE ORO: inicio de temporada (25/10/2026 18:00) y después gala (1/6/2027) ----
+const EZ_START=new Date('2026-10-25T18:00:00+01:00'),EZ_GALA=new Date('2027-06-01T00:00:00+02:00');
+const EZ_LOCK_MSG='Aún no se puede apuntar nada: espera a que termine la cuenta atrás.';
+function ezLock(){ // hasta que acabe la cuenta atrás nadie puede apuntar bebidas (el admin sí, desde su panel)
+ const locked=Date.now()<EZ_START,nm=$('#ezName'),sv=$('#ezSave'),fm=$('#ezForm'),mg=$('#ezMsg');if(!nm||!sv||!fm)return;
+ nm.disabled=locked||!!S.ez.find(e=>e.id===S.ezMine);sv.disabled=locked;
+ fm.querySelectorAll('input,button').forEach(i=>{i.disabled=locked});
+ if(mg){if(locked)mg.textContent=EZ_LOCK_MSG;else if(mg.textContent===EZ_LOCK_MSG)mg.textContent=''}}
 function ezCountTick(){
  const el=$('#ezCount');if(!el)return;
+ ezLock();
  const now=Date.now();let d,cls,head,foot;
  if(now<EZ_START){d=EZ_START-now;cls='ezBig';head='⏳ Empieza la temporada';foot=''}
  else if(now<EZ_GALA){d=EZ_GALA-now;cls='ezSmall';head='🏆 Gala del GARRO DE ORO';foot='🍻 ¡Venga chavales, a beber!'}
