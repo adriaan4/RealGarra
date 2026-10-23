@@ -784,13 +784,12 @@ async function gbTicketCanvas(t){
  // cabecera oscura
  rect(M,M,W-2*M,HEAD,INK);
  let lx=M+IN;if(img){const h=112,w=h*img.width/img.height;g.drawImage(img,lx,M+23,w,h);lx+=w+22}
- fit('GARRABET',s=>'italic 800 '+s+'px '+F,W-M-IN-340-lx,[48,96]);g.fillStyle=CREAM;g.fillText('GARRA',lx,M+110);const gw=g.measureText('GARRA').width;g.fillStyle=GOLD;g.fillText('BET',lx+gw,M+110);
- g.textAlign='right';g.font='800 30px '+F;g.fillStyle=GOLD;g.fillText('SALDO',W-M-IN,M+62);
- const bal=gbPv(GBS().balance)+' PAVOS';fit(bal,s=>'italic 800 '+s+'px '+F,300,[34,56]);g.fillStyle=CREAM;g.fillText(bal,W-M-IN,M+116);g.textAlign='left';
+ fit('GARRABET',s=>'italic 800 '+s+'px '+F,W-M-IN-lx,[48,96]);g.fillStyle=CREAM;g.fillText('GARRA',lx,M+110);const gw=g.measureText('GARRA').width;g.fillStyle=GOLD;g.fillText('BET',lx+gw,M+110);
+ g.textAlign='left';
  // nombre + estado
  const y0=M+HEAD,who=(GBS().me||'').toUpperCase();
  fit(who,s=>'800 '+s+'px '+F,560,[44,84]);g.fillStyle=INK;g.fillText(who,M+IN,y0+78);
- const n=rows,sub=(n>1?'COMBINADA ×'+n:'SENCILLA')+'  ·  '+new Date(t.at).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ const n=rows,sub=(n>1?'COMBINADA ×'+n:'SENCILLA');
  g.font='600 38px '+F;g.fillStyle='#555';g.fillText(sub,M+IN,y0+126);
  const st=t.status,lab={win:'GANADA',lose:'PERDIDA',void:'ANULADA'}[st]||'PENDIENTE',bg={win:'#bfe8c6',lose:'#f1c6c6',void:'#ddd'}[st]||'#f7dd8a';
  g.font='800 44px '+F;const cw=g.measureText(lab).width+48;rect(W-M-IN-cw,y0+22,cw,70,bg,INK,5);g.fillStyle=INK;g.textAlign='center';g.fillText(lab,W-M-IN-cw/2,y0+72);g.textAlign='left';
@@ -818,7 +817,7 @@ async function gbShowImg(t){
 $('#gbShareClose').onclick=()=>$('#gbShareDlg').close();
 $('#gbDlBtn').onclick=()=>{if(!gbBlob)return;const a=document.createElement('a');a.href=URL.createObjectURL(gbBlob);a.download=gbBlobName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
 $('#gbShareBtn').onclick=async()=>{if(!gbBlob)return;const f=new File([gbBlob],gbBlobName,{type:'image/png'});
- try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Mi apuesta en GarraBet'});return}}catch(e){if(e&&e.name==='AbortError')return}
+ try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Mi apuesta en GarraBet',text:'https://fhul0bjwm2n3-production-bydzcjlv.europe-west1.suga.run/#garrabet'});return}}catch(e){if(e&&e.name==='AbortError')return}
  $('#gbDlBtn').click()};
 // ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
 let squadDirty=false;
