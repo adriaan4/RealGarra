@@ -479,6 +479,7 @@ const gbResult = m => { const r = /(\d+)\s*[-–:]\s*(\d+)/.exec((m && m.result)
 const gbWin = (market, line, side, r) => {
   if (market === 'res') return (side === '1' ? r.gf > r.gc : side === '2' ? r.gf < r.gc : r.gf === r.gc);
   if (market === 'exact') return line === r.gf + '-' + r.gc;
+  if (market === 'btts') return side === 'y' ? (r.gf > 0 && r.gc > 0) : !(r.gf > 0 && r.gc > 0); // ambos marcan: y = sí, n = no
   if (market === 'dc') return side === '1X' ? r.gf >= r.gc : side === '2X' || side === 'X2' ? r.gf <= r.gc : r.gf !== r.gc;
   const t = market === 'scored' ? r.gf : market === 'conceded' ? r.gc : r.gf + r.gc;
   return side === 'o' ? t > Number(line) : t < Number(line);
@@ -508,6 +509,7 @@ function gbSelOdd(j, market, line, side) { // cuota vigente de una selección (n
   if (!od) return null;
   if (market === 'res') return ['1', 'X', '2'].includes(side) ? (od.res[side] || null) : null;
   if (market === 'dc') return gbDcOdd(od, side);
+  if (market === 'btts') return ['y', 'n'].includes(side) ? ((od.btts && od.btts[side]) || null) : null;
   if (market === 'scorer') return side === 's' ? (gbScorerOdds(od)[line] || null) : null;
   if (market === 'exact') { const ex = gbExactFor(j); return side === 's' && ex ? (ex[line] || null) : null; }
   if (!GB_LINES[market] || !GB_LINES[market].includes(line) || !['o', 'u'].includes(side)) return null;
@@ -560,6 +562,8 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
   }
   out.dc = {};
   for (const k of Object.keys(GB_DC)) { const o = gbOdd(body.dc && body.dc[k]); if (o === undefined) return bad(res, 'Cuota no válida en Doble oportunidad (mínimo 1,01)'); out.dc[k] = o; }
+  out.btts = {};
+  for (const k of ['y', 'n']) { const o = gbOdd(body.btts && body.btts[k]); if (o === undefined) return bad(res, 'Cuota no válida en Ambos marcan (mínimo 1,01)'); out.btts[k] = o; }
   if (body.scorer) { // si no viene, se mantienen las cuotas por defecto
     out.scorer = {};
     for (const n of gbScNames()) { const o = gbOdd(body.scorer[n]); if (o === undefined) return bad(res, 'Cuota no válida en goleador ' + n + ' (mínimo 1,01)'); out.scorer[n] = o; }
