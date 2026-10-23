@@ -228,8 +228,10 @@ const ezCounts = b => {
   for (const k of Object.keys(EZ_PTS)) { const n = Math.floor(Number(b && b[k])); o[k] = Number.isFinite(n) ? Math.min(Math.max(n, 0), 999) : 0; }
   return o;
 };
+const EZ_START = new Date('2026-10-25T18:00:00+01:00'); // hasta esta hora (fin de la cuenta atrás) la gente no puede apuntar nada; el admin sí
 // Cada dispositivo tiene su propia ficha: la crea y la puede cambiar cuando quiera (el nombre queda fijo)
 app.post('/api/ez', async (req, res) => {
+  if (Date.now() < EZ_START.getTime()) return bad(res, 'Todavía no ha empezado: hasta que termine la cuenta atrás no se puede apuntar nada');
   const device = String(req.body.device || '').slice(0, 80);
   if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
   const mine = db.ez.find(e => e.device === device);
