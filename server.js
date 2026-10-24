@@ -328,8 +328,8 @@ app.put('/api/squad', admin, async (req, res) => {
     const prev = db.squad.find(q => q.id === +p.id) || {};
     const goals = Math.min(999, Math.max(0, Math.floor(Number(p.goals)) || 0));
     const quote = String(p.quote || '').trim().slice(0, 140);
-    // goles encajados (para el portero): vacío = no se muestra en la ficha
-    const conceded = (p.conceded === '' || p.conceded == null || !Number.isFinite(Number(p.conceded))) ? null : Math.min(999, Math.max(0, Math.floor(Number(p.conceded))));
+    // goles encajados: solo el portero (Antonio) los tiene; los demás jugadores nunca
+    const conceded = norm(name) !== 'ANTONIO' ? null : (Number.isFinite(Number(p.conceded)) && p.conceded !== '' && p.conceded != null ? Math.min(999, Math.max(0, Math.floor(Number(p.conceded)))) : (Number.isFinite(prev.conceded) ? prev.conceded : 0));
     // foto: sin campo = se conserva; '' = se quita; imagen en base64 (ya reducida en el navegador) = se cambia
     let photo = prev.photo || '', photoV = prev.photoV || 0;
     if (typeof p.photo === 'string') {
