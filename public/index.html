@@ -168,6 +168,27 @@ details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3p
 .sqHead{text-align:center;margin-bottom:6px}
 .sqHead h1{font-style:italic;letter-spacing:1px;font-size:clamp(34px,10vw,54px);line-height:1.05;text-shadow:0 0 24px rgba(226,171,44,.35)}
 .sqHead p{margin:2px 0 0;opacity:.75;font-size:15px}
+/* Ficha de jugador */
+.pl{pointer-events:auto;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.pl:hover i,.pl:focus-visible i{transform:scale(1.12)}
+.pl i{transition:transform .12s}
+.pl:focus-visible{outline:none}
+#plDlg{padding:0;width:min(88vw,340px);background:linear-gradient(180deg,#2a1d0c,var(--card) 60%);overflow:hidden}
+.fch{position:relative;padding:14px 16px 16px;text-align:center}
+.fch .x{position:absolute;right:8px;top:8px;width:34px;height:34px;padding:0;border-radius:50%;line-height:1;font-size:18px;background:transparent;color:var(--ink);border-color:var(--line)}
+.fch h2{margin:0 34px 10px;font:800 clamp(30px,9vw,40px)/1.05 "Barlow Condensed",Impact,sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
+.fch h2 small{display:block;font-size:.55em;letter-spacing:3px;color:var(--ink);opacity:.8}
+.fch .ph{width:100%;aspect-ratio:4/3;border:3px solid var(--gold);border-radius:10px;background:#0d0b09 center/cover no-repeat;display:grid;place-items:center;overflow:hidden}
+.fch .ph img.nofoto{width:42%;opacity:.35}
+.fch .fr{margin:12px 4px 6px;font:italic 600 19px/1.25 "Barlow Condensed",sans-serif;min-height:24px;overflow-wrap:anywhere}
+.fch .gl{margin-top:8px;padding:8px 12px;background:var(--red);border:2px solid var(--gold);border-radius:10px;font:800 22px "Barlow Condensed",sans-serif;letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.fch .gl b{display:inline;font-size:34px;line-height:1;color:var(--gold)}
+.sqExtra{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center}
+.sqExtra label{display:flex;align-items:center;gap:6px;font-size:15px;opacity:.9}
+.sqExtra input.sqg{width:100%}
+.sqExtra input.sqq{width:100%;grid-column:1/-1}
+.sqPh{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sqPh img{height:56px;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:#0d0b09}
 #pitch{position:relative;width:100%;max-width:460px;margin:12px auto 0;aspect-ratio:583/948;border-radius:16px;overflow:hidden;border:3px solid var(--gold);background:#1d5f27 url(cesped.jpg) center/100% 100% no-repeat;container-type:inline-size;box-shadow:0 14px 40px rgba(0,0,0,.55)}
 .pl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:25%;pointer-events:none}
 .pl i{position:relative;display:grid;place-items:center;font-style:normal;font-weight:800;font-family:"Barlow Condensed",Impact,sans-serif;line-height:1;width:27px;height:27px;font-size:15px;width:max(27px,8.2cqw);height:max(27px,8.2cqw);font-size:max(15px,4.7cqw);border-radius:50%;background:var(--gold);color:#0d0b09;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.65)}
@@ -372,6 +393,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 <input id="crestPick" type="file" accept="image/*" hidden>
 <dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="gbShareDlg"><h2>Tu boleto</h2><img id="gbShareImg" alt="Boleto de GarraBet" style="width:100%;max-width:420px;border-radius:10px;display:block;margin:10px auto"><div class="row" style="justify-content:center"><button id="gbShareBtn" type="button">📤 Compartir</button><button id="gbDlBtn" type="button" class="ghost">⬇️ Descargar</button><button id="gbShareClose" type="button" class="ghost">Cerrar</button></div></dialog>
+<dialog id="plDlg" aria-label="Ficha del jugador"><div class="fch"><button type="button" class="x" id="plX" aria-label="Cerrar">✕</button><h2><small id="plNum"></small><span id="plName"></span></h2><div class="ph" id="plPh"></div><p class="fr" id="plFr"></p><div class="gl"><span>Goles anotados:</span><b id="plGl">0</b></div></div></dialog>
 <dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
 <script>
 const $=s=>document.querySelector(s);
@@ -835,16 +857,35 @@ $('#gbShareBtn').onclick=async()=>{if(!gbBlob)return;const f=new File([gbBlob],g
 let squadDirty=false;
 function renderSquad(){
  const sq=S.squad||[];
- $('#pitch').innerHTML=sq.map(p=>`<div class="pl${p.c?' cap':''}" style="left:${(8.1+p.x*.834).toFixed(2)}%;top:${(4.85+p.y*.903).toFixed(2)}%"><i>${esc(p.n)}</i><span>${esc(p.name)}${p.c?' (C)':''}</span></div>`).join('');
+ $('#pitch').innerHTML=sq.map((p,k)=>`<div class="pl${p.c?' cap':''}" data-pl="${k}" role="button" tabindex="0" aria-label="Ver ficha de ${esc(p.name)}" style="left:${(8.1+p.x*.834).toFixed(2)}%;top:${(4.85+p.y*.903).toFixed(2)}%"><i>${esc(p.n)}</i><span>${esc(p.name)}${p.c?' (C)':''}</span></div>`).join('');
  $('#pitch').setAttribute('aria-label','Plantilla oficial: '+sq.map(p=>p.n+' '+p.name+(p.c?' (capitán)':'')).join(', '));
  const ad=$('#adminSquad');if(!ad)return;
  if(!squadDirty&&!ad.contains(document.activeElement))ad.innerHTML=sq.map(sqRow).join('')||'<p>No hay jugadores.</p>'}
-const sqRow=(p={n:'',name:'',x:50,y:50,c:false})=>`<div class="pv sqRow"><div class="sqTop"><input class="sqn" type="number" inputmode="numeric" min="0" max="99" placeholder="Nº" value="${esc(p.n)}" aria-label="Dorsal"><input class="sqm" maxlength="14" placeholder="Nombre" value="${esc(p.name)}" aria-label="Nombre"><label class="sqc"><input type="radio" name="sqcap"${p.c?' checked':''}> C</label></div><div class="sqBot"><label>↔<input class="sqx" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.x)}" aria-label="Izquierda a derecha"></label><label>↕<input class="sqy" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.y)}" aria-label="Arriba a abajo"></label><button type="button" class="ghost" data-sqdel>Quitar</button></div></div>`;
+const sqRow=(p={n:'',name:'',x:50,y:50,c:false})=>`<div class="pv sqRow" data-id="${esc(p.id||'')}"><div class="sqTop"><input class="sqn" type="number" inputmode="numeric" min="0" max="99" placeholder="Nº" value="${esc(p.n)}" aria-label="Dorsal"><input class="sqm" maxlength="14" placeholder="Nombre" value="${esc(p.name)}" aria-label="Nombre"><label class="sqc"><input type="radio" name="sqcap"${p.c?' checked':''}> C</label></div><div class="sqBot"><label>↔<input class="sqx" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.x)}" aria-label="Izquierda a derecha"></label><label>↕<input class="sqy" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.y)}" aria-label="Arriba a abajo"></label><button type="button" class="ghost" data-sqdel>Quitar</button></div><div class="sqExtra"><label>⚽<input class="sqg" type="number" inputmode="numeric" min="0" max="999" value="${esc(p.goals||0)}" aria-label="Goles anotados"></label><span style="font-size:15px;opacity:.8">goles anotados</span><input class="sqq" maxlength="140" placeholder="Frase para su ficha" value="${esc(p.quote||'')}" aria-label="Frase"><div class="sqPh"><img class="sqpi" alt=""${p.id&&p.hasPhoto?` src="/api/squad-photo/${esc(p.id)}?v=${esc(p.photoV||0)}"`:' hidden'}><button type="button" class="ghost" data-sqph>📷 Foto</button><button type="button" class="ghost" data-sqphdel${p.id&&p.hasPhoto?'':' hidden'}>Quitar foto</button><input class="sqf" type="file" accept="image/*" hidden></div></div></div>`;
 $('#adminSquad').addEventListener('input',()=>{squadDirty=true});
+// Foto de la ficha: se recorta a 4:3 y se reduce en el navegador antes de guardarla
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button[data-sqph]');if(b){b.closest('.sqRow').querySelector('.sqf').click();return}
+ const d=e.target.closest('button[data-sqphdel]');if(d){const r=d.closest('.sqRow');r._photo='';const im=r.querySelector('.sqpi');im.hidden=true;im.removeAttribute('src');d.hidden=true;squadDirty=true}});
+document.addEventListener('change',e=>{
+ const inp=e.target.closest('.sqf');if(!inp||!inp.files[0])return;const r=inp.closest('.sqRow');const fr=new FileReader();
+ fr.onload=()=>{const img=new Image();img.onload=()=>{const W=600,H=450,c=document.createElement('canvas');c.width=W;c.height=H;const k=Math.max(W/img.width,H/img.height),w=img.width*k,h=img.height*k;const g=c.getContext('2d');g.fillStyle='#0d0b09';g.fillRect(0,0,W,H);g.drawImage(img,(W-w)/2,(H-h)/2,w,h);
+  r._photo=c.toDataURL('image/jpeg',.82);const im=r.querySelector('.sqpi');im.src=r._photo;im.hidden=false;r.querySelector('[data-sqphdel]').hidden=false;squadDirty=true};img.src=fr.result};
+ fr.readAsDataURL(inp.files[0]);inp.value=''});
+// Ficha del jugador al pulsarlo en el campo
+function openFicha(k){const p=(S.squad||[])[k];if(!p)return;
+ $('#plNum').textContent='JUGADOR '+p.n;$('#plName').textContent=p.name+(p.c?' (C)':'');
+ const ph=$('#plPh');ph.style.backgroundImage='';ph.innerHTML='';
+ if(p.hasPhoto&&p.id)ph.style.backgroundImage=`url(/api/squad-photo/${p.id}?v=${p.photoV||0})`;else ph.innerHTML='<img class="nofoto" src="escudo.png" alt="Sin foto todavía">';
+ $('#plFr').textContent=p.quote?'“'+p.quote+'”':'';$('#plGl').textContent=p.goals||0;$('#plDlg').showModal()}
+$('#pitch').addEventListener('click',e=>{const t=e.target.closest('.pl');if(t)openFicha(+t.dataset.pl)});
+$('#pitch').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('.pl');if(t){e.preventDefault();openFicha(+t.dataset.pl)}});
+$('#plX').onclick=()=>$('#plDlg').close();
+$('#plDlg').addEventListener('click',e=>{if(e.target===e.currentTarget)$('#plDlg').close()});
 $('#addSq').onclick=()=>{const ad=$('#adminSquad');if(!ad.querySelector('.sqRow'))ad.innerHTML='';ad.insertAdjacentHTML('beforeend',sqRow());squadDirty=true;const l=ad.lastElementChild;l.scrollIntoView({block:'center',behavior:'smooth'});l.querySelector('.sqn').focus({preventScroll:true})};
 document.addEventListener('click',e=>{const b=e.target.closest('button[data-sqdel]');if(!b)return;b.closest('.sqRow').remove();squadDirty=true});
 $('#saveSq').onclick=async e=>{const b=e.currentTarget;
- try{const squad=[...document.querySelectorAll('#adminSquad .sqRow')].map(r=>({n:r.querySelector('.sqn').value,name:r.querySelector('.sqm').value,x:r.querySelector('.sqx').value,y:r.querySelector('.sqy').value,c:r.querySelector('.sqc input').checked}));
+ try{const squad=[...document.querySelectorAll('#adminSquad .sqRow')].map(r=>({n:r.querySelector('.sqn').value,name:r.querySelector('.sqm').value,x:r.querySelector('.sqx').value,y:r.querySelector('.sqy').value,c:r.querySelector('.sqc input').checked,id:r.dataset.id||undefined,goals:r.querySelector('.sqg').value,quote:r.querySelector('.sqq').value,photo:r._photo}));
   await adm('/api/squad','PUT',{squad});squadDirty=false;$('#amsg').textContent='Plantilla guardada';flash(b);await load()}
  catch(err){$('#amsg').textContent=err.message}};
 // ---- Instalar como app + splash ----

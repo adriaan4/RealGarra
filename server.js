@@ -141,6 +141,7 @@ async function init() {
   if (!Array.isArray(db.garrabet.tickets)) db.garrabet.tickets = [];
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
+  for (const p of db.squad) if (!p.id) p.id = db.nextId++; // cada jugador de la plantilla tiene id (para su ficha y su foto)
   // Migración de una sola vez: recoloca en el campo a los jugadores de la plantilla ya guardada (solo x/y; dorsal, nombre y capitán no se tocan)
   if (!db.squadV2) {
     snapshot('antes-de-recolocar-plantilla');
@@ -216,7 +217,7 @@ app.get('/api/state', (req, res) => {
     ezPts: EZ_PTS,
     garro: db.garro || null,
     garrabet: gbPublic(d),
-    squad: db.squad,
+    squad: db.squad.map(({ photo, ...r }) => ({ ...r, hasPhoto: !!photo })), // las fotos se piden aparte (/api/squad-photo/:id)
     crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
   });
@@ -306,6 +307,14 @@ app.delete('/api/players/:id', admin, async (req, res) => {
   await save();
   res.json({ ok: true });
 });
+app.get('/api/squad-photo/:id', (req, res) => {
+  const p = db.squad.find(x => x.id === +req.params.id);
+  const m = p && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(p.photo || '');
+  if (!m) return res.status(404).end();
+  res.set('Content-Type', m[1]);
+  res.set('Cache-Control', 'public, max-age=31536000, immutable'); // la URL lleva ?v= y cambia al subir otra foto
+  res.send(Buffer.from(m[2], 'base64'));
+});
 app.put('/api/squad', admin, async (req, res) => {
   const a = req.body && req.body.squad;
   if (!Array.isArray(a) || !a.length || a.length > 30) return bad(res, 'Plantilla no válida');
@@ -316,7 +325,17 @@ app.put('/api/squad', admin, async (req, res) => {
     const n = Math.floor(Number(p && p.n));
     if (!name) return bad(res, 'Hay un jugador sin nombre');
     if (!Number.isFinite(n) || n < 0 || n > 99) return bad(res, 'Dorsal no válido en ' + name + ' (0 a 99)');
-    out.push({ n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c });
+    const prev = db.squad.find(q => q.id === +p.id) || {};
+    const goals = Math.min(999, Math.max(0, Math.floor(Number(p.goals)) || 0));
+    const quote = String(p.quote || '').trim().slice(0, 140);
+    // foto: sin campo = se conserva; '' = se quita; imagen en base64 (ya reducida en el navegador) = se cambia
+    let photo = prev.photo || '', photoV = prev.photoV || 0;
+    if (typeof p.photo === 'string') {
+      if (p.photo === '') { photo = ''; photoV = Date.now(); }
+      else if (/^data:image\/(?:png|jpeg|webp);base64,/.test(p.photo) && p.photo.length <= 400000) { photo = p.photo; photoV = Date.now(); }
+      else return bad(res, 'Foto no válida en ' + name + ' (máximo ~300 KB)');
+    }
+    out.push({ id: prev.id || db.nextId++, n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c, goals, quote, photo, photoV });
   }
   if (out.some(p => p.c)) { const i = out.findIndex(p => p.c); out.forEach((p, k) => (p.c = k === i)); } // un solo capitán
   db.squad = out;
