@@ -875,7 +875,7 @@ document.addEventListener('change',e=>{
  fr.readAsDataURL(inp.files[0]);inp.value=''});
 // Ficha del jugador al pulsarlo en el campo
 function openFicha(k){const p=(S.squad||[])[k];if(!p)return;
- $('#plNum').textContent='JUGADOR '+p.n;$('#plName').textContent=p.name+(p.c?' (C)':'');
+ $('#plNum').textContent='DORSAL '+p.n;$('#plName').textContent=p.name+(p.c?' (C)':'');
  const ph=$('#plPh');ph.style.backgroundImage='';ph.innerHTML='';
  if(p.hasPhoto&&p.id)ph.style.backgroundImage=`url(/api/squad-photo/${p.id}?v=${p.photoV||0})`;else ph.innerHTML='<img class="nofoto" src="escudo.png" alt="Sin foto todavía">';
  $('#plFr').textContent=p.quote?'“'+p.quote+'”':'';$('#plGl').textContent=p.goals||0;$('#plCRow').hidden=!(nrm(p.name)==='ANTONIO'&&p.conceded!=null);$('#plCo').textContent=p.conceded==null?0:p.conceded;$('#plDlg').showModal()}
