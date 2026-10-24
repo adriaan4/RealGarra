@@ -25,10 +25,14 @@ const CAL_SEED = [
 
 // ---- Plantilla oficial: dorsal, nombre y posición en el campo (x/y en % del césped, portería propia abajo) ----
 const SQUAD_SEED = [
-  [9, 'CARLOS', 50, 10, true], [10, 'PABLO', 50, 24], [8, 'DAVID', 50, 37],
-  [30, 'DODU', 18, 47], [21, 'ROBER', 82, 47], [19, 'ADRI', 50, 57], [16, 'JORGE', 82, 57],
-  [6, 'JIMÉNEZ', 30, 66], [11, 'MARIO', 72, 64], [3, 'HUGO', 30, 78], [24, 'PAJARES', 72, 75], [29, 'JUAN', 72, 86],
-  [1, 'ANTONIO', 50, 95]
+  // Delanteros: Carlos de punta; Pablo y David de segundos delanteros
+  [9, 'CARLOS', 50, 9, true], [10, 'PABLO', 30, 25], [8, 'DAVID', 70, 25],
+  // Centro del campo y bandas: Dodu banda izquierda; Rober y Jorge banda derecha; Adri en el centro
+  [30, 'DODU', 13, 46], [19, 'ADRI', 50, 49], [21, 'ROBER', 87, 38], [16, 'JORGE', 87, 56],
+  // Defensas (en dos alturas para que no se pisen los nombres)
+  [6, 'JIMÉNEZ', 12, 70], [3, 'HUGO', 31, 78], [11, 'MARIO', 50, 70], [24, 'PAJARES', 69, 78], [29, 'JUAN', 88, 70],
+  // Portero
+  [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
 const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, crests: [] });
@@ -137,6 +141,15 @@ async function init() {
   if (!Array.isArray(db.garrabet.tickets)) db.garrabet.tickets = [];
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
+  // Migración de una sola vez: recoloca en el campo a los jugadores de la plantilla ya guardada (solo x/y; dorsal, nombre y capitán no se tocan)
+  if (!db.squadV2) {
+    snapshot('antes-de-recolocar-plantilla');
+    for (const p of db.squad) {
+      const t = SQUAD_SEED.find(q => norm(q.name) === norm(p.name));
+      if (t) { p.x = t.x; p.y = t.y; }
+    }
+    db.squadV2 = true;
+  }
   await save();
 }
 
