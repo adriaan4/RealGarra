@@ -328,6 +328,8 @@ app.put('/api/squad', admin, async (req, res) => {
     const prev = db.squad.find(q => q.id === +p.id) || {};
     const goals = Math.min(999, Math.max(0, Math.floor(Number(p.goals)) || 0));
     const quote = String(p.quote || '').trim().slice(0, 140);
+    // goles encajados (para el portero): vacío = no se muestra en la ficha
+    const conceded = (p.conceded === '' || p.conceded == null || !Number.isFinite(Number(p.conceded))) ? null : Math.min(999, Math.max(0, Math.floor(Number(p.conceded))));
     // foto: sin campo = se conserva; '' = se quita; imagen en base64 (ya reducida en el navegador) = se cambia
     let photo = prev.photo || '', photoV = prev.photoV || 0;
     if (typeof p.photo === 'string') {
@@ -335,7 +337,7 @@ app.put('/api/squad', admin, async (req, res) => {
       else if (/^data:image\/(?:png|jpeg|webp);base64,/.test(p.photo) && p.photo.length <= 400000) { photo = p.photo; photoV = Date.now(); }
       else return bad(res, 'Foto no válida en ' + name + ' (máximo ~300 KB)');
     }
-    out.push({ id: prev.id || db.nextId++, n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c, goals, quote, photo, photoV });
+    out.push({ id: prev.id || db.nextId++, n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c, goals, conceded, quote, photo, photoV });
   }
   if (out.some(p => p.c)) { const i = out.findIndex(p => p.c); out.forEach((p, k) => (p.c = k === i)); } // un solo capitán
   db.squad = out;
