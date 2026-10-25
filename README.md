@@ -43,3 +43,15 @@ En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la 
 - Doble oportunidad (1X, 12, X2): se liquida sola con el resultado del calendario. Si no pones cuota, sale sola a partir de las cuotas 1/X/2.
 - Goleadores (marca en cualquier momento): cuotas por defecto de menor a mayor (Mario, Jiménez, Carlos, Pablo, Dodu, ...), editables por jornada. Tras el partido, en Admin → GarraBet · cuotas → «¿Quién marcó?» marca a los goleadores y guarda. Se pueden combinar goleadores entre sí.
 - Admin → apuestas de la gente: «Dar por ganada» (se paga importe × cuota), «Dar por perdida» (pierde el importe), «Anular» (se devuelve el importe) y «Quitar marca».
+
+## GarraBet: amarillas, «ha marcado o no», doble oportunidad y otro resultado
+- Tarjetas amarillas: mercado «Tarjeta amarilla» con una cuota por jugador (inventadas por defecto, editables por jornada en Admin → GarraBet · cuotas). Tras el partido, «¿Quién vio amarilla?» → marca y «Guardar amarillas». Hasta que se guarden quedan pendientes. Se pueden combinar jugadores entre sí.
+- En las apuestas (y en la imagen del boleto), las selecciones de goleador y amarilla ponen «ha marcado / no ha marcado» y «ha visto amarilla / no ha visto amarilla» cuando el partido ya está resuelto.
+- Doble oportunidad + 1X2 del mismo partido: no multiplican. Cuenta solo la cuota del 1X2 (por ejemplo «Gana Garra» + «Garra o empate» = cuota de «Gana Garra»). Si se contradicen (por ejemplo «Gana Garra» + «Empate o rival») no se deja hacer el boleto.
+- Resultado exacto: debajo de la parrilla 0-5 hay «Otro resultado», donde se eligen los goles de cada equipo (0-9) con su cuota (más alta fuera de la parrilla, máximo 500).
+
+## GarraBet: amarillas, «ha marcado o no», doble oportunidad y otro resultado
+- Tarjetas amarillas: mercado «Tarjeta amarilla» con una cuota por jugador (inventadas por defecto, editables por jornada en Admin → GarraBet · cuotas). Tras el partido, «¿Quién vio amarilla?» → marca y «Guardar amarillas». Hasta que se guarden quedan pendientes. Se pueden combinar jugadores entre sí.
+- En las apuestas (y en la imagen del boleto), las selecciones de goleador y amarilla ponen «ha marcado / no ha marcado» y «ha visto amarilla / no ha visto amarilla» cuando el partido ya está resuelto.
+- Doble oportunidad + 1X2 del mismo partido: no multiplican. Cuenta solo la cuota del 1X2 (por ejemplo «Gana Garra» + «Garra o empate» = cuota de «Gana Garra»). Si se contradicen (por ejemplo «Gana Garra» + «Empate o rival») no se deja hacer el boleto.
+- Resultado exacto: debajo de la parrilla 0-5 hay «Otro resultado», donde se eligen los goles de cada equipo (0-9) con su cuota (más alta fuera de la parrilla, máximo 500).
