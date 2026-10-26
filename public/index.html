@@ -772,6 +772,14 @@ function gbAdmRender(){
 async function gbAdmLoad(){if(!pw)return;try{gbAdm=await adm('/api/garrabet-admin/all');gbAdmRender()}catch(e){}}
 $('#gbAdmDet').addEventListener('toggle',()=>{if($('#gbAdmDet').open)gbAdmLoad()});
 setInterval(()=>{if($('#gbAdmDet').open&&!$('#gbAdmDet').contains(document.activeElement))gbAdmLoad()},15000);
+// Guardar goleadores / amarillas: los botones están en #gbAdmForm (fuera de #gbAdmDet), por eso va en su propio manejador
+$('#gbAdmForm').addEventListener('click',async e=>{
+ const sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');if(!sv&&!yv)return;
+ try{const j=+$('#gbAdmMatch').value;
+  if(sv){await adm('/api/garrabet-admin/scorers/'+j,'PUT',{scorers:[...document.querySelectorAll('#gbAdmForm [data-gbsc]:checked')].map(i=>i.dataset.gbsc)});gbToast('Goleadores guardados')}
+  else{await adm('/api/garrabet-admin/yellows/'+j,'PUT',{yellows:[...document.querySelectorAll('#gbAdmForm [data-gbyc]:checked')].map(i=>i.dataset.gbyc)});gbToast('Amarillas guardadas')}
+  lastJ='';await load();gbAdmFill();await gbAdmLoad()}
+ catch(err){gbToast(err.message)}});
 $('#gbRefresh').onclick=gbAdmLoad;$('#gbFJ').onchange=gbAdmRender;$('#gbFU').onchange=gbAdmRender;
 $('#gbAdmDet').addEventListener('click',async e=>{
  const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]'),m=e.target.closest('button[data-gbmoney]'),ma=e.target.closest('#gbAllBtn'),st=e.target.closest('button[data-gbset]'),sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');
