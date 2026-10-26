@@ -683,9 +683,9 @@ const gbInSlip=(j,m,l,sd)=>gbSlip.find(x=>x.j===j&&x.market===m&&x.line===(m==='
 const GBDC={'1X':['1','X'],'12':['1','2'],'X2':['X','2']};
 const gbNM=(a,x)=>x.market==='dc'&&a.some(y=>y.j===x.j&&y.market==='res'); // la doble oportunidad no multiplica si va con el 1X2 del mismo partido
 const gbTot=a=>Math.round(a.reduce((p,x)=>gbNM(a,x)?p:p*x.odd,1)*100)/100;
-function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?y.includes(l):null}if(m!=='scorer')return gbWin(m,l,sd,r);if(r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
+function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?y.includes(l):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
 function gbBtn(j,m,l,sd,label,odd,c0){
- const r=gbRes(j),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=gbWinJ(j,m,l,sd,r);if(w!==null)c.push(w?'win':'lose')}
+ const r0=gbRes(j),pl=m==='scorer'||m==='yellow',w0=pl&&odd?gbWinJ(j,m,l,sd,r0):null,r=r0||(w0!==null?1:null),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=pl?w0:gbWinJ(j,m,l,sd,r0);if(w!==null)c.push(w?'win':'lose')}
  return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
 function gbMarket(j,k,t){
  const od=gbOdds(j),L=(GBS().lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
@@ -777,8 +777,8 @@ $('#gbAdmDet').addEventListener('click',async e=>{
  const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]'),m=e.target.closest('button[data-gbmoney]'),ma=e.target.closest('#gbAllBtn'),st=e.target.closest('button[data-gbset]'),sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');
  try{
   if(st){const[id,a]=st.dataset.gbset.split('|');if(a!=='reset'&&!confirm(a==='win'?'¿Dar esta apuesta por ganada? Se le pagará el premio.':a==='lose'?'¿Dar esta apuesta por perdida? Pierde el importe.':'¿Anular esta apuesta? Se le devuelve el importe.'))return;await adm('/api/garrabet-admin/ticket/'+id+'/settle','POST',{action:a});gbToast(a==='win'?'Apuesta dada por ganada':a==='lose'?'Apuesta dada por perdida':a==='void'?'Apuesta anulada y importe devuelto':'Marca quitada');await gbAdmLoad();lastJ='';await load();return}
-  if(yv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/yellows/'+j,'PUT',{yellows:[...document.querySelectorAll('#gbAdmForm [data-gbyc]:checked')].map(i=>i.dataset.gbyc)});gbToast('Amarillas guardadas');lastJ='';await load();return}
-  if(sv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/scorers/'+j,'PUT',{scorers:[...document.querySelectorAll('#gbAdmForm [data-gbsc]:checked')].map(i=>i.dataset.gbsc)});gbToast('Goleadores guardados');lastJ='';await load();return}
+  if(yv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/yellows/'+j,'PUT',{yellows:[...document.querySelectorAll('#gbAdmForm [data-gbyc]:checked')].map(i=>i.dataset.gbyc)});gbToast('Amarillas guardadas');lastJ='';await load();await gbAdmLoad();return}
+  if(sv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/scorers/'+j,'PUT',{scorers:[...document.querySelectorAll('#gbAdmForm [data-gbsc]:checked')].map(i=>i.dataset.gbsc)});gbToast('Goleadores guardados');lastJ='';await load();await gbAdmLoad();return}
   if(m){const i=$('#gbAdmDet').querySelector('input[data-gbmn="'+m.dataset.gbmoney+'"]');await adm('/api/garrabet-admin/user/'+m.dataset.gbmoney+'/money','POST',{amount:i.value});gbToast('Pavos ingresados');await gbAdmLoad();lastJ='';await load();return}
   if(ma){const v=$('#gbAllIn').value;if(!confirm('¿Ingresar '+v+' pavos a TODAS las personas?'))return;await adm('/api/garrabet-admin/money-all','POST',{amount:v});gbToast('Pavos ingresados a todos');await gbAdmLoad();lastJ='';await load();return}
   if(d){if(!confirm('¿Borrar esta apuesta?'))return;await adm('/api/garrabet-admin/ticket/'+d.dataset.gbadel,'DELETE');await gbAdmLoad();return}
