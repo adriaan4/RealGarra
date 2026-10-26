@@ -154,15 +154,22 @@ details.ad[open]>summary::after{transform:rotate(180deg)}
 details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
 /* Crónicas y ranking */
 .cron{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;overflow:hidden;margin:0 0 20px}
-.cron .cph{background:#0d0b09}
-.cron .cph img{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain}
-.cron .cbd{padding:14px 16px 16px}
+.cron .chd{display:flex;gap:14px;align-items:flex-start;padding:14px 16px 0}
+.cron .ctx{min-width:0;flex:1}
+.cron .cph{flex:none;width:clamp(92px,26vw,150px);padding:0;margin:0;background:#0d0b09;border:2px solid var(--gold);border-radius:10px;overflow:hidden;cursor:zoom-in;line-height:0;position:relative;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.cron .cph img{display:block;width:100%;height:auto;max-height:200px;object-fit:contain}
+.cron .cph::after{content:"🔍";position:absolute;right:4px;bottom:4px;font-size:13px;line-height:1;background:rgba(13,11,9,.75);border-radius:6px;padding:3px 4px}
+#cronZoom{width:min(94vw,560px);padding:12px}
+#cronZoom img{display:block;width:100%;height:auto;max-height:78vh;object-fit:contain;border-radius:8px}
+#cronZoom button{margin-top:10px}
+.cron .cbd{padding:10px 16px 16px}
 .cron small{color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:700}
-.cron h3{margin:4px 0 2px;font:800 clamp(24px,6vw,30px)/1.1 "Barlow Condensed",Impact,sans-serif;text-transform:uppercase}
+.cron h3{margin:2px 0 2px;font:800 clamp(24px,6vw,30px)/1.1 "Barlow Condensed",Impact,sans-serif;text-transform:uppercase}
 .cron h3 .cres{color:var(--gold);white-space:nowrap}
-.cron h4{margin:8px 0 6px;font:700 20px/1.2 "Barlow Condensed",sans-serif;color:var(--gold)}
-.cron p{margin:8px 0 0;white-space:pre-line;overflow-wrap:anywhere;line-height:1.5}
-.cron.mini .cph img{max-height:260px}
+.cron h4{margin:6px 0 0;font:700 20px/1.2 "Barlow Condensed",sans-serif;color:var(--gold)}
+.cron p{margin:0;white-space:pre-line;overflow-wrap:anywhere;line-height:1.5}
+.cron.mini .cph{width:clamp(76px,21vw,110px)}
+.cron.mini .cph img{max-height:150px}
 .cron.mini p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .cron .mas{display:inline-block;margin-top:10px;font-weight:700;color:var(--gold)}
 #cronHome{margin-top:26px}
@@ -472,6 +479,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </main>
 <div id="amsg" class="toast" role="status" aria-live="polite"></div>
 <input id="crestPick" type="file" accept="image/*" hidden>
+<dialog id="cronZoom"><img alt=""><button type="button" class="ghost" onclick="this.closest('dialog').close()">Cerrar</button></dialog>
 <dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="gbShareDlg"><h2>Tu boleto</h2><img id="gbShareImg" alt="Boleto de GarraBet" style="width:100%;max-width:420px;border-radius:10px;display:block;margin:10px auto"><div class="row" style="justify-content:center"><button id="gbShareBtn" type="button">📤 Compartir</button><button id="gbDlBtn" type="button" class="ghost">⬇️ Descargar</button><button id="gbShareClose" type="button" class="ghost">Cerrar</button></div></dialog>
 <dialog id="plDlg" aria-label="Ficha del jugador"><div class="fch"><button type="button" class="x" id="plX" aria-label="Cerrar">✕</button><h2><small id="plNum"></small><span id="plName"></span></h2><div class="ph" id="plPh"></div><p class="fr" id="plFr"></p><div class="gl"><span>Goles anotados:</span><b id="plGl">0</b></div><div class="gl" id="plCRow" hidden><span>Goles encajados:</span><b id="plCo">0</b></div></div></dialog>
@@ -573,7 +581,8 @@ $('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de 
  try{await adm('/api/ez/reset','POST');ezInit=false;$('#ezName').value='';EZ.forEach(([k])=>{const i=$('#ez-'+k);if(i)i.value=0});$('#amsg').textContent='Clasificación vaciada';await load()}catch(err){$('#amsg').textContent=err.message}};
 
 // ---- Crónicas de partido ----
-const cronCard=(m,mini)=>{const c=m.cron;return `<article class="cron${mini?' mini':''}">${c.hasPhoto?`<div class="cph"><img loading="lazy" src="/api/cronica-photo/${m.j}?v=${c.v||0}" alt="Resultado del partido contra ${esc(m.rival)}"></div>`:''}<div class="cbd"><small>J${m.j} · ${dmy(m.date)}</small><h3>Real Garra vs ${esc(m.rival)}${m.result?` <span class="cres">${esc(m.result)}</span>`:''}</h3>${c.title?`<h4>${esc(c.title)}</h4>`:''}${c.text?`<p>${esc(c.text)}</p>`:''}${mini?'<a class="mas" href="#cronicas">Leer la crónica →</a>':''}</div></article>`};
+const cronCard=(m,mini)=>{const c=m.cron,ph=c.hasPhoto?`<button type="button" class="cph" data-cz="/api/cronica-photo/${m.j}?v=${c.v||0}" data-alt="${esc(m.rival)}" aria-label="Ampliar foto del partido contra ${esc(m.rival)}"><img loading="lazy" src="/api/cronica-photo/${m.j}?v=${c.v||0}" alt="Resultado del partido contra ${esc(m.rival)}"></button>`:'';return `<article class="cron${mini?' mini':''}"><div class="chd">${ph}<div class="ctx"><small>J${m.j} · ${dmy(m.date)}</small><h3>Real Garra vs ${esc(m.rival)}${m.result?` <span class="cres">${esc(m.result)}</span>`:''}</h3>${c.title?`<h4>${esc(c.title)}</h4>`:''}</div></div><div class="cbd">${c.text?`<p>${esc(c.text)}</p>`:''}${mini?'<a class="mas" href="#cronicas">Leer la crónica →</a>':''}</div></article>`};
+document.addEventListener('click',e=>{const t=e.target.closest('.cph');if(!t)return;const d=document.getElementById('cronZoom');d.querySelector('img').src=t.dataset.cz;d.querySelector('img').alt='Resultado del partido contra '+t.dataset.alt;d.showModal()});
 let cnSig='',cnPhoto,cnJ='';
 function cnFill(){const m=(S.calendar||[]).find(x=>String(x.j)===$('#cnMatch').value),c=(m&&m.cron)||{};
  $('#cnTitle').value=c.title||'';$('#cnText').value=c.text||'';cnPhoto=undefined;
