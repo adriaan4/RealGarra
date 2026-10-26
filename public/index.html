@@ -699,11 +699,11 @@ const gbM=n=>(Math.round(Number(n)*100)/100).toString().replace('.',','),gbL=l=>
 const GBS=()=>S.garrabet||{},gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
 const gbRival=j=>((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
 function gbWin(m,l,sd,r){if(m==='dc')return sd==='1X'?r.gf>=r.gc:sd==='X2'?r.gf<=r.gc:r.gf!==r.gc;if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;if(m==='exact')return l===r.gf+'-'+r.gc;if(m==='btts')return sd==='y'?(r.gf>0&&r.gc>0):!(r.gf>0&&r.gc>0);const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
-const gbNote=x=>{if(x.market!=='scorer'&&x.market!=='yellow')return '';const o=x.market==='scorer'?['ha marcado','no ha marcado']:['ha visto amarilla','no ha visto amarilla'];return x.status==='win'?o[0]:x.status==='lose'?o[1]:''};
+const gbNote=x=>{if(x.market!=='scorer'&&x.market!=='yellow')return '';const o=x.market==='scorer'?['ha marcado','no ha marcado']:x.line==='NINGUNO'?['no hubo amarillas','hubo amarillas']:['ha visto amarilla','no ha visto amarilla'];return x.status==='win'?o[0]:x.status==='lose'?o[1]:''};
 function gbSelTxt(s){
  if(s.market==='dc')return ({'1X':'Doble oportunidad · Real Garra o empate','12':'Doble oportunidad · Real Garra o '+gbRival(s.j),'X2':'Doble oportunidad · Empate o '+gbRival(s.j)})[s.side];
  if(s.market==='scorer')return 'Marca '+s.line;
- if(s.market==='yellow')return 'Amarilla a '+s.line;
+ if(s.market==='yellow')return s.line==='NINGUNO'?'Ninguna amarilla':'Amarilla a '+s.line;
  if(s.market==='btts')return 'Ambos equipos marcan · '+(s.side==='y'?'Sí':'No');
  if(s.market==='res')return ({1:'Gana Real Garra',X:'Empate',2:'Gana '+gbRival(s.j)})[s.side];
  if(s.market==='exact')return 'Resultado exacto '+s.line.replace('-',' - ');
@@ -722,7 +722,7 @@ const gbInSlip=(j,m,l,sd)=>gbSlip.find(x=>x.j===j&&x.market===m&&x.line===(m==='
 const GBDC={'1X':['1','X'],'12':['1','2'],'X2':['X','2']};
 const gbNM=(a,x)=>x.market==='dc'&&a.some(y=>y.j===x.j&&y.market==='res'); // la doble oportunidad no multiplica si va con el 1X2 del mismo partido
 const gbTot=a=>Math.round(a.reduce((p,x)=>gbNM(a,x)?p:p*x.odd,1)*100)/100;
-function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?y.includes(l):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
+function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?(l==='NINGUNO'?y.length===0:y.includes(l)):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
 function gbBtn(j,m,l,sd,label,odd,c0){
  const r0=gbRes(j),pl=m==='scorer'||m==='yellow',w0=pl&&odd?gbWinJ(j,m,l,sd,r0):null,r=r0||(w0!==null?1:null),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=pl?w0:gbWinJ(j,m,l,sd,r0);if(w!==null)c.push(w?'win':'lose')}
  return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
@@ -747,8 +747,8 @@ function gbMarketScorer(j){
  const so=(GBS().scorerOdds||{})[j]||{},names=Object.keys(so).sort((a,b)=>so[a]-so[b]);if(!names.length)return '';
  return `<div class="gbm"><h3>Goleador · marca en cualquier momento</h3><div class="gbbtns">${names.map(n=>gbBtn(j,'scorer',n,'s',esc(n),so[n])).join('')}</div></div>`}
 function gbMarketYellow(j){
- const yo=(GBS().yellowOdds||{})[j]||{},names=Object.keys(yo).sort((a,b)=>yo[a]-yo[b]);if(!names.length)return '';
- return `<div class="gbm"><h3>🟨 Tarjeta amarilla · ve amarilla en el partido</h3><div class="gbbtns">${names.map(n=>gbBtn(j,'yellow',n,'s',esc(n),yo[n])).join('')}</div></div>`}
+ const yo=(GBS().yellowOdds||{})[j]||{},names=Object.keys(yo).filter(n=>n!=='NINGUNO').sort((a,b)=>yo[a]-yo[b]),none=yo.NINGUNO;if(!names.length&&!none)return '';
+ return `<div class="gbm"><h3>🟨 Tarjeta amarilla · ve amarilla en el partido</h3><div class="gbbtns">${names.map(n=>gbBtn(j,'yellow',n,'s',esc(n),yo[n])).join('')}${none?gbBtn(j,'yellow','NINGUNO','s','Ninguno',none):''}</div></div>`}
 let gbOtherSc={};
 function gbOtherBtn(j){const o=gbOtherSc[j]||{a:6,b:0},k=o.a+'-'+o.b;return gbBtn(j,'exact',k,'s','Garra '+o.a+' – '+o.b+' '+esc(gbRival(j)),(gbEx(j)||{})[k])}
 function gbMarketExact(j){
@@ -783,6 +783,7 @@ function gbToggle(j,m,l,sd){
  const cl=(m==='scorer'||m==='yellow')?null:gbSlip.find(x=>x.j===j&&x.market===m);
  if(cl){gbToast('Ya tienes «'+gbSelTxt(cl)+'» en este mercado del partido. Quítala del boleto para elegir otra.');return}
  if(m==='res'||m==='dc'){const o=gbSlip.find(x=>x.j===j&&x.market===(m==='res'?'dc':'res'));if(o){const r1=m==='res'?sd:o.side,d1=m==='res'?o.side:sd;if(!GBDC[d1].includes(r1)){gbToast('Esa doble oportunidad y ese resultado se contradicen. Quita «'+gbSelTxt(o)+'» del boleto para elegir esta.');return}}}
+ if(m==='yellow'){const ch=gbSlip.filter(x=>x.j===j&&x.market==='yellow'&&((l==='NINGUNO')!==(x.line==='NINGUNO')));if(ch.length){gbSlip=gbSlip.filter(x=>!ch.includes(x));gbToast(l==='NINGUNO'?'«Ninguna amarilla» sustituye a las amarillas de jugadores de este partido':'La amarilla de un jugador sustituye a «Ninguna amarilla»')}}
  if(gbSlip.length>=8){gbToast('Máximo 8 selecciones por boleto');return}
  const s={j,market:m,line:m==='res'?'':l,side:sd},odd=gbOddNow(s);if(!odd)return;gbSlip.push({...s,odd})}
 function gbAdmFill(){
@@ -793,7 +794,7 @@ function gbAdmFill(){
  const ex=gbEx(j),top=ex?Object.entries(ex).sort((a,b)=>a[1]-b[1]).slice(0,10).map(([k,v])=>k.replace('-','–')+' → '+gbO(v)).join(' · '):'';
  ad.innerHTML=`<div class="gbadm"><h4>Resultado</h4><div class="gbgrid r3"><span class="h">Local (Real Garra)</span><span class="h">Empate</span><span class="h">Visitante</span>${inp('res|1',od.res['1'])}${inp('res|X',od.res.X)}${inp('res|2',od.res['2'])}</div><h4 style="margin-top:10px">Doble oportunidad</h4><div class="gbgrid r3"><span class="h">Garra o empate (1X)</span><span class="h">Garra o rival (12)</span><span class="h">Empate o rival (X2)</span>${inp('dc|1X',(od.dc||{})['1X'])}${inp('dc|12',(od.dc||{})['12'])}${inp('dc|X2',(od.dc||{}).X2)}</div><p class="sub">Si la dejas vacía, sale sola a partir de las cuotas 1/X/2.</p><h4 style="margin-top:10px">Ambos equipos marcan</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr"><span class="h">Sí (marcan los dos)</span><span class="h">No (alguno se queda a 0)</span>${inp('btts|y',(od.btts||{}).y)}${inp('btts|n',(od.btts||{}).n)}</div><p class="sub">El <b>resultado exacto</b> se genera solo con estas tres cuotas (no hay que rellenarlo).${top?'<br>Marcadores más probables: '+top:''}</p></div>`+
  `<div class="gbadm"><h4>Goleadores (marca en cualquier momento)</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr">${scNames.map(n=>`<span>${esc(n)}</span>${inp('scorer|'+n,so[n])}`).join('')}</div><p class="sub">Cuotas de menor a mayor; vacío = no se ofrece ese jugador.</p><h4 style="margin-top:10px">¿Quién marcó en este partido?</h4><div class="row">${scNames.map(n=>`<label class="row" style="margin:0"><input type="checkbox" data-gbsc="${esc(n)}" ${scDone.includes(n)?'checked':''}> ${esc(n)}</label>`).join('')}</div><div class="row"><button type="button" id="gbScSave">Guardar goleadores</button></div><p class="sub">Hasta que los guardes (aunque sea sin marcar a nadie) las apuestas a goleador quedan pendientes. Si el Garra marca 0, se pierden solas.</p></div>`+
- `<div class="gbadm"><h4>🟨 Tarjetas amarillas (ve amarilla en el partido)</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr">${ycNames.map(n=>`<span>${esc(n)}</span>${inp('yellow|'+n,yo[n])}`).join('')}</div><p class="sub">Cuotas de menor a mayor; vacío = no se ofrece ese jugador.</p><h4 style="margin-top:10px">¿Quién vio amarilla en este partido?</h4><div class="row">${ycNames.map(n=>`<label class="row" style="margin:0"><input type="checkbox" data-gbyc="${esc(n)}" ${ycDone.includes(n)?'checked':''}> ${esc(n)}</label>`).join('')}</div><div class="row"><button type="button" id="gbYcSave">Guardar amarillas</button></div><p class="sub">Hasta que las guardes (aunque sea sin marcar a nadie) las apuestas a amarilla quedan pendientes.</p></div>`+
+ `<div class="gbadm"><h4>🟨 Tarjetas amarillas (ve amarilla en el partido)</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr">${ycNames.map(n=>`<span>${esc(n)}</span>${inp('yellow|'+n,yo[n])}`).join('')}<span><b>NINGUNO</b> (nadie ve amarilla)</span>${inp('yellow|NINGUNO',(GBS().yellowOdds||{})[j]?yo.NINGUNO:GBS().yellowNoneDef)}</div><p class="sub">Cuotas de menor a mayor; vacío = no se ofrece ese jugador. «Ninguno» gana si no marcas a nadie en «¿Quién vio amarilla?».</p><h4 style="margin-top:10px">¿Quién vio amarilla en este partido?</h4><div class="row">${ycNames.map(n=>`<label class="row" style="margin:0"><input type="checkbox" data-gbyc="${esc(n)}" ${ycDone.includes(n)?'checked':''}> ${esc(n)}</label>`).join('')}</div><div class="row"><button type="button" id="gbYcSave">Guardar amarillas</button></div><p class="sub">Hasta que las guardes (aunque sea sin marcar a nadie) las apuestas a amarilla quedan pendientes.</p></div>`+
  GBM.map(([k,t])=>`<div class="gbadm"><h4>${t}</h4><div class="gbgrid"><span class="h">Línea</span><span class="h">Más (+)</span><span class="h">Menos (−)</span>${((GBS().lines||{})[k]||[]).map(l=>{const c=(od[k]||{})[l]||{};return `<span>${gbL(l)}</span>${inp(k+'|'+l+'|o',c.o)}${inp(k+'|'+l+'|u',c.u)}`}).join('')}</div></div>`).join('')}
 // ---- Admin: apuestas de todos (sencillas y combinadas) ----
 let gbAdm={users:[],tickets:[]};
