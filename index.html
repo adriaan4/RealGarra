@@ -152,6 +152,23 @@ details.ad>summary::-webkit-details-marker{display:none}
 details.ad>summary::after{content:"▾";font-size:20px;transition:transform .2s}
 details.ad[open]>summary::after{transform:rotate(180deg)}
 details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.atabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 14px}
+.atab[data-at=eco]{grid-column:span 2}
+.ecoAll b{display:block;font-size:18px}.ecoAll small{display:block}
+.atab{padding:8px 6px;min-height:44px;font:800 18px "Barlow Condensed",Impact,sans-serif;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;text-align:center;line-height:1.1}
+.atab.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
+.atab[data-at=eco]:not(.on){border-color:var(--gold);color:var(--gold)}
+.apane h3{margin:14px 0 6px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.apane>.pv{background:#120e0b}
+.ecoSum{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.ecoSum span{flex:1 1 90px;background:#120e0b;border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:center}
+.ecoSum b{display:block;font:800 28px "Barlow Condensed",sans-serif;color:var(--gold)}
+.ecoSum small{opacity:.8}
+.ecoRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin:8px 0 0}
+.ecoH{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ecoBal{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold);white-space:nowrap}
+.ecoRn summary{cursor:pointer;font-size:14px;opacity:.8;margin-top:8px}
+button.neg{background:var(--red);border-color:var(--red);color:var(--ink)}
 .adb{padding:0 14px 14px}
 .adb h3{margin:14px 0 4px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
 .adb .pv{background:#120e0b}
@@ -346,17 +363,30 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 <section id="admin" hidden><h1>Administración</h1>
  <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button id="login">Entrar</button></div>
  <div id="panel" hidden>
+  <div class="atabs" role="tablist" aria-label="Secciones del panel">
+   <button type="button" class="atab on" data-at="partido" role="tab">⚽ Partido</button>
+   <button type="button" class="atab" data-at="votos" role="tab">🗳️ Votaciones</button>
+   <button type="button" class="atab" data-at="bet" role="tab">🎲 GarraBet</button>
+   <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
+   <button type="button" class="atab" data-at="mas" role="tab">⚙️ Más</button>
+  </div>
+  <div class="apane" data-ap="partido">
   <details class="ad" open><summary>⚽ Próximo partido</summary><div class="adb">
    <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
    <div class="row">Escudo del rival: <button id="crestSel" type="button">Seleccionar escudo</button><img id="crestPreview" class="crestPrev" hidden alt=""><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button><input id="crestFile" type="file" accept="image/*" hidden></div>
    <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
+  </div></details>
+  <details class="ad"><summary>📅 Calendario</summary><div class="adb">
+   <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
   </div></details>
   <details class="ad"><summary>📋 Plantilla</summary><div class="adb">
    <p class="sub">Dorsal, nombre y posición de cada jugador en el campo. ↔ es izquierda–derecha y ↕ es arriba–abajo (0 a 100; arriba es el ataque, abajo la portería). La «C» marca al capitán.</p>
    <div id="adminSquad"></div>
    <div class="row"><button id="addSq" type="button" class="ghost">+ Añadir jugador</button><button id="saveSq" type="button">Guardar plantilla</button></div>
   </div></details>
-  <details class="ad"><summary>🗳️ Votación MVP</summary><div class="adb">
+  </div>
+  <div class="apane" data-ap="votos" hidden>
+  <details class="ad" open><summary>🗳️ Votación MVP</summary><div class="adb">
    <div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
    <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
   </div></details>
@@ -364,29 +394,38 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div>
    <div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
   </div></details>
-  <details class="ad"><summary>🎲 GarraBet · cuotas del partido</summary><div class="adb">
-   <p class="sub">Elige la jornada y escribe las cuotas a mano (mínimo 1,01; vacío = no se ofrece esa opción). El resultado de cada selección se calcula solo cuando pones el resultado en Admin → Calendario (formato «3-1», Real Garra primero).</p>
-   <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
-   <div id="gbAdmForm"></div>
-  </div></details>
-  <details class="ad" id="gbAdmDet"><summary>🎟️ GarraBet · apuestas de la gente</summary><div class="adb">
-   <div class="row"><select id="gbFJ" aria-label="Filtrar por jornada"></select><select id="gbFU" aria-label="Filtrar por persona"></select><button id="gbRefresh" type="button" class="ghost">Actualizar</button></div>
-   <div id="gbAdmUsers"></div><div id="gbAdmBets"></div>
-  </div></details>
-  <details class="ad"><summary>📅 Calendario</summary><div class="adb">
-   <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
-  </div></details>
-  <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
-   <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
-  </div></details>
   <details class="ad"><summary>👥 Jugadores (votación MVP)</summary><div class="adb">
    <div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
    <div class="grid" id="adminList"></div>
   </div></details>
   <details class="ad"><summary>🏅 MVPs anteriores</summary><div class="adb"><div id="adminHist"></div></div></details>
+  </div>
+  <div class="apane" data-ap="bet" hidden>
+  <details class="ad" open><summary>🎲 Cuotas del partido</summary><div class="adb">
+   <p class="sub">Elige la jornada y escribe las cuotas a mano (mínimo 1,01; vacío = no se ofrece esa opción). El resultado de cada selección se calcula solo cuando pones el resultado en Admin → Calendario (formato «3-1», Real Garra primero).</p>
+   <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
+   <div id="gbAdmForm"></div>
+  </div></details>
+  <details class="ad" id="gbAdmDet"><summary>🎟️ Apuestas de la gente</summary><div class="adb">
+   <div class="row"><select id="gbFJ" aria-label="Filtrar por jornada"></select><select id="gbFU" aria-label="Filtrar por persona"></select><button id="gbRefresh" type="button" class="ghost">Actualizar</button></div>
+   <div id="gbAdmBets"></div>
+  </div></details>
+  </div>
+  <div class="apane" data-ap="eco" hidden>
+   <div class="ecoSum" id="ecoSum"></div>
+   <div class="pv ecoAll"><b>Toda la gente a la vez</b><small>Escribe una cantidad (sin signo) y elige si se añade o se quita a todos.</small>
+    <div class="ecoRow"><input id="gbAllIn" inputmode="decimal" placeholder="Pavos" aria-label="Pavos para todos"><button type="button" id="gbAllAdd">➕ Añadir</button><button type="button" id="gbAllSub" class="neg">➖ Quitar</button></div></div>
+   <h3>Cada persona</h3>
+   <div id="gbAdmUsers"><p>Cargando…</p></div>
+  </div>
+  <div class="apane" data-ap="mas" hidden>
+  <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
+   <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
+  </div></details>
   <details class="ad"><summary>💾 Copia de seguridad</summary><div class="adb">
    <div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
   </div></details>
+  </div>
  </div>
 </section>
 </main>
@@ -519,7 +558,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
   if(b.dataset.h&&confirm('¿Borrar este MVP del historial?')){await adm('/api/history/'+b.dataset.h,'DELETE');await load()}
   if(b.dataset.rv){await adm('/api/votes/'+b.dataset.rv,'DELETE');await load()}
  }catch(err){$('#vmsg').textContent=$('#amsg').textContent=err.message}});
-function showPanel(){$('#panel').hidden=false;$('#loginRow').hidden=true}
+function showPanel(){$('#panel').hidden=false;$('#loginRow').hidden=true;adTab(sessionStorage.adTab||'partido')}
 $('#login').onclick=async()=>{pw=$('#pw').value;try{await adm('/api/admin/check');sessionStorage.pw=pw;showPanel();$('#amsg').textContent=''}catch{pw='';$('#amsg').textContent='Contraseña incorrecta'}};
 if(pw)adm('/api/admin/check').then(showPanel).catch(()=>{pw='';sessionStorage.removeItem('pw')});
 const act=(sel,fn,ok)=>$(sel).onclick=async()=>{try{await fn();if(ok)$('#amsg').textContent=ok;await load()}catch(e){$('#amsg').textContent=e.message}};
@@ -763,15 +802,18 @@ function gbFilters(){const fj=$('#gbFJ'),fu=$('#gbFU');if(!fj||!fu)return;const 
  fu.innerHTML='<option value="">Todas las personas</option>'+gbAdm.users.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');fu.value=vu}
 function gbAdmRender(){
  const box=$('#gbAdmBets'),ub=$('#gbAdmUsers');if(!box)return;
- if(!ub.contains(document.activeElement))ub.innerHTML='<h3>Personas</h3><div class="pv gbmine"><span><b>Dar a todos</b><br><small>Número negativo para quitar</small></span><span class="row" style="margin:0"><input id="gbAllIn" inputmode="decimal" placeholder="± pavos" style="width:100px"><button type="button" id="gbAllBtn">Ingresar a todos</button></span></div>'+(gbAdm.users.map(u=>{const t=gbAdm.tickets.filter(x=>x.userId===u.id),c=s=>t.filter(x=>x.status===s).length;
-  return `<div class="pv gbmine"><span><b>${esc(u.name)}</b><br>💰 <b>${gbM(u.balance)}</b> pavos<br><small>${t.length} apuesta${t.length===1?'':'s'} · ${c('win')} ganada${c('win')===1?'':'s'} · ${c('lose')} perdida${c('lose')===1?'':'s'} · ${c('pending')} pendiente${c('pending')===1?'':'s'}</small></span><span class="row" style="margin:0"><input data-gbrn="${u.id}" value="${esc(u.name)}" maxlength="20" style="width:130px"><button type="button" class="ghost" data-gbren="${u.id}">Cambiar nombre</button></span><span class="row" style="margin:0"><input data-gbmn="${u.id}" inputmode="decimal" placeholder="± pavos" style="width:100px"><button type="button" data-gbmoney="${u.id}">Ingresar</button></span></div>`}).join('')||'<p>Todavía nadie ha puesto su nombre.</p>');
+ const tot=gbAdm.users.reduce((a,u)=>a+Number(u.balance||0),0),pend=gbAdm.tickets.filter(x=>x.status==='pending').length,es=$('#ecoSum');
+ if(es)es.innerHTML=`<span><b>${gbAdm.users.length}</b><small>personas</small></span><span><b>${gbM(tot)}</b><small>pavos en total</small></span><span><b>${pend}</b><small>apuestas pendientes</small></span>`;
+ if(!ub.contains(document.activeElement))ub.innerHTML=(gbAdm.users.map(u=>{const t=gbAdm.tickets.filter(x=>x.userId===u.id),c=s=>t.filter(x=>x.status===s).length;
+  return `<div class="pv ecoU"><div class="ecoH"><b>${esc(u.name)}</b><span class="ecoBal">💰 ${gbM(u.balance)}</span></div><small>${t.length} apuesta${t.length===1?'':'s'} · ✅ ${c('win')} · ❌ ${c('lose')} · ⏳ ${c('pending')}</small><div class="ecoRow"><input data-gbmn="${u.id}" inputmode="decimal" placeholder="Pavos" aria-label="Pavos para ${esc(u.name)}"><button type="button" data-gbmoney="${u.id}|add">➕ Añadir</button><button type="button" class="neg" data-gbmoney="${u.id}|sub">➖ Quitar</button></div><details class="ecoRn"><summary>✏️ Cambiar nombre</summary><div class="ecoRow" style="grid-template-columns:1fr auto"><input data-gbrn="${u.id}" value="${esc(u.name)}" maxlength="20"><button type="button" class="ghost" data-gbren="${u.id}">Guardar</button></div></details></div>`}).join('')||'<p>Todavía nadie ha puesto su nombre.</p>');
  gbFilters();
  const fj=$('#gbFJ').value,fu=$('#gbFU').value;
  const list=gbAdm.tickets.filter(t=>(!fj||t.sels.some(x=>x.j===+fj))&&(!fu||t.userId===+fu));
  box.innerHTML=`<h3>Apuestas (${list.length})</h3>`+(list.map(t=>`<div class="pv gbtk"><div class="top"><span><b>${esc(t.name)}</b> · <b>${t.sels.length>1?'Combinada ×'+t.sels.length:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b>${t.stake?` · <b>${gbM(t.stake)}</b> pavos`:''}</span><span class="gbchip ${t.status}">${gbChipTxt(t.status)}</span></div><ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul><div class="row" style="margin:6px 0 0"><small>${new Date(t.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}</small><button type="button" class="ghost" data-gbadel="${t.id}">Borrar</button></div><div class="row" style="margin:6px 0 0">${t.forced?`<small>Resuelta a mano por el admin</small><button type="button" class="ghost" data-gbset="${t.id}|reset">Quitar marca</button>`:`<button type="button" data-gbset="${t.id}|win">Dar por ganada</button><button type="button" class="ghost" data-gbset="${t.id}|lose">Dar por perdida</button><button type="button" class="ghost" data-gbset="${t.id}|void">Anular</button>`}</div></div>`).join('')||'<p>No hay apuestas con ese filtro.</p>')}
 async function gbAdmLoad(){if(!pw)return;try{gbAdm=await adm('/api/garrabet-admin/all');gbAdmRender()}catch(e){}}
-$('#gbAdmDet').addEventListener('toggle',()=>{if($('#gbAdmDet').open)gbAdmLoad()});
-setInterval(()=>{if($('#gbAdmDet').open&&!$('#gbAdmDet').contains(document.activeElement))gbAdmLoad()},15000);
+function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad()}
+$('.atabs').addEventListener('click',e=>{const b=e.target.closest('.atab');if(b)adTab(b.dataset.at)});
+setInterval(()=>{const t=sessionStorage.adTab,a=document.activeElement;if($('#admin').hidden||$('#panel').hidden||(t!=='bet'&&t!=='eco')||(a&&a.matches('input,select,textarea')))return;gbAdmLoad()},15000);
 // Guardar goleadores / amarillas: los botones están en #gbAdmForm (fuera de #gbAdmDet), por eso va en su propio manejador
 $('#gbAdmForm').addEventListener('click',async e=>{
  const sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');if(!sv&&!yv)return;
@@ -781,16 +823,19 @@ $('#gbAdmForm').addEventListener('click',async e=>{
   lastJ='';await load();gbAdmFill();await gbAdmLoad()}
  catch(err){gbToast(err.message)}});
 $('#gbRefresh').onclick=gbAdmLoad;$('#gbFJ').onchange=gbAdmRender;$('#gbFU').onchange=gbAdmRender;
-$('#gbAdmDet').addEventListener('click',async e=>{
- const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]'),m=e.target.closest('button[data-gbmoney]'),ma=e.target.closest('#gbAllBtn'),st=e.target.closest('button[data-gbset]'),sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');
+$('#panel').addEventListener('click',async e=>{
+ const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]'),m=e.target.closest('button[data-gbmoney]'),ma=e.target.closest('#gbAllAdd,#gbAllSub'),st=e.target.closest('button[data-gbset]');
  try{
   if(st){const[id,a]=st.dataset.gbset.split('|');if(a!=='reset'&&!confirm(a==='win'?'¿Dar esta apuesta por ganada? Se le pagará el premio.':a==='lose'?'¿Dar esta apuesta por perdida? Pierde el importe.':'¿Anular esta apuesta? Se le devuelve el importe.'))return;await adm('/api/garrabet-admin/ticket/'+id+'/settle','POST',{action:a});gbToast(a==='win'?'Apuesta dada por ganada':a==='lose'?'Apuesta dada por perdida':a==='void'?'Apuesta anulada y importe devuelto':'Marca quitada');await gbAdmLoad();lastJ='';await load();return}
-  if(yv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/yellows/'+j,'PUT',{yellows:[...document.querySelectorAll('#gbAdmForm [data-gbyc]:checked')].map(i=>i.dataset.gbyc)});gbToast('Amarillas guardadas');lastJ='';await load();await gbAdmLoad();return}
-  if(sv){const j=+$('#gbAdmMatch').value;await adm('/api/garrabet-admin/scorers/'+j,'PUT',{scorers:[...document.querySelectorAll('#gbAdmForm [data-gbsc]:checked')].map(i=>i.dataset.gbsc)});gbToast('Goleadores guardados');lastJ='';await load();await gbAdmLoad();return}
-  if(m){const i=$('#gbAdmDet').querySelector('input[data-gbmn="'+m.dataset.gbmoney+'"]');await adm('/api/garrabet-admin/user/'+m.dataset.gbmoney+'/money','POST',{amount:i.value});gbToast('Pavos ingresados');await gbAdmLoad();lastJ='';await load();return}
-  if(ma){const v=$('#gbAllIn').value;if(!confirm('¿Ingresar '+v+' pavos a TODAS las personas?'))return;await adm('/api/garrabet-admin/money-all','POST',{amount:v});gbToast('Pavos ingresados a todos');await gbAdmLoad();lastJ='';await load();return}
+  if(m){const[id,a]=m.dataset.gbmoney.split('|'),i=$('#panel').querySelector('input[data-gbmn="'+id+'"]'),n=Math.abs(Number(String(i.value).replace(',','.'))),u=gbAdm.users.find(x=>x.id===+id)||{name:'',balance:0};
+   if(!n){gbToast('Escribe una cantidad de pavos');return}
+   if(a==='sub'&&n>Number(u.balance)&&!confirm(u.name+' tiene '+gbM(u.balance)+' pavos. Si le quitas '+gbM(n)+' se quedará en negativo. ¿Seguro?'))return;
+   await adm('/api/garrabet-admin/user/'+id+'/money','POST',{amount:a==='sub'?-n:n});i.value='';gbToast((a==='sub'?'Quitados ':'Añadidos ')+gbM(n)+' pavos a '+u.name);await gbAdmLoad();lastJ='';await load();return}
+  if(ma){const sub=ma.id==='gbAllSub',n=Math.abs(Number(String($('#gbAllIn').value).replace(',','.')));if(!n){gbToast('Escribe una cantidad de pavos');return}
+   if(!confirm((sub?'¿Quitar ':'¿Añadir ')+gbM(n)+' pavos '+(sub?'a':'a')+' TODAS las personas?'))return;
+   await adm('/api/garrabet-admin/money-all','POST',{amount:sub?-n:n});$('#gbAllIn').value='';gbToast((sub?'Quitados ':'Añadidos ')+gbM(n)+' pavos a todos');await gbAdmLoad();lastJ='';await load();return}
   if(d){if(!confirm('¿Borrar esta apuesta?'))return;await adm('/api/garrabet-admin/ticket/'+d.dataset.gbadel,'DELETE');await gbAdmLoad();return}
-  if(r){const v=$('#gbAdmDet').querySelector('input[data-gbrn="'+r.dataset.gbren+'"]').value;await adm('/api/garrabet-admin/user/'+r.dataset.gbren,'PUT',{name:v});gbToast('Nombre cambiado');await gbAdmLoad();lastJ='';await load()}
+  if(r){const v=$('#panel').querySelector('input[data-gbrn="'+r.dataset.gbren+'"]').value;await adm('/api/garrabet-admin/user/'+r.dataset.gbren,'PUT',{name:v});gbToast('Nombre cambiado');await gbAdmLoad();lastJ='';await load()}
  }catch(err){gbToast(err.message)}});
 $('#gbAdmMatch').onchange=gbAdmFill;
 $('#gbMatch').onchange=renderGB;
