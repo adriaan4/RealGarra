@@ -752,6 +752,21 @@ app.put('/api/garrabet-admin/yellows/:j', admin, async (req, res) => {
   await save();
   res.json({ ok: true });
 });
+// Admin: reabrir goleadores o amarillas de una jornada cerrada por error (las apuestas vuelven a quedar pendientes)
+app.delete('/api/garrabet-admin/scorers/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  delete m.scorers;
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/garrabet-admin/yellows/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  delete m.yellows;
+  await save();
+  res.json({ ok: true });
+});
 app.delete('/api/garrabet-admin/ticket/:id', admin, async (req, res) => {
   const n = db.garrabet.tickets.length;
   db.garrabet.tickets = db.garrabet.tickets.filter(t => t.id !== +req.params.id);
