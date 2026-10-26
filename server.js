@@ -502,7 +502,9 @@ const gbScorerOdds = od => { const o = {}; gbScNames().forEach(n => { const v = 
 const GB_YC_DEF = { PAJARES: 2.2, JUAN: 2.4, 'JIMÉNEZ': 2.6, HUGO: 2.8, MARIO: 3.2, JORGE: 3.5, ROBER: 3.8, DODU: 4.2, ADRI: 4.8, PABLO: 5.5, DAVID: 6.5, CARLOS: 7, ANTONIO: 12 };
 const gbYcDef = n => { const k = Object.keys(GB_YC_DEF).find(x => norm(x) === norm(n)); return k ? GB_YC_DEF[k] : 6; };
 const gbYellowDefault = () => { const o = {}; gbScNames().forEach(n => { o[n] = gbYcDef(n); }); return o; };
-const gbYellowOdds = od => { const o = {}; gbScNames().forEach(n => { const v = od && od.yellow ? od.yellow[n] : gbYcDef(n); if (v) o[n] = v; }); return o; };
+// «Ninguno»: nadie del Garra ve amarilla en el partido (se apuesta como una selección más del mercado de amarillas)
+const GB_YC_NONE = 'NINGUNO', GB_YC_NONE_DEF = 3.5;
+const gbYellowOdds = od => { const o = {}; gbScNames().forEach(n => { const v = od && od.yellow ? od.yellow[n] : gbYcDef(n); if (v) o[n] = v; }); const nv = od && od.yellow && GB_YC_NONE in od.yellow ? od.yellow[GB_YC_NONE] : GB_YC_NONE_DEF; if (nv) o[GB_YC_NONE] = nv; return o; };
 // Doble oportunidad: si el admin no pone cuota, sale sola a partir de 1/X/2
 const GB_DC = { '1X': ['1', 'X'], '12': ['1', '2'], 'X2': ['X', '2'] };
 function gbDcOdd(od, side) {
@@ -567,6 +569,7 @@ const gbSelStatus = x => {
   }
   if (x.market === 'yellow') { // en cuanto el admin guarda quién vio amarilla, se liquida
     if (!m || !Array.isArray(m.yellows)) return 'pending';
+    if (x.line === GB_YC_NONE) return m.yellows.length === 0 ? 'win' : 'lose';
     return m.yellows.includes(x.line) ? 'win' : 'lose';
   }
   if (!r) return 'pending';
@@ -594,7 +597,7 @@ function gbPublic(d) {
   Object.keys(db.garrabet.odds).forEach(j => { const od = db.garrabet.odds[j]; dc[j] = {}; Object.keys(GB_DC).forEach(k => { dc[j][k] = gbDcOdd(od, k); }); scorerOdds[j] = gbScorerOdds(od); yellowOdds[j] = gbYellowOdds(od); });
   db.calendar.forEach(m => { if (Array.isArray(m.scorers)) scorers[m.j] = m.scorers; if (Array.isArray(m.yellows)) yellows[m.j] = m.yellows; });
   const me = d && gbUser(d);
-  return { odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
+  return { odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), yellowNoneDef: GB_YC_NONE_DEF, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
 }
 app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
   const j = +req.params.j;
@@ -617,6 +620,7 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
   if (body.yellow) {
     out.yellow = {};
     for (const n of gbScNames()) { const o = gbOdd(body.yellow[n]); if (o === undefined) return bad(res, 'Cuota no válida en amarilla ' + n + ' (mínimo 1,01)'); out.yellow[n] = o; }
+    if (body.yellow[GB_YC_NONE] !== undefined) { const o = gbOdd(body.yellow[GB_YC_NONE]); if (o === undefined) return bad(res, 'Cuota no válida en amarilla Ninguno (mínimo 1,01)'); out.yellow[GB_YC_NONE] = o; }
   }
   db.garrabet.odds[j] = out;
   await save();
@@ -657,6 +661,10 @@ app.post('/api/garrabet/ticket', async (req, res) => {
     if (seen.has(k)) return bad(res, 'No puedes combinar dos selecciones del mismo mercado en un partido (por ejemplo +2,5 y +3,5 de goles totales). Solo los goleadores (y las amarillas) se pueden combinar entre sí');
     seen.add(k);
     sels.push({ j, market, line, side, odd });
+  }
+  // «Ninguno» (nadie ve amarilla) se contradice con cualquier jugador del mismo partido
+  for (const a of sels.filter(x => x.market === 'yellow' && x.line === GB_YC_NONE)) {
+    if (sels.some(x => x.market === 'yellow' && x.j === a.j && x.line !== GB_YC_NONE)) return bad(res, 'En la jornada ' + a.j + ' no puedes combinar «Ninguna amarilla» con la amarilla de un jugador: se contradicen');
   }
   // Doble oportunidad + 1X2 del mismo partido: no multiplican (el 1X2 ya está dentro de la doble; se cuenta solo la cuota del 1X2).
   // Si se contradicen (por ejemplo Gana Garra + Empate o rival), el boleto no se puede hacer.
