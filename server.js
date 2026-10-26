@@ -560,16 +560,16 @@ function gbSelOdd(j, market, line, side) { // cuota vigente de una selección (n
 }
 const gbSelStatus = x => {
   const m = db.calendar.find(c => c.j === x.j), r = gbResult(m);
-  if (!r) return 'pending';
-  if (x.market === 'scorer') { // sin goles del Garra pierde; si el admin aún no ha marcado goleadores, queda pendiente
-    if (r.gf === 0) return 'lose';
-    if (!Array.isArray(m.scorers)) return 'pending';
+  if (x.market === 'scorer') { // en cuanto el admin guarda quién marcó, se liquida (no hace falta el resultado); sin goles del Garra pierde
+    if (r && r.gf === 0) return 'lose';
+    if (!m || !Array.isArray(m.scorers)) return 'pending';
     return m.scorers.includes(x.line) ? 'win' : 'lose';
   }
-  if (x.market === 'yellow') { // hasta que el admin no guarde quién vio amarilla, queda pendiente
-    if (!Array.isArray(m.yellows)) return 'pending';
+  if (x.market === 'yellow') { // en cuanto el admin guarda quién vio amarilla, se liquida
+    if (!m || !Array.isArray(m.yellows)) return 'pending';
     return m.yellows.includes(x.line) ? 'win' : 'lose';
   }
+  if (!r) return 'pending';
   return gbWin(x.market, x.line, x.side, r) ? 'win' : 'lose';
 };
 function gbTicketOut(t) {
@@ -650,7 +650,7 @@ app.post('/api/garrabet/ticket', async (req, res) => {
     const j = +r.j, market = String(r.market || ''), side = String(r.side || ''), line = market === 'res' ? '' : String(r.line || '');
     const m = db.calendar.find(x => x.j === j);
     if (!m) return bad(res, 'Partido no válido');
-    if (gbResult(m)) return bad(res, 'La jornada ' + j + ' ya está cerrada');
+    if (gbResult(m) || (market === 'scorer' && Array.isArray(m.scorers)) || (market === 'yellow' && Array.isArray(m.yellows))) return bad(res, 'La jornada ' + j + ' ya está cerrada para esa apuesta');
     const odd = gbSelOdd(j, market, line, side);
     if (!odd) return bad(res, 'Una de las selecciones ya no tiene cuota');
     const k = j + '|' + market + (market === 'scorer' || market === 'yellow' ? '|' + line : '');
@@ -678,7 +678,7 @@ app.delete('/api/garrabet/ticket/:id', async (req, res) => { // el usuario puede
   const device = String(req.query.d || '').slice(0, 80), t = db.garrabet.tickets.find(x => x.id === +req.params.id && x.device === device);
   if (!t) return bad(res, 'Apuesta no encontrada');
   if (t.forced) return bad(res, 'El admin ya ha resuelto esta apuesta: no se puede quitar');
-  if (t.sels.some(x => gbResult(db.calendar.find(m => m.j === x.j)))) return bad(res, 'Ya hay resultado en alguno de esos partidos: no se puede quitar');
+  if (t.sels.some(x => gbSelStatus(x) !== 'pending' || gbResult(db.calendar.find(m => m.j === x.j)))) return bad(res, 'Ya hay resultado en alguno de esos partidos: no se puede quitar');
   db.garrabet.tickets = db.garrabet.tickets.filter(x => x !== t);
   await save();
   res.json({ ok: true });
