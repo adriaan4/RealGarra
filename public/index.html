@@ -152,6 +152,32 @@ details.ad>summary::-webkit-details-marker{display:none}
 details.ad>summary::after{content:"▾";font-size:20px;transition:transform .2s}
 details.ad[open]>summary::after{transform:rotate(180deg)}
 details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+/* Crónicas y ranking */
+.cron{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;overflow:hidden;margin:0 0 20px}
+.cron .cph{background:#0d0b09}
+.cron .cph img{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain}
+.cron .cbd{padding:14px 16px 16px}
+.cron small{color:var(--gold);letter-spacing:1px;text-transform:uppercase;font-weight:700}
+.cron h3{margin:4px 0 2px;font:800 clamp(24px,6vw,30px)/1.1 "Barlow Condensed",Impact,sans-serif;text-transform:uppercase}
+.cron h3 .cres{color:var(--gold);white-space:nowrap}
+.cron h4{margin:8px 0 6px;font:700 20px/1.2 "Barlow Condensed",sans-serif;color:var(--gold)}
+.cron p{margin:8px 0 0;white-space:pre-line;overflow-wrap:anywhere;line-height:1.5}
+.cron.mini .cph img{max-height:260px}
+.cron.mini p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.cron .mas{display:inline-block;margin-top:10px;font-weight:700;color:var(--gold)}
+#cronHome{margin-top:26px}
+#cronHome>h2{margin:0 0 10px}
+textarea.cnT{width:100%;min-height:150px;font:inherit;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);resize:vertical;margin-top:8px}
+#cnTitle{width:100%;margin-top:8px}
+#cnPh{max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--line);display:block}
+.gbr{list-style:none;margin:0;padding:0}
+.gbr li{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+.gbr li.me{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.gbr .pos{font:800 26px "Barlow Condensed",sans-serif;text-align:center;color:var(--gold)}
+.gbr .nm{font:800 22px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere}
+.gbr .nm small{display:block;font:600 15px "Barlow Condensed",sans-serif;opacity:.85;text-transform:none}
+.gbr .pv2{font:800 26px "Barlow Condensed",sans-serif;color:var(--gold);text-align:right;line-height:1}
+.gbr .pv2 small{display:block;font-size:13px;opacity:.8}
 .atabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 14px}
 .atab[data-at=eco]{grid-column:span 2}
 .ecoAll b{display:block;font-size:18px}.ecoAll small{display:block}
@@ -293,7 +319,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .gbtk .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 </style></head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#calendario">Calendario</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -304,7 +330,8 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
  <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div>
   <div class="trofeo" id="trofeo"><b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span></div></aside>
-</div></section>
+</div>
+ <div id="cronHome" hidden></div></section>
 
 <section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
  <div id="ultimo"></div>
@@ -332,11 +359,17 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  <div id="gbMarkets"></div>
  <div id="gbSlip"></div>
  <h2 style="margin-top:22px">Mis apuestas</h2><div id="gbMine"></div>
+ <h2 style="margin-top:28px">🏆 Ranking de la peña</h2><p class="sub">Ordenado por pavos. «Acertadas» son las apuestas ganadas sobre las ya resueltas.</p><div id="gbRank"></div>
 </section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
  <p>Todos los partidos de la temporada. La hora y el campo se irán confirmando.</p>
  <div class="tw"><table class="cal"><thead><tr><th>Jornada</th><th>Fecha</th><th>Horario</th><th>Partido</th><th>Resultado</th><th>Campo</th></tr></thead><tbody id="calBody"></tbody></table></div>
+</section>
+
+<section id="cronicas" hidden><h1>Crónicas</h1>
+ <p class="sub">Lo que pasó en cada partido del Real Garra, con la foto del resultado.</p>
+ <div id="cronList"></div>
 </section>
 
 <section id="plantilla" hidden>
@@ -378,6 +411,14 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   </div></details>
   <details class="ad"><summary>📅 Calendario</summary><div class="adb">
    <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
+  </div></details>
+  <details class="ad"><summary>📰 Crónica del partido</summary><div class="adb">
+   <p class="sub">Elige la jornada, escribe la crónica y sube la foto con el resultado (la misma que subes a Instagram). Sale en la pestaña Crónicas y en Inicio.</p>
+   <div class="row"><select id="cnMatch" aria-label="Jornada"></select></div>
+   <input id="cnTitle" maxlength="90" placeholder="Titular (opcional)" autocomplete="off">
+   <textarea id="cnText" class="cnT" maxlength="2500" placeholder="Crónica del partido…"></textarea>
+   <div class="row"><img id="cnPh" alt="" hidden><button type="button" class="ghost" id="cnPhBtn">📷 Foto del resultado</button><button type="button" class="ghost" id="cnPhDel" hidden>Quitar foto</button><input id="cnFile" type="file" accept="image/*" hidden></div>
+   <div class="row"><button type="button" id="cnSave">Guardar crónica</button><button type="button" class="ghost" id="cnDel">Borrar crónica</button></div>
   </div></details>
   <details class="ad"><summary>📋 Plantilla</summary><div class="adb">
    <p class="sub">Dorsal, nombre y posición de cada jugador en el campo. ↔ es izquierda–derecha y ↕ es arriba–abajo (0 a 100; arriba es el ataque, abajo la portería). La «C» marca al capitán.</p>
@@ -468,7 +509,7 @@ function render(){
  try{renderMvp()}catch(e){console.error(e)}
  try{renderEz()}catch(e){console.error(e)}
  try{renderGarro()}catch(e){console.error(e)}
- try{renderCal()}catch(e){console.error(e)}
+ try{renderCal()}catch(e){console.error(e)}try{renderCron()}catch(e){console.error(e)}try{renderGBRank()}catch(e){console.error(e)}
  try{renderGB()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
  try{renderSquad()}catch(e){console.error(e)}
@@ -530,12 +571,54 @@ $('#ezSave').onclick=async()=>{const m=$('#ezMsg');
  catch(err){m.textContent=err.message}};
 $('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de GARRO DE ORO? Se hace copia de seguridad antes.'))return;
  try{await adm('/api/ez/reset','POST');ezInit=false;$('#ezName').value='';EZ.forEach(([k])=>{const i=$('#ez-'+k);if(i)i.value=0});$('#amsg').textContent='Clasificación vaciada';await load()}catch(err){$('#amsg').textContent=err.message}};
+
+// ---- Crónicas de partido ----
+const cronCard=(m,mini)=>{const c=m.cron;return `<article class="cron${mini?' mini':''}">${c.hasPhoto?`<div class="cph"><img loading="lazy" src="/api/cronica-photo/${m.j}?v=${c.v||0}" alt="Resultado del partido contra ${esc(m.rival)}"></div>`:''}<div class="cbd"><small>J${m.j} · ${dmy(m.date)}</small><h3>Real Garra vs ${esc(m.rival)}${m.result?` <span class="cres">${esc(m.result)}</span>`:''}</h3>${c.title?`<h4>${esc(c.title)}</h4>`:''}${c.text?`<p>${esc(c.text)}</p>`:''}${mini?'<a class="mas" href="#cronicas">Leer la crónica →</a>':''}</div></article>`};
+let cnSig='',cnPhoto,cnJ='';
+function cnFill(){const m=(S.calendar||[]).find(x=>String(x.j)===$('#cnMatch').value),c=(m&&m.cron)||{};
+ $('#cnTitle').value=c.title||'';$('#cnText').value=c.text||'';cnPhoto=undefined;
+ const im=$('#cnPh');if(c.hasPhoto){im.src='/api/cronica-photo/'+m.j+'?v='+(c.v||0);im.hidden=false}else{im.hidden=true;im.removeAttribute('src')}
+ $('#cnPhDel').hidden=!c.hasPhoto;$('#cnDel').hidden=!m||!m.cron}
+function renderCron(){
+ const cal=S.calendar||[],list=cal.filter(m=>m.cron).sort((a,b)=>b.date.localeCompare(a.date)||b.j-a.j);
+ $('#cronList').innerHTML=list.map(m=>cronCard(m)).join('')||'<p class="sub">Todavía no hay crónicas. Aparecerán aquí después de cada partido.</p>';
+ const ch=$('#cronHome');ch.hidden=!list.length;ch.innerHTML=list.length?'<h2>📰 Última crónica</h2>'+cronCard(list[0],true):'';
+ // admin: selector de jornada (se rellena solo cuando cambian las jornadas o las crónicas; no pisa lo que se está escribiendo)
+ const sel=$('#cnMatch');if(!sel)return;
+ const sig=cal.map(m=>m.j+(m.cron?'*':'')+m.rival).join('|');
+ if(sig!==cnSig){const keep=sel.value,first=!cnSig;cnSig=sig;
+  sel.innerHTML=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · vs ${esc(m.rival)}${m.result?' ('+esc(m.result)+')':''}${m.cron?' 📰':''}</option>`).join('');
+  const played=cal.filter(m=>m.result||m.cron),def=(played[played.length-1]||cal[0]||{}).j;
+  sel.value=keep&&cal.some(m=>String(m.j)===keep)?keep:String(def||'');
+  if(first||!$('#admin').contains(document.activeElement))cnFill()}}
+$('#cnMatch').addEventListener('change',cnFill);
+$('#cnPhBtn').onclick=()=>$('#cnFile').click();
+$('#cnPhDel').onclick=()=>{cnPhoto='';$('#cnPh').hidden=true;$('#cnPh').removeAttribute('src');$('#cnPhDel').hidden=true};
+// la foto se reduce en el navegador (máx. 1080×1350, como Instagram) para que ocupe poco
+$('#cnFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+ fr.onload=()=>{const img=new Image();img.onload=()=>{const k=Math.min(1,1080/img.width,1350/img.height),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  const g=c.getContext('2d');g.fillStyle='#0d0b09';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+  let q=.86,d=c.toDataURL('image/jpeg',q);while(d.length>600000&&q>.4){q-=.08;d=c.toDataURL('image/jpeg',q)}
+  cnPhoto=d;$('#cnPh').src=d;$('#cnPh').hidden=false;$('#cnPhDel').hidden=false};img.src=fr.result};
+ fr.readAsDataURL(f);e.target.value=''});
+$('#cnSave').onclick=async e=>{const b=e.currentTarget,j=$('#cnMatch').value;if(!j)return;
+ try{await adm('/api/cronica/'+j,'PUT',{title:$('#cnTitle').value,text:$('#cnText').value,photo:cnPhoto});
+  $('#amsg').textContent='Crónica de la jornada '+j+' guardada';flash(b);cnSig='';await load();renderCron();cnFill()}
+ catch(err){$('#amsg').textContent=err.message}};
+$('#cnDel').onclick=async()=>{const j=$('#cnMatch').value;if(!j||!confirm('¿Borrar la crónica de la jornada '+j+'? Se hace copia de seguridad antes.'))return;
+ try{await adm('/api/cronica/'+j,'DELETE');$('#amsg').textContent='Crónica borrada';cnSig='';await load();renderCron();cnFill()}catch(err){$('#amsg').textContent=err.message}};
+
+// ---- Ranking de la peña (GarraBet) ----
+function renderGBRank(){const el=$('#gbRank');if(!el)return;const r=GBS().ranking||[];
+ const med=['🥇','🥈','🥉'];
+ el.innerHTML=r.length?'<ol class="gbr">'+r.map((u,i)=>{const done=u.won+u.lost,pct=done?Math.round(u.won/done*100):0;
+  return `<li${u.me?' class="me"':''}><span class="pos">${med[i]||i+1}</span><span class="nm">${esc(u.name)}${u.me?' (tú)':''}<small>✅ ${u.won} acertadas de ${done}${done?' ('+pct+'%)':''}${u.pending?' · '+u.pending+' en juego':''}</small></span><span class="pv2">${gbM(u.balance)}<small>pavos</small></span></li>`}).join('')+'</ol>':'<p class="sub">Todavía no hay nadie apostando. Pon tu nombre arriba y haz tu primera apuesta.</p>'}
 // ---- Calendario ----
 const dmy=d=>d.split('-').reverse().join('/');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function renderCal(){
  const cal=S.calendar||[],nx=cal.find(m=>m.date>=today());
- $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td class="cj">J${m.j}</td><td class="cd">${dmy(m.date)}</td><td class="ch${m.time?'':' tbc'}">${m.time?esc(m.time):'Por confirmar'}</td><td class="cm">Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td class="cr">${m.result?esc(m.result):'-'}</td><td class="cf${m.field?'':' tbc'}">${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
+ $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td class="cj">J${m.j}</td><td class="cd">${dmy(m.date)}</td><td class="ch${m.time?'':' tbc'}">${m.time?esc(m.time):'Por confirmar'}</td><td class="cm">Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td class="cr">${m.result?esc(m.result):'-'}${m.cron?' <a href="#cronicas" title="Ver la crónica" aria-label="Ver la crónica">📰</a>':''}</td><td class="cf${m.field?'':' tbc'}">${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
  // admin: no se vuelve a pintar mientras se está escribiendo dentro
  const ad=$('#adminCal');
  if(!ad.contains(document.activeElement))ad.innerHTML=cal.map(m=>`<div class="pv" data-calbox="${m.j}"><b>J${m.j} · ${dmy(m.date)} · vs ${esc(m.rival)}</b><div class="calA"><input type="time" data-c="time" value="${esc(m.time)}" aria-label="Hora"><input data-c="field" placeholder="Campo" maxlength="80" value="${esc(m.field)}"><input data-c="result" placeholder="Resultado" maxlength="20" value="${esc(m.result)}"><button type="button" data-cals="${m.j}">Guardar</button></div></div>`).join('')||'<p>No hay calendario.</p>'}

@@ -209,7 +209,7 @@ app.get('/api/state', (req, res) => {
   res.json({
     players: db.players,
     next: db.next,
-    calendar: db.calendar,
+    calendar: db.calendar.map(({ cron, ...m }) => cron ? { ...m, cron: { title: cron.title || '', text: cron.text || '', hasPhoto: !!cron.photo, v: cron.v || 0, at: cron.at || 0 } } : m), // las fotos de las crónicas se piden aparte (/api/cronica-photo/:j)
     round: { rival: db.round.rival, votes: db.round.votes.map(pub) },
     history: db.history.map(h => ({ ...h, votes: (h.votes || []).map(pub) })),
     mine: mine ? { playerId: mine.playerId } : null,
@@ -365,6 +365,41 @@ app.put('/api/calendar/:j', admin, async (req, res) => {
   m.time = time;
   m.field = String(req.body.field || '').trim().slice(0, 80);
   m.result = String(req.body.result || '').trim().slice(0, 20);
+  await save();
+  res.json({ ok: true });
+});
+// ---- Crónicas de partido: titular (opcional), texto y la foto con el resultado que se sube a Instagram ----
+app.get('/api/cronica-photo/:j', (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  const r = m && m.cron && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(m.cron.photo || '');
+  if (!r) return res.status(404).end();
+  res.set('Content-Type', r[1]);
+  res.set('Cache-Control', 'public, max-age=31536000, immutable'); // la URL lleva ?v= y cambia al subir otra foto
+  res.send(Buffer.from(r[2], 'base64'));
+});
+app.put('/api/cronica/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  const prev = m.cron || {};
+  const title = String(req.body.title || '').trim().slice(0, 90);
+  const text = String(req.body.text || '').replace(/\r\n/g, '\n').trim().slice(0, 2500);
+  // foto: sin campo = se conserva; '' = se quita; imagen en base64 (ya reducida en el navegador) = se cambia
+  let photo = prev.photo || '', v = prev.v || 0;
+  if (typeof req.body.photo === 'string') {
+    if (req.body.photo === '') { photo = ''; v = Date.now(); }
+    else if (/^data:image\/(?:png|jpeg|webp);base64,/.test(req.body.photo) && req.body.photo.length <= 700000) { photo = req.body.photo; v = Date.now(); }
+    else return bad(res, 'Foto no válida (máximo ~500 KB)');
+  }
+  if (!text && !photo && !title) return bad(res, 'Escribe la crónica o sube una foto');
+  m.cron = { title, text, photo, v, at: prev.at || Date.now() };
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/cronica/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m || !m.cron) return bad(res, 'Esa jornada no tiene crónica');
+  snapshot('antes-de-borrar-cronica');
+  delete m.cron;
   await save();
   res.json({ ok: true });
 });
@@ -597,7 +632,13 @@ function gbPublic(d) {
   Object.keys(db.garrabet.odds).forEach(j => { const od = db.garrabet.odds[j]; dc[j] = {}; Object.keys(GB_DC).forEach(k => { dc[j][k] = gbDcOdd(od, k); }); scorerOdds[j] = gbScorerOdds(od); yellowOdds[j] = gbYellowOdds(od); });
   db.calendar.forEach(m => { if (Array.isArray(m.scorers)) scorers[m.j] = m.scorers; if (Array.isArray(m.yellows)) yellows[m.j] = m.yellows; });
   const me = d && gbUser(d);
-  return { odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), yellowNoneDef: GB_YC_NONE_DEF, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
+  // Ranking de la peña: pavos actuales y apuestas acertadas (boletos ganados / resueltos); las anuladas no cuentan
+  const ranking = db.garrabet.users.map(u => {
+    let won = 0, lost = 0, pending = 0;
+    for (const t of db.garrabet.tickets) if (t.device === u.device) { const st = gbTicketOut(t).status; if (st === 'win') won++; else if (st === 'lose') lost++; else if (st === 'pending') pending++; }
+    return { name: u.name, balance: gbBalance(u), won, lost, pending, me: !!d && u.device === d };
+  }).sort((a, b) => b.balance - a.balance || b.won - a.won || a.name.localeCompare(b.name));
+  return { ranking, odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), yellowNoneDef: GB_YC_NONE_DEF, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
 }
 app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
   const j = +req.params.j;
