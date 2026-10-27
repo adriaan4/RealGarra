@@ -35,7 +35,7 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
-const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, crests: [] });
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -114,6 +114,7 @@ async function init() {
   }
   db = loaded;
   db.round.votes.forEach(v => { if (!v.id) v.id = db.nextId++; });
+  if (!Array.isArray(db.adminSubs)) db.adminSubs = []; // dispositivos del admin (avisos privados de apuestas y porras)
 
   // Migración de una sola vez: la lista de jugadores pasa a ser la de la votación MVP.
   if (!db.teamV2) {
@@ -174,22 +175,26 @@ if (PUSH) {
 const TZ = process.env.TZ_AVISOS || 'Europe/Madrid';
 const fmtDate = iso => new Date(iso).toLocaleString('es-ES', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
-async function notifyAll(title, body, url = '/#inicio', tag = 'garra') {
-  if (!PUSH || !db.subs.length) return { sent: 0, removed: 0 };
-  const payload = JSON.stringify({ title, body, url, tag });
+async function sendPush(list, payload) { // list = 'subs' (todos) o 'adminSubs' (solo el admin)
+  if (!PUSH || !(db[list] || []).length) return { sent: 0, removed: 0 };
   let sent = 0;
   const dead = new Set();
-  await Promise.all(db.subs.map(async s => {
+  await Promise.all(db[list].map(async s => {
     try { await webpush.sendNotification(s, payload, { TTL: 86400 }); sent++; }
     catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) dead.add(s.endpoint); // suscripción caducada o dada de baja
       else console.error('Fallo al enviar aviso (' + (e.statusCode || e.message) + ')');
     }
   }));
-  if (dead.size) { db.subs = db.subs.filter(s => !dead.has(s.endpoint)); await save(); }
+  if (dead.size) { db[list] = db[list].filter(s => !dead.has(s.endpoint)); await save(); }
   return { sent, removed: dead.size };
 }
+async function notifyAll(title, body, url = '/#inicio', tag = 'garra') {
+  return sendPush('subs', JSON.stringify({ title, body, url, tag }));
+}
 const notify = (...a) => notifyAll(...a).catch(e => console.error('Aviso push: ' + e.message));
+// Avisos PRIVADOS: solo llegan a los dispositivos que el admin ha activado (apuestas, combinadas y porras de la gente)
+const notifyAdmin = (title, body, tag = 'admin') => sendPush('adminSubs', JSON.stringify({ title, body, url: '/#admin', tag })).catch(e => console.error('Aviso admin: ' + e.message));
 
 // Recordatorio automático cuando falten 24 h o menos para el partido (una sola vez por partido)
 setInterval(async () => {
@@ -281,6 +286,29 @@ app.post('/api/push/unsubscribe', async (req, res) => {
   db.subs = db.subs.filter(x => x.endpoint !== ep);
   if (db.subs.length !== n) await save();
   res.json({ ok: true });
+});
+app.post('/api/push/admin-subscribe', admin, async (req, res) => { // el admin activa los avisos privados en este dispositivo
+  if (!PUSH) return bad(res, 'Los avisos no están activados en el servidor (faltan las claves VAPID)');
+  const s = req.body && req.body.sub;
+  const ok = s && typeof s.endpoint === 'string' && /^https:\/\//.test(s.endpoint) && s.endpoint.length < 2000
+    && s.keys && typeof s.keys.p256dh === 'string' && typeof s.keys.auth === 'string';
+  if (!ok) return bad(res, 'Suscripción no válida');
+  const clean = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
+  const i = db.adminSubs.findIndex(x => x.endpoint === clean.endpoint);
+  if (i >= 0) db.adminSubs[i] = clean; else { if (db.adminSubs.length >= 20) return bad(res, 'Demasiados dispositivos de admin'); db.adminSubs.push(clean); }
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/push/admin-unsubscribe', admin, async (req, res) => {
+  const ep = String((req.body && req.body.endpoint) || '');
+  const n = db.adminSubs.length;
+  db.adminSubs = db.adminSubs.filter(x => x.endpoint !== ep);
+  if (db.adminSubs.length !== n) await save();
+  res.json({ ok: true });
+});
+app.post('/api/push/admin-status', admin, (req, res) => { // ¿este dispositivo ya recibe los avisos del admin?
+  const ep = String((req.body && req.body.endpoint) || '');
+  res.json({ on: !!ep && db.adminSubs.some(x => x.endpoint === ep) });
 });
 app.post('/api/push/send', admin, async (req, res) => {
   if (!PUSH) return bad(res, 'Los avisos no están activados en el servidor (faltan las claves VAPID)');
@@ -510,13 +538,13 @@ app.delete('/api/crests/:id', admin, async (req, res) => {
 });
 app.get('/api/export', admin, (_, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=garra-datos.json');
-  res.json({ ...db, subs: [] }); // las suscripciones de avisos no se exportan
+  res.json({ ...db, subs: [], adminSubs: [] }); // las suscripciones de avisos no se exportan
 });
 app.post('/api/import', admin, async (req, res) => {
   const d = req.body;
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
-  db = { ...empty(), ...d, teamV2: true, subs: db.subs };
+  db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs };
   if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
   await save();
@@ -721,9 +749,13 @@ app.post('/api/garrabet/ticket', async (req, res) => {
   const sig = t => t.sels.map(x => [x.j, x.market, x.line, x.side].join(':')).sort().join(',');
   const dupe = { sels };
   if (db.garrabet.tickets.some(t => t.device === device && sig(t) === sig(dupe) && gbTicketOut(t).status === 'pending')) return bad(res, 'Ya tienes ese mismo boleto');
-  db.garrabet.tickets.push({ id: db.nextId++, device, at: new Date().toISOString(), sels, odd, stake });
+  const tid = db.nextId++;
+  db.garrabet.tickets.push({ id: tid, device, at: new Date().toISOString(), sels, odd, stake });
   await save();
   res.json({ ok: true });
+  const fm = n => String(n).replace('.', ',');
+  notifyAdmin(sels.length > 1 ? '🎟️ Nueva COMBINADA' : '🎟️ Nueva apuesta',
+    user.name + ' apuesta ' + fm(stake) + ' pavos' + (sels.length > 1 ? ' a una combinada de ' + sels.length : '') + ' · cuota ' + fm(odd) + ' · puede ganar ' + fm(gbMoney(stake * odd)), 'adm-ticket-' + tid);
 });
 app.delete('/api/garrabet/ticket/:id', async (req, res) => { // el usuario puede quitar su boleto mientras ningún partido suyo esté cerrado
   const device = String(req.query.d || '').slice(0, 80), t = db.garrabet.tickets.find(x => x.id === +req.params.id && x.device === device);
@@ -978,9 +1010,11 @@ app.post('/api/porra/pred', async (req, res) => {
   if (prClosed(act)) return bad(res, 'La porra de este partido ya está cerrada');
   const gf = prGoals(req.body.gf), gc = prGoals(req.body.gc);
   if (gf === null || gc === null) return bad(res, 'Pon los goles de los dos equipos (de 0 a ' + PR_MAX_GOALS + ')');
+  const had = PR().preds.some(p => p.j === act.j && p.uid === user.id);
   prUpsertPred(act.j, user.id, gf, gc);
   await save();
   res.json({ ok: true });
+  notifyAdmin('🦁 Porra de partido', user.name + (had ? ' ha cambiado' : ' ha hecho') + ' su porra de la J' + act.j + ' vs ' + act.rival + ': ' + gf + '-' + gc, 'adm-porra-' + act.j + '-' + user.id);
 });
 app.post('/api/porra/final', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device), P = PR();
@@ -992,6 +1026,7 @@ app.post('/api/porra/final', async (req, res) => {
   if (cur) Object.assign(cur, r.v, { upd: prNow() }); else P.finals.push({ id: db.nextId++, uid: user.id, ...r.v, at: prNow() });
   await save();
   res.json({ ok: true });
+  notifyAdmin('🏆 Porra final', user.name + (cur ? ' ha cambiado' : ' ha hecho') + ' su porra final de temporada', 'adm-final-' + user.id);
 });
 
 // ---- Admin ----
