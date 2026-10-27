@@ -139,6 +139,8 @@ async function init() {
   if (!db.garrabet.odds || typeof db.garrabet.odds !== 'object') db.garrabet.odds = {};
   if (!Array.isArray(db.garrabet.users)) db.garrabet.users = [];
   if (!Array.isArray(db.garrabet.tickets)) db.garrabet.tickets = [];
+  // Cuotas de la jornada 2 (Real Garra - Bricomaniacos FC): se cargan solo si esa jornada aún no tiene cuotas; goleadores y amarillas usan las de por defecto. Luego se pueden editar en Admin
+  if (!db.garrabet.odds[2]) db.garrabet.odds[2] = {"res":{"1":2.35,"X":3.25,"2":2.85},"scored":{"0.5":{"o":1.33,"u":3.07},"1.5":{"o":2.74,"u":1.4},"2.5":{"o":7.68,"u":1.05},"3.5":{"o":27.42,"u":1.01},"4.5":{"o":119.54,"u":1.01},"5.5":{"o":617.19,"u":1.01},"6.5":{"o":1000,"u":1.01},"7.5":{"o":1000,"u":1.01}},"conceded":{"0.5":{"o":1.42,"u":2.65},"1.5":{"o":3.28,"u":1.29},"2.5":{"o":10.32,"u":1.02},"3.5":{"o":41.69,"u":1.01},"4.5":{"o":206.43,"u":1.01},"5.5":{"o":1000,"u":1.01},"6.5":{"o":1000,"u":1.01},"7.5":{"o":1000,"u":1.01}},"total":{"1.5":{"o":1.41,"u":2.7},"2.5":{"o":2.37,"u":1.52},"3.5":{"o":4.86,"u":1.14},"4.5":{"o":11.87,"u":1.01},"5.5":{"o":33.84,"u":1.01},"6.5":{"o":110.6,"u":1.01},"7.5":{"o":408.42,"u":1.01},"8.5":{"o":1000,"u":1.01},"9.5":{"o":1000,"u":1.01},"10.5":{"o":1000,"u":1.01},"11.5":{"o":1000,"u":1.01}},"dc":{"1X":1.37,"12":1.29,"X2":1.52},"btts":{"y":2.04,"n":1.7}};
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
   for (const p of db.squad) if (!p.id) p.id = db.nextId++; // cada jugador de la plantilla tiene id (para su ficha y su foto)
