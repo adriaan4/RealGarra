@@ -1,59 +1,80 @@
 {
-  "nextId": 15,
-  "players": [
+  "partidos": [
     {
       "id": 1,
-      "name": "CARLOS"
+      "jornada": 1,
+      "local": "Huerta FC",
+      "visitante": "Garra",
+      "fecha": "2026-10-25",
+      "hora": "17:45",
+      "jugado": true,
+      "golesLocal": 1,
+      "golesVisitante": 2
     },
     {
       "id": 2,
-      "name": "DAVID"
+      "jornada": 2,
+      "local": "Garra",
+      "visitante": "Rival FC",
+      "fecha": "2026-11-01",
+      "hora": "18:00",
+      "jugado": false,
+      "golesLocal": null,
+      "golesVisitante": null
+    }
+  ],
+  "plantilla": [
+    {
+      "id": 1,
+      "nombre": "Carlos",
+      "posicion": "Delantero",
+      "dorsal": 9
+    },
+    {
+      "id": 2,
+      "nombre": "Antonio",
+      "posicion": "Portero",
+      "dorsal": 1
     },
     {
       "id": 3,
-      "name": "ROBERT"
+      "nombre": "David",
+      "posicion": "Centrocampista",
+      "dorsal": 10
     },
     {
       "id": 4,
-      "name": "ANTONIO"
-    },
-    {
-      "id": 5,
-      "name": "PABLO"
-    },
-    {
-      "id": 6,
-      "name": "JIMENEZ"
-    },
-    {
-      "id": 7,
-      "name": "MARIO"
-    },
-    {
-      "id": 8,
-      "name": "DODU"
-    },
-    {
-      "id": 9,
-      "name": "JORGE"
-    },
-    {
-      "id": 10,
-      "name": "ADRIAN"
-    },
-    {
-      "id": 11,
-      "name": "HUGO"
+      "nombre": "Rober",
+      "posicion": "Defensa",
+      "dorsal": 4
     }
   ],
-  "next": {
-    "date": "2026-10-04T17:00:00.000Z",
-    "rival": "Getafe"
-  },
-  "round": {
-    "rival": "",
-    "votes": []
-  },
-  "history": [],
-  "teamV2": true
+  "patrocinadores": [],
+  "porras_partidos": [
+    {
+      "id": 1698240000000,
+      "usuario": "Carlos",
+      "partidoId": 1,
+      "golesLocal": 1,
+      "golesVisitante": 3,
+      "fechaCreacion": "2026-10-24T12:00:00.000Z",
+      "puntos": 3
+    }
+  ],
+  "porras_finales": [
+    {
+      "usuario": "Carlos",
+      "goleador": "Carlos",
+      "posicion": 3,
+      "golesAntonio": 42,
+      "asistente": "David",
+      "amarillas": "Rober",
+      "mvp": "Carlos",
+      "fechaActualizacion": "2026-10-24T12:30:00.000Z"
+    }
+  ],
+  "porra_final_config": {
+    "abierta": true,
+    "resultados_definitivos": null
+  }
 }
