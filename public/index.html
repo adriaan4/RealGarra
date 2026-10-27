@@ -554,6 +554,10 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <div id="gbAdmUsers"><p>Cargando…</p></div>
   </div>
   <div class="apane" data-ap="mas" hidden>
+  <details class="ad" open><summary>🔔 Avisos solo para mí (admin)</summary><div class="adb">
+   <p class="sub" style="font-size:16px">Te llega un aviso a este dispositivo cada vez que alguien hace una apuesta, una combinada o una porra (de partido o final). Nadie más los recibe.</p>
+   <div class="row"><button id="admPushBtn" type="button">🔔 Activar mis avisos</button></div><p class="sub" id="admPushMsg" style="font-size:16px"></p>
+  </div></details>
   <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
    <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
   </div></details>
@@ -796,6 +800,34 @@ $('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
   await pushUI()
  }catch(e){console.error(e)}
 })();
+
+
+// ---- Avisos privados del admin (apuestas, combinadas y porras) ----
+async function admPushUI(){
+ const b=$('#admPushBtn'),m=$('#admPushMsg');if(!b)return;
+ if(!pushOK){b.hidden=true;m.textContent=isIOS&&!standalone?'En iPhone: Compartir → «Añadir a pantalla de inicio», abre la app desde su icono y vuelve aquí.':'Este navegador no admite avisos.';return}
+ if(Notification.permission==='denied'){b.hidden=true;m.textContent='Los avisos están bloqueados en los ajustes del navegador o del móvil para esta web.';return}
+ b.hidden=false;
+ try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+  const on=sub&&Notification.permission==='granted'&&(await adm('/api/push/admin-status','POST',{endpoint:sub.endpoint})).on;
+  b.textContent=on?'🔕 Desactivar mis avisos':'🔔 Activar mis avisos';b.className=on?'ghost':'';m.textContent=on?'Activados en este dispositivo: te aviso de cada apuesta, combinada y porra.':'Desactivados en este dispositivo.'}catch(e){m.textContent=e.message}}
+$('#admPushBtn').onclick=async()=>{const m=$('#admPushMsg');
+ try{
+  if(!pushKey)pushKey=(await api('/api/push/key')).key;
+  if(!pushKey){m.textContent='El servidor no tiene activados los avisos (faltan las claves VAPID).';return}
+  const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+  const on=sub&&Notification.permission==='granted'&&(await adm('/api/push/admin-status','POST',{endpoint:sub.endpoint})).on;
+  if(on){await adm('/api/push/admin-unsubscribe','POST',{endpoint:sub.endpoint})}
+  else{
+   if(await Notification.requestPermission()!=='granted'){m.textContent='No has dado permiso para los avisos.';return admPushUI()}
+   sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
+   await adm('/api/push/admin-subscribe','POST',{sub:sub.toJSON()});
+   try{await reg.showNotification('Avisos de admin activados 🔔',{body:'Te avisaré de cada apuesta, combinada y porra.',icon:'/icon-192.png',badge:'/badge.png',tag:'adm-ok'})}catch{}}
+  await admPushUI()
+ }catch(e){m.textContent='No se pudieron activar: '+e.message}};
+$('.atabs').addEventListener('click',e=>{if(e.target.closest('.atab[data-at=mas]'))admPushUI()});
+$('#login').addEventListener('click',()=>setTimeout(admPushUI,900));
+if(pw)setTimeout(admPushUI,1200);
 
 // ---- Garro de Oro: quién gana según lo bebido (se proclama desde Admin y sale en el Inicio) ----
 function ezLeaders(){const rk=S.ez.map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));const max=rk.length?rk[0].p:0;return{rk,max,top:max>0?rk.filter(x=>x.p===max):[]}}
