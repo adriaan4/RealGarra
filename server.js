@@ -684,6 +684,46 @@ const gbSelStatus = x => {
   if (!r) return 'pending';
   return gbWin(x.market, x.line, x.side, r) ? 'win' : 'lose';
 };
+// ---- Coherencia entre selecciones: un boleto no puede tener apuestas que se contradigan o que sean imposibles a la vez ----
+// Se prueba si existe al menos un marcador (gf-gc) que cumpla TODAS las selecciones del mismo partido a la vez. Usa gbWin, la misma función
+// que liquida las apuestas, así que cualquier mercado de marcador que se añada en el futuro a gbWin queda validado solo.
+// Goleadores: cada jugador distinto que «marca» exige al menos un gol del Garra. Amarillas: no dependen del marcador.
+const GB_FEAS_MAX = 16; // marcador máximo que se prueba (más que cualquier línea de goles)
+const GB_NO_SCORE = ['scorer', 'yellow'];
+function gbFeasible(sels) {
+  const scorers = new Set(sels.filter(x => x.market === 'scorer').map(x => x.line)).size;
+  const cs = sels.filter(x => !GB_NO_SCORE.includes(x.market));
+  for (let gf = scorers; gf <= GB_FEAS_MAX; gf++)
+    for (let gc = 0; gc <= GB_FEAS_MAX; gc++)
+      if (cs.every(x => gbWin(x.market, x.line, x.side, { gf, gc }))) return true;
+  return false;
+}
+function gbSelLabel(x) { // mismo texto que ve el usuario en el boleto
+  const m = db.calendar.find(c => c.j === x.j), rv = (m && m.rival) || 'Rival', fm = n => String(n).replace('.', ',');
+  if (x.market === 'res') return { 1: 'Gana Real Garra', X: 'Empate', 2: 'Gana ' + rv }[x.side];
+  if (x.market === 'dc') return { '1X': 'Doble oportunidad · Real Garra o empate', 12: 'Doble oportunidad · Real Garra o ' + rv, X2: 'Doble oportunidad · Empate o ' + rv }[x.side];
+  if (x.market === 'btts') return 'Ambos equipos marcan · ' + (x.side === 'y' ? 'Sí' : 'No');
+  if (x.market === 'exact') return 'Resultado exacto ' + String(x.line).replace('-', ' - ');
+  if (x.market === 'scorer') return 'Marca ' + x.line;
+  if (x.market === 'yellow') return x.line === GB_YC_NONE ? 'Ninguna amarilla' : 'Amarilla a ' + x.line;
+  const nm = { scored: 'Goles anotados Garra', conceded: 'Goles encajados Garra', total: 'Goles totales' }[x.market] || x.market;
+  return nm + ' · ' + (x.side === 'o' ? 'Más de ' : 'Menos de ') + fm(x.line);
+}
+function gbConflict(sels) { // null si todo es compatible; si no, el grupo más pequeño de selecciones que se contradicen
+  for (const j of [...new Set(sels.map(x => x.j))]) {
+    const g = sels.filter(x => x.j === j);
+    if (gbFeasible(g)) continue;
+    for (let a = 0; a < g.length; a++) for (let b = a + 1; b < g.length; b++) if (!gbFeasible([g[a], g[b]])) return [g[a], g[b]];
+    for (let a = 0; a < g.length; a++) for (let b = a + 1; b < g.length; b++) for (let c = b + 1; c < g.length; c++) if (!gbFeasible([g[a], g[b], g[c]])) return [g[a], g[b], g[c]];
+    return g;
+  }
+  return null;
+}
+function gbConflictMsg(c) {
+  const l = c.map(x => '«' + gbSelLabel(x) + '»');
+  return '⚠️ Apuestas incompatibles: ' + (l.length === 1 ? l[0] + ' no se puede cumplir' : l.length === 2 ? l[0] + ' no es compatible con ' + l[1] : 'no se pueden cumplir a la vez ' + l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]) + '. Quita una para continuar.';
+}
+// ---- fin coherencia ----
 function gbTicketOut(t) {
   const sels = t.sels.map(x => ({ ...x, status: gbSelStatus(x) }));
   const forced = ['win', 'lose', 'void'].includes(t.forced) ? t.forced : ''; // el admin puede dar la apuesta por ganada o anularla (se devuelve el importe)
@@ -781,6 +821,9 @@ app.post('/api/garrabet/ticket', async (req, res) => {
   for (const a of sels.filter(x => x.market === 'yellow' && x.line === GB_YC_NONE)) {
     if (sels.some(x => x.market === 'yellow' && x.j === a.j && x.line !== GB_YC_NONE)) return bad(res, 'En la jornada ' + a.j + ' no puedes combinar «Ninguna amarilla» con la amarilla de un jugador: se contradicen');
   }
+  // Coherencia: ninguna selección puede contradecirse o ser imposible junto a otra del mismo partido (se comprueba SIEMPRE aquí, aunque la web se manipule)
+  const cf = gbConflict(sels);
+  if (cf) return bad(res, gbConflictMsg(cf));
   // Doble oportunidad + 1X2 del mismo partido: no multiplican (el 1X2 ya está dentro de la doble; se cuenta solo la cuota del 1X2).
   // Si se contradicen (por ejemplo Gana Garra + Empate o rival), el boleto no se puede hacer.
   for (const a of sels.filter(x => x.market === 'res')) {
