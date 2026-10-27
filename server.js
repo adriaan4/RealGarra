@@ -926,6 +926,87 @@ app.delete('/api/garrabet-admin/league-result/:id', admin, async (req, res) => {
   await save();
   res.json({ ok: true });
 });
+// ---- MLA Sport (grupo 4708): sincroniza clasificación y resultados cada hora los domingos de 15:00 a 22:00 (hora de Madrid) ----
+// Si MLA falla o la página no se reconoce, NO se toca nada: se conservan los últimos datos. Solo se guarda cuando algo cambia (así no hay duplicados ni escrituras de más).
+const MLA = require('./mla');
+const MLA_GROUP = process.env.MLA_GROUP || '4708';
+const MLA_URLS = (process.env.MLA_URLS || 'https://www.mlasport.com/clasificacion-grupo/4708').split(',').map(s => s.trim()).filter(Boolean); // páginas de clasificación y/o resultados del grupo
+const mlaState = { running: false, lastTry: '', lastOk: '', error: MLA_URLS.length ? '' : 'Falta la variable MLA_URLS', lastChange: null };
+const mlaIsGarra = n => /\bREAL GARRA\b|^GARRA$/.test(norm(n));
+function mlaApply(data) { // aplica lo leído en MLA a la base de datos; devuelve la lista de cambios (vacía = nada cambió)
+  lgEnsure();
+  const changes = [], skipped = [];
+  const known = new Map(); // nombre normalizado -> nombre tal y como ya está en la web (así no se duplican equipos por una tilde o una mayúscula)
+  lgOtherTeams().forEach(n => known.set(norm(n), n));
+  const official = new Set(data.standings.map(t => norm(t.name)));
+  const canon = n => known.get(norm(n)) || (official.has(norm(n)) ? n : null); // un equipo desconocido solo entra si sale en la clasificación de MLA
+  for (const m of data.matches) {
+    const aG = mlaIsGarra(m.a), bG = mlaIsGarra(m.b);
+    if (aG || bG) { // partido del Garra -> Calendario (resultado «Garra-rival»)
+      const rivalName = aG ? m.b : m.a, gf = aG ? m.ga : m.gb, gc = aG ? m.gb : m.ga;
+      const rv = canon(rivalName);
+      const cands = db.calendar.filter(c => norm(c.rival) === norm(rivalName) || (rv && norm(c.rival) === norm(rv)));
+      const cal = (m.j && cands.find(c => c.j === m.j)) || (m.date && cands.find(c => c.date === m.date)) || null;
+      if (!cal) { skipped.push('Garra-' + rivalName + ': no cuadra con el calendario'); continue; }
+      const res = gf + '-' + gc;
+      if (cal.result !== res) { changes.push('Jornada ' + cal.j + ': Real Garra ' + res + ' ' + cal.rival); cal.result = res; }
+      continue;
+    }
+    const A = canon(m.a), B = canon(m.b);
+    let j = m.j; if (!j && m.date) { const c = db.calendar.find(x => x.date === m.date); if (c) j = c.j; }
+    if (!A || !B || !Number.isInteger(j) || j < 1 || j > 40) { skipped.push(m.a + ' - ' + m.b + ': equipo o jornada sin identificar'); continue; }
+    const rs = db.garrabet.league.results;
+    const ex = rs.find(r => r.j === j && ((norm(r.a) === norm(A) && norm(r.b) === norm(B)) || (norm(r.a) === norm(B) && norm(r.b) === norm(A))));
+    if (ex) { // ya existe: solo se corrige el marcador si MLA dice otra cosa (nunca se añade otro)
+      const [ga, gb] = norm(ex.a) === norm(A) ? [m.ga, m.gb] : [m.gb, m.ga];
+      if (ex.ga !== ga || ex.gb !== gb) { changes.push('Jornada ' + j + ': ' + ex.a + ' ' + ga + '-' + gb + ' ' + ex.b); ex.ga = ga; ex.gb = gb; }
+      continue;
+    }
+    const busy = [A, B].find(n => rs.some(r => r.j === j && (norm(r.a) === norm(n) || norm(r.b) === norm(n))) || db.calendar.some(c => c.j === j && norm(c.rival) === norm(n)));
+    if (busy) { skipped.push(busy + ' ya tiene otro partido en la jornada ' + j); continue; }
+    rs.push({ id: db.nextId++, j, a: A, b: B, ga: m.ga, gb: m.gb });
+    changes.push('Jornada ' + j + ': ' + A + ' ' + m.ga + '-' + m.gb + ' ' + B + ' (nuevo)');
+  }
+  // clasificación oficial de MLA: se guarda solo si cambió
+  const st = JSON.stringify(data.standings);
+  if (data.standings.length >= 2 && (!db.mla || JSON.stringify(db.mla.standings) !== st)) { db.mla = { group: MLA_GROUP, at: new Date().toISOString(), standings: data.standings }; changes.push('Clasificación oficial de MLA actualizada'); }
+  return { changes, skipped };
+}
+async function mlaSync(why) {
+  if (mlaState.running) return { ok: false, error: 'Ya hay una sincronización en curso' };
+  if (!MLA_URLS.length) { mlaState.error = 'Falta la variable MLA_URLS'; return { ok: false, error: mlaState.error }; }
+  mlaState.running = true; mlaState.lastTry = new Date().toISOString();
+  try {
+    const data = await MLA.readGroup(MLA_URLS); // si falla, salta al catch sin haber tocado nada
+    const { changes, skipped } = mlaApply(data);
+    const resultsChanged = changes.some(c => !c.startsWith('Clasificación oficial'));
+    let odds = null;
+    if (resultsChanged) odds = lgAutoNext(); // resultados nuevos -> estadísticas (se calculan solas desde los resultados) y cuotas del próximo partido (las puestas a mano no se pisan)
+    if (changes.length) await save();
+    mlaState.lastOk = new Date().toISOString(); mlaState.error = '';
+    if (changes.length) mlaState.lastChange = { at: mlaState.lastOk, changes, oddsJornada: odds };
+    console.log('MLA (' + why + '): ' + (changes.length ? changes.join(' | ') : 'sin cambios') + (skipped.length ? ' · omitidos: ' + skipped.join('; ') : ''));
+    return { ok: true, changes, skipped, oddsJornada: odds };
+  } catch (e) {
+    mlaState.error = String(e.message || e).slice(0, 200); // se conservan los últimos datos tal cual
+    console.error('MLA falló, conservo los últimos datos: ' + mlaState.error);
+    return { ok: false, error: mlaState.error };
+  } finally { mlaState.running = false; }
+}
+function mlaWindow(now = new Date()) { // domingo 15:00–22:59 en Madrid -> clave de la hora; si no, null
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: TZ, weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));
+  const h = +p.hour;
+  return p.weekday === 'Sun' && h >= 15 && h <= 22 ? p.year + '-' + p.month + '-' + p.day + 'T' + p.hour : null;
+}
+let mlaSlot = '', mlaRetry = 0, mlaNextRetry = 0;
+setInterval(async () => { // una consulta por hora; si falla, 2 reintentos más (cada 10 min) dentro de esa misma hora
+  const slot = mlaWindow();
+  if (!slot || mlaState.running) return;
+  if (slot !== mlaSlot) { mlaSlot = slot; mlaRetry = 0; mlaNextRetry = 0; const r = await mlaSync('domingo ' + slot); if (!r.ok) { mlaRetry = 1; mlaNextRetry = Date.now() + 10 * 60000; } else mlaRetry = 99; }
+  else if (mlaRetry < 3 && Date.now() >= mlaNextRetry) { const r = await mlaSync('reintento ' + slot); if (r.ok) mlaRetry = 99; else { mlaRetry++; mlaNextRetry = Date.now() + 10 * 60000; } }
+}, 60 * 1000);
+app.get('/api/mla/status', admin, (_, res) => res.json({ group: MLA_GROUP, urls: MLA_URLS.length, ...mlaState, standings: (db.mla && db.mla.standings) || [] }));
+app.post('/api/mla/sync', admin, async (_, res) => res.json(await mlaSync('manual'))); // para probarlo a mano desde Admin/consola, a cualquier hora
 // Importar cuotas de varias jornadas de golpe desde un JSON (goles anotados / encajados / totales; también 1X2, doble oportunidad y ambos marcan).
 // Solo se cambia lo que viene en el JSON: el resto de cuotas de esa jornada (goleadores, amarillas, lo que no se nombre) se queda como está. Si algo falla, no se cambia nada.
 const GB_IMP_MK = { scored: 'scored', anotados: 'scored', anotado: 'scored', garra: 'scored', conceded: 'conceded', encajados: 'conceded', encajado: 'conceded', rival: 'conceded', total: 'total', totales: 'total' };

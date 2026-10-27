@@ -82,3 +82,20 @@ Admin → GarraBet → «🤖 Cuotas automáticas».
 - Las cuotas se guardan en la base de datos de GarraBet (`garrabet.odds`). Las que escribas a mano o importes por JSON en una jornada no se pisan solas (solo el botón de recalcular, con confirmación). Goleadores y amarillas no se tocan.
 - Los boletos ya hechos conservan la cuota con la que se apostaron.
 - Ajustes del modelo (peso de la media, nº de partidos de forma…) al principio del bloque «Cuotas automáticas» de `server.js`.
+
+## Sincronización con MLA Sport (grupo 4708)
+Cada **domingo de 15:00 a 22:00 (hora de Madrid)** el servidor consulta MLA una vez por hora (15:00, 16:00 … 22:00) y sincroniza solo:
+- **Resultados**: los del Garra se guardan en el Calendario (siempre «Garra primero») y los de otros equipos en los resultados de la liga. Se casan por jornada (o por fecha) y nunca se añade un partido que ya existe: si MLA cambia un marcador, se corrige el mismo.
+- **Clasificación**: la oficial de MLA se guarda en `db.mla.standings`; la tabla que ya ve la web sigue calculándose desde los resultados, así que no cambia el diseño.
+- **Estadísticas y cuotas de GarraBet**: solo si algún resultado cambió, se recalculan las estadísticas y las cuotas automáticas del próximo partido (las cuotas puestas a mano no se pisan).
+- **Si MLA falla** (caída, bloqueo, formato irreconocible) no se toca nada: se conservan los últimos datos. Hay 2 reintentos más, cada 10 min, dentro de esa misma hora. Si no hay cambios, tampoco se escribe en la base de datos.
+- Un equipo que no figure en la web ni en la clasificación de MLA no se añade (evita basura si la página cambia).
+
+Variables de entorno:
+- `MLA_URLS` (por defecto `https://www.mlasport.com/clasificacion-grupo/4708`): direcciones de MLA del grupo 4708 separadas por comas (clasificación y/o resultados; cada página se lee entera). Ej.: `MLA_URLS=https://www.mlasport.com/…/clasificacion,https://www.mlasport.com/…/resultados`
+- `MLA_GROUP` (opcional, por defecto `4708`) y `MLA_UA` (opcional, User-Agent).
+
+Probar a mano, a cualquier hora (con la contraseña de admin):
+    curl -X POST https://TU-APP/api/mla/sync -H "x-admin: TU_CONTRASEÑA"
+    curl https://TU-APP/api/mla/status -H "x-admin: TU_CONTRASEÑA"
+El código está en `mla.js` (lectura) y en el bloque «MLA Sport» de `server.js`.
