@@ -818,6 +818,305 @@ app.delete('/api/garrabet-admin/ticket/:id', admin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- PORRA GARRA: porra de partidos + porra final de temporada ----
+// Usa EXACTAMENTE los mismos nombres/usuarios que GarraBet (db.garrabet.users, un nombre por dispositivo). No hay registros ni contraseñas nuevas.
+// Todo se guarda en db.porra (mismo almacenamiento que el resto: Upstash o disco). El resultado real es el mismo del Calendario (m.result, «3-1»).
+const PR_EXACT = 5, PR_SIGN = 3, PR_MAX_GOALS = 30; // puntos por resultado exacto / por acertar ganador o empate
+const PR_TZ = 'Europe/Madrid';
+const PR_PLAYER_KEYS = ['scorer', 'assister', 'yellows', 'mvp'];
+const PR_LABELS = { scorer: 'Máximo goleador', position: 'Posición final de Garra en liga', conceded: 'Goles que encajará Antonio', assister: 'Máximo asistente', yellows: 'Jugador con más amarillas', mvp: 'MVP de la temporada' };
+const PR_KEYS = ['scorer', 'position', 'conceded', 'assister', 'yellows', 'mvp'];
+const PR_FINAL_PTS_DEF = { scorer: 10, position: 10, conceded: 10, assister: 10, yellows: 10, mvp: 10 }; // editables desde Admin
+const PR_FINAL_TOL = { position: 1, conceded: 3 }; // en estos dos campos, quedarse cerca da la mitad de los puntos
+function PR() { // siempre devuelve la estructura completa (también tras importar copias antiguas)
+  const p = db.porra && typeof db.porra === 'object' ? db.porra : (db.porra = {});
+  if (!Array.isArray(p.preds)) p.preds = [];
+  if (!Array.isArray(p.finals)) p.finals = [];
+  if (!p.locks || typeof p.locks !== 'object') p.locks = {};
+  if (!p.cfg || typeof p.cfg !== 'object') p.cfg = {};
+  const c = p.cfg;
+  if (typeof c.open !== 'boolean') c.open = true;
+  c.pts = { ...PR_FINAL_PTS_DEF, ...(c.pts || {}) };
+  if (!c.result || typeof c.result !== 'object') c.result = {};
+  if (!Number.isInteger(c.forceJ)) c.forceJ = null;
+  return p;
+}
+const prName = uid => (db.garrabet.users.find(u => u.id === uid) || {}).name || 'SIN NOMBRE';
+const prCal = () => db.calendar.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.j - b.j);
+const prTeams = () => Math.max(2, new Set(db.calendar.map(m => norm(m.rival))).size + 1); // rivales distintos + Garra
+const prGoals = v => { if (v === '' || v == null || (typeof v !== 'number' && typeof v !== 'string')) return null; const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= PR_MAX_GOALS ? n : null; };
+const prAdj = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(',', '.')); return Number.isFinite(n) && Math.abs(n) <= 1000 ? Math.round(n * 100) / 100 : undefined; };
+
+// Hora (Madrid) -> instante. El servidor puede estar en otra zona horaria (Render usa UTC)
+function prMadridEpoch(dateStr, timeStr) {
+  const [y, mo, d] = String(dateStr).split('-').map(Number), [h, mi] = String(timeStr || '00:00').split(':').map(Number);
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  const off = t => { const o = {}; new Intl.DateTimeFormat('en-US', { timeZone: PR_TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(t)).forEach(p => { o[p.type] = p.value; }); return Date.UTC(o.year, o.month - 1, o.day, o.hour, o.minute, o.second) - t; };
+  return guess - off(guess - off(guess));
+}
+const prMadridDate = t => new Intl.DateTimeFormat('en-CA', { timeZone: PR_TZ }).format(new Date(t));
+// Hora de inicio: la del Calendario; si no hay, la de «Próximo partido» (si es ese mismo día); si tampoco, el inicio del día del partido
+function prKick(m) {
+  if (m.time && /^\d\d:\d\d$/.test(m.time)) return { t: prMadridEpoch(m.date, m.time), known: true };
+  const n = db.next, t = n && n.date ? new Date(n.date).getTime() : NaN;
+  if (Number.isFinite(t) && prMadridDate(t) === m.date) return { t, known: true };
+  return { t: prMadridEpoch(m.date, '00:00'), known: false };
+}
+// Partido activo = el primero del calendario que todavía no tiene resultado (o el que fije el admin)
+function prActive() {
+  const c = PR().cfg, cal = prCal();
+  if (c.forceJ != null) { const m = cal.find(x => x.j === c.forceJ); if (m) return m; }
+  return cal.find(m => !gbResult(m)) || null;
+}
+function prClosed(m) {
+  if (gbResult(m)) return true;
+  const L = PR().locks[m.j];
+  if (L === 'closed') return true;
+  if (L === 'open') return false;
+  return Date.now() >= prKick(m).t;
+}
+const prSign = (a, b) => Math.sign(a - b);
+const prCalc = (p, r) => !r ? null : p.gf === r.gf && p.gc === r.gc ? PR_EXACT : prSign(p.gf, p.gc) === prSign(r.gf, r.gc) ? PR_SIGN : 0;
+const prPoints = (p, m) => Number.isFinite(p.adj) ? p.adj : prCalc(p, gbResult(m)); // null = pendiente de resultado
+
+// Porra final: resultados reales guardados por el admin (jugadores: lista por si hay empate; position/conceded: número)
+function prRes() {
+  const R = PR().cfg.result, o = {};
+  for (const k of PR_PLAYER_KEYS) o[k] = Array.isArray(R[k]) ? R[k].filter(x => typeof x === 'string' && x) : [];
+  for (const k of ['position', 'conceded']) o[k] = Number.isInteger(R[k]) ? R[k] : null;
+  return o;
+}
+function prFinalOut(f) {
+  const R = prRes(), pts = {}, vals = {}, P = PR().cfg.pts;
+  let sum = 0, any = false;
+  for (const k of PR_KEYS) {
+    vals[k] = f[k] == null ? null : f[k];
+    const set = PR_PLAYER_KEYS.includes(k) ? R[k].length > 0 : R[k] !== null;
+    if (!set) { pts[k] = null; continue; }
+    any = true;
+    let g = 0;
+    if (vals[k] !== null) {
+      if (PR_PLAYER_KEYS.includes(k)) g = R[k].some(n => norm(n) === norm(vals[k])) ? P[k] : 0;
+      else { const d = Math.abs(vals[k] - R[k]); g = d === 0 ? P[k] : d <= PR_FINAL_TOL[k] ? Math.floor(P[k] / 2) : 0; }
+    }
+    pts[k] = g; sum += g;
+  }
+  const adj = Number.isFinite(f.adj) ? f.adj : null;
+  return { id: f.id, uid: f.uid, name: prName(f.uid), values: vals, pts, adj, total: adj !== null ? adj : (any ? sum : null), at: f.at };
+}
+function prTotals() { // puntos de cada persona: partidos + final
+  const P = PR(), by = {};
+  const get = uid => by[uid] || (by[uid] = { uid, name: prName(uid), match: 0, final: 0, exact: 0, sign: 0, played: 0 });
+  for (const p of P.preds) {
+    const m = db.calendar.find(x => x.j === p.j); if (!m) continue;
+    const u = get(p.uid), pt = prPoints(p, m);
+    u.played++;
+    if (pt !== null) { u.match += pt; const c = prCalc(p, gbResult(m)); if (c === PR_EXACT) u.exact++; else if (c === PR_SIGN) u.sign++; }
+  }
+  for (const f of P.finals) { const t = prFinalOut(f).total; get(f.uid).final += t || 0; }
+  return Object.values(by).map(u => ({ ...u, total: Math.round((u.match + u.final) * 100) / 100 })).sort((a, b) => b.total - a.total || b.exact - a.exact || a.name.localeCompare(b.name));
+}
+function prFinalFields(b) { // valida los 6 campos de la porra final. Vacío = sin predicción en ese campo
+  const names = gbScNames(), v = {};
+  for (const k of PR_PLAYER_KEYS) {
+    const s = String(b[k] == null ? '' : b[k]).trim();
+    if (!s) { v[k] = null; continue; }
+    const n = names.find(x => norm(x) === norm(s));
+    if (!n) return { error: 'Jugador no válido en «' + PR_LABELS[k] + '»' };
+    v[k] = n;
+  }
+  const num = (k, lo, hi) => {
+    if (b[k] === '' || b[k] == null) { v[k] = null; return null; }
+    const n = Number(b[k]);
+    if (typeof b[k] === 'boolean' || !Number.isInteger(n) || n < lo || n > hi) return 'Número no válido en «' + PR_LABELS[k] + '» (de ' + lo + ' a ' + hi + ')';
+    v[k] = n; return null;
+  };
+  const e = num('position', 1, prTeams()) || num('conceded', 0, 999);
+  if (e) return { error: e };
+  if (PR_KEYS.every(k => v[k] === null)) return { error: 'Rellena al menos una predicción' };
+  return { v };
+}
+const prNow = () => new Date().toISOString();
+function prUpsertPred(j, uid, gf, gc) {
+  const P = PR(), cur = P.preds.find(p => p.j === j && p.uid === uid);
+  if (cur) { cur.gf = gf; cur.gc = gc; cur.upd = prNow(); return cur; }
+  const p = { id: db.nextId++, j, uid, gf, gc, at: prNow() };
+  P.preds.push(p);
+  return p;
+}
+
+// ---- Público ----
+app.get('/api/porra', (req, res) => {
+  const d = String(req.query.d || '').slice(0, 80), me = d && gbUser(d), P = PR(), act = prActive(), cal = prCal();
+  const out = { me: me ? me.name : null, exact: PR_EXACT, sign: PR_SIGN, teams: prTeams(), squad: gbScNames(), labels: PR_LABELS, keys: PR_KEYS, now: Date.now() };
+  out.active = null; out.mine = null; out.who = []; out.revealed = [];
+  if (act) {
+    const closed = prClosed(act), k = prKick(act), preds = P.preds.filter(p => p.j === act.j), mine = me && preds.find(p => p.uid === me.id);
+    out.active = { j: act.j, date: act.date, time: act.time || '', rival: act.rival, field: act.field || '', kick: new Date(k.t).toISOString(), kickKnown: k.known, closed, lock: P.locks[act.j] || 'auto', hasResult: !!gbResult(act) };
+    out.mine = mine ? { gf: mine.gf, gc: mine.gc } : null;
+    out.who = preds.map(p => prName(p.uid)).sort((a, b) => a.localeCompare(b));
+    if (closed) out.revealed = preds.map(p => ({ name: prName(p.uid), gf: p.gf, gc: p.gc, me: !!me && p.uid === me.id })).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  out.history = cal.filter(m => gbResult(m)).reverse().map(m => ({
+    j: m.j, date: m.date, rival: m.rival, result: gbResult(m),
+    preds: P.preds.filter(p => p.j === m.j).map(p => ({ name: prName(p.uid), gf: p.gf, gc: p.gc, pts: prPoints(p, m), me: !!me && p.uid === me.id })).sort((a, b) => (b.pts || 0) - (a.pts || 0) || a.name.localeCompare(b.name))
+  }));
+  out.mineAll = me ? P.preds.filter(p => p.uid === me.id).map(p => { const m = db.calendar.find(x => x.j === p.j); return m ? { j: m.j, date: m.date, rival: m.rival, gf: p.gf, gc: p.gc, result: gbResult(m), pts: prPoints(p, m) } : null; }).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date) || b.j - a.j) : [];
+  out.ranking = prTotals().map(u => ({ ...u, uid: undefined, me: !!me && u.uid === me.id }));
+  const myF = me && P.finals.find(f => f.uid === me.id);
+  out.final = { open: P.cfg.open, pts: P.cfg.pts, tol: PR_FINAL_TOL, result: prRes(), mine: myF ? prFinalOut(myF) : null, all: P.cfg.open ? [] : P.finals.map(prFinalOut).sort((a, b) => a.name.localeCompare(b.name)), count: P.finals.length };
+  res.json(out);
+});
+// Una predicción por persona y partido; se puede cambiar hasta que empiece (o el admin cierre la porra)
+app.post('/api/porra/pred', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device);
+  if (!user) return bad(res, 'Pon tu nombre de GarraBet para jugar');
+  const act = prActive();
+  if (!act) return bad(res, 'No hay ningún partido pendiente en el calendario');
+  if (req.body.j != null && +req.body.j !== act.j) return bad(res, 'Ese partido ya no es el activo. Recarga la página');
+  if (prClosed(act)) return bad(res, 'La porra de este partido ya está cerrada');
+  const gf = prGoals(req.body.gf), gc = prGoals(req.body.gc);
+  if (gf === null || gc === null) return bad(res, 'Pon los goles de los dos equipos (de 0 a ' + PR_MAX_GOALS + ')');
+  prUpsertPred(act.j, user.id, gf, gc);
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/porra/final', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device), P = PR();
+  if (!user) return bad(res, 'Pon tu nombre de GarraBet para jugar');
+  if (!P.cfg.open) return bad(res, 'La porra final ya está cerrada');
+  const r = prFinalFields(req.body || {});
+  if (r.error) return bad(res, r.error);
+  const cur = P.finals.find(f => f.uid === user.id);
+  if (cur) Object.assign(cur, r.v, { upd: prNow() }); else P.finals.push({ id: db.nextId++, uid: user.id, ...r.v, at: prNow() });
+  await save();
+  res.json({ ok: true });
+});
+
+// ---- Admin ----
+app.get('/api/porra-admin/all', admin, (_, res) => {
+  const P = PR(), act = prActive();
+  res.json({
+    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    activeJ: act ? act.j : null, forceJ: P.cfg.forceJ, squad: gbScNames(), teams: prTeams(), labels: PR_LABELS, keys: PR_KEYS,
+    matches: prCal().map(m => ({
+      j: m.j, date: m.date, time: m.time || '', rival: m.rival, result: gbResult(m), closed: prClosed(m), lock: P.locks[m.j] || 'auto', kickKnown: prKick(m).known,
+      preds: P.preds.filter(p => p.j === m.j).map(p => ({ id: p.id, uid: p.uid, name: prName(p.uid), gf: p.gf, gc: p.gc, calc: prCalc(p, gbResult(m)), adj: Number.isFinite(p.adj) ? p.adj : null, pts: prPoints(p, m), at: p.at }))
+    })),
+    cfg: { open: P.cfg.open, pts: P.cfg.pts, result: prRes(), tol: PR_FINAL_TOL },
+    finals: P.finals.map(prFinalOut),
+    ranking: prTotals().map(u => ({ ...u }))
+  });
+});
+// Resultado real: se guarda en el Calendario (el mismo que usa GarraBet), así todo se calcula solo y a la vez
+app.put('/api/porra-admin/result/:j', admin, async (req, res) => {
+  const m = db.calendar.find(x => x.j === +req.params.j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  if (req.body.clear || (req.body.gf === '' && req.body.gc === '')) m.result = '';
+  else {
+    const gf = prGoals(req.body.gf), gc = prGoals(req.body.gc);
+    if (gf === null || gc === null) return bad(res, 'Pon los goles de los dos equipos (de 0 a ' + PR_MAX_GOALS + ')');
+    m.result = gf + '-' + gc;
+  }
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/porra-admin/pred', admin, async (req, res) => { // crear o corregir la predicción de una persona (también con el partido cerrado)
+  const j = +req.body.j, uid = +req.body.uid, m = db.calendar.find(x => x.j === j);
+  if (!m) return bad(res, 'Jornada no encontrada');
+  if (!db.garrabet.users.some(u => u.id === uid)) return bad(res, 'Persona no encontrada');
+  const gf = prGoals(req.body.gf), gc = prGoals(req.body.gc);
+  if (gf === null || gc === null) return bad(res, 'Pon los goles de los dos equipos (de 0 a ' + PR_MAX_GOALS + ')');
+  prUpsertPred(j, uid, gf, gc);
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/porra-admin/pred/:id', admin, async (req, res) => {
+  const P = PR(), n = P.preds.length;
+  P.preds = P.preds.filter(p => p.id !== +req.params.id);
+  if (P.preds.length === n) return bad(res, 'Predicción no encontrada');
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/porra-admin/pred/:id/points', admin, async (req, res) => { // corregir a mano los puntos de una predicción (vacío = volver al cálculo automático)
+  const p = PR().preds.find(x => x.id === +req.params.id), v = prAdj(req.body.pts);
+  if (!p) return bad(res, 'Predicción no encontrada');
+  if (v === undefined) return bad(res, 'Puntos no válidos');
+  if (v === null) delete p.adj; else p.adj = v;
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/porra-admin/recalc', admin, async (req, res) => { // quita las correcciones manuales: vuelve el cálculo automático (5 / 3 / 0)
+  const P = PR(), j = req.body && req.body.j != null && req.body.j !== '' ? +req.body.j : null;
+  snapshot('antes-de-recalcular-porra');
+  for (const p of P.preds) if (j === null || p.j === j) delete p.adj;
+  if (j === null && req.body.final) for (const f of P.finals) delete f.adj;
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/porra-admin/lock/:j', admin, async (req, res) => { // auto = se cierra solo al empezar; open/closed = forzar
+  const j = +req.params.j, mode = String(req.body.mode || '');
+  if (!db.calendar.some(m => m.j === j)) return bad(res, 'Jornada no encontrada');
+  if (!['auto', 'open', 'closed'].includes(mode)) return bad(res, 'Opción no válida');
+  const L = PR().locks;
+  if (mode === 'auto') delete L[j]; else L[j] = mode;
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/porra-admin/active', admin, async (req, res) => { // null = automático (el siguiente sin resultado)
+  const c = PR().cfg, j = req.body.j === null || req.body.j === '' || req.body.j === undefined ? null : +req.body.j;
+  if (j !== null && !db.calendar.some(m => m.j === j)) return bad(res, 'Jornada no encontrada');
+  c.forceJ = j;
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/porra-admin/final-cfg', admin, async (req, res) => { // abrir/cerrar la porra final, puntos por acierto y resultados reales
+  const c = PR().cfg, b = req.body || {};
+  if (typeof b.open === 'boolean') c.open = b.open;
+  if (b.pts) for (const k of PR_KEYS) if (b.pts[k] !== undefined) { const v = Number(String(b.pts[k]).replace(',', '.')); if (!Number.isFinite(v) || v < 0 || v > 1000) return bad(res, 'Puntos no válidos en «' + PR_LABELS[k] + '»'); c.pts[k] = Math.round(v * 100) / 100; }
+  if (b.result) {
+    const names = gbScNames(), out = {};
+    for (const k of PR_PLAYER_KEYS) {
+      const arr = Array.isArray(b.result[k]) ? b.result[k] : [];
+      out[k] = [...new Set(arr.map(x => names.find(n => norm(n) === norm(x))).filter(Boolean))];
+    }
+    for (const k of ['position', 'conceded']) {
+      const v = b.result[k];
+      if (v === '' || v == null) out[k] = null;
+      else { const n = Number(v); if (typeof v === 'boolean' || !Number.isInteger(n) || n < (k === 'position' ? 1 : 0) || n > (k === 'position' ? prTeams() : 999)) return bad(res, 'Resultado no válido en «' + PR_LABELS[k] + '»'); out[k] = n; }
+    }
+    c.result = out;
+  }
+  await save();
+  res.json({ ok: true });
+});
+app.put('/api/porra-admin/final', admin, async (req, res) => { // crear o corregir la porra final de una persona (aunque esté cerrada)
+  const P = PR(), uid = +req.body.uid;
+  if (!db.garrabet.users.some(u => u.id === uid)) return bad(res, 'Persona no encontrada');
+  const r = prFinalFields(req.body || {});
+  if (r.error) return bad(res, r.error);
+  const cur = P.finals.find(f => f.uid === uid);
+  if (cur) Object.assign(cur, r.v, { upd: prNow() }); else P.finals.push({ id: db.nextId++, uid, ...r.v, at: prNow() });
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/porra-admin/final/:id', admin, async (req, res) => {
+  const P = PR();
+  if (!P.finals.some(f => f.id === +req.params.id)) return bad(res, 'Porra final no encontrada');
+  snapshot('antes-de-borrar-porra-final');
+  P.finals = P.finals.filter(f => f.id !== +req.params.id);
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/porra-admin/final/:id/points', admin, async (req, res) => {
+  const f = PR().finals.find(x => x.id === +req.params.id), v = prAdj(req.body.pts);
+  if (!f) return bad(res, 'Porra final no encontrada');
+  if (v === undefined) return bad(res, 'Puntos no válidos');
+  if (v === null) delete f.adj; else f.adj = v;
+  await save();
+  res.json({ ok: true });
+});
+
 // ---- Mantener despierto (Render free duerme la web tras ~15 min sin visitas) ----
 app.get('/healthz', (_, res) => res.send('ok'));
 const SELF = process.env.KEEPALIVE_URL || process.env.RENDER_EXTERNAL_URL; // Render pone RENDER_EXTERNAL_URL solo
