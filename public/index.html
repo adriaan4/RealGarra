@@ -767,7 +767,7 @@ const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').
 const b64=k=>{const p='='.repeat((4-k.length%4)%4),r=atob((k+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
 const pushOK='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
 let pushKey='';
-const sendSub=(sub)=>api('/api/push/subscribe','POST',{sub:sub.toJSON()});
+const sendSub=(sub)=>api('/api/push/subscribe','POST',{sub:sub.toJSON(),device:dev});
 async function pushUI(){
  const box=$('#pushBox'),btn=$('#pushBtn'),msg=$('#pushMsg');
  if(!pushKey)return;
@@ -777,7 +777,7 @@ async function pushUI(){
  if(Notification.permission==='denied'){btn.hidden=true;msg.textContent='Los avisos están bloqueados. Actívalos en los ajustes del navegador o del móvil para esta web.';return}
  btn.hidden=false;
  if(sub&&Notification.permission==='granted'){btn.textContent='🔕 Desactivar avisos';btn.className='ghost';msg.textContent='Avisos activados en este dispositivo.'}
- else{btn.textContent='🔔 Activar avisos';btn.className='';msg.textContent='Te avisamos de nuevos partidos, recordatorios y del MVP.'}
+ else{btn.textContent='🔔 Activar avisos';btn.className='';msg.textContent='Te avisamos de nuevos partidos, recordatorios, MVP y cuando ganes una apuesta.'}
 }
 $('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
  try{
@@ -787,7 +787,7 @@ $('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
    if(await Notification.requestPermission()!=='granted'){msg.textContent='No has dado permiso para los avisos.';return pushUI()}
    const s=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
    await sendSub(s);
-   try{await reg.showNotification('¡Avisos activados! 🔔',{body:'Te avisaremos de partidos, MVP y del Garro de Oro. ¡Vamos Garra! 🦁',icon:'/icon-192.png',badge:'/badge.png',vibrate:[120,60,120],tag:'bienvenida'})}catch{}}
+   try{await reg.showNotification('¡Avisos activados! 🔔',{body:'Te avisaremos de partidos, MVP, Garro de Oro y de tus apuestas ganadas. ¡Vamos Garra! 🦁',icon:'/icon-192.png',badge:'/badge.png',vibrate:[120,60,120],tag:'bienvenida'})}catch{}}
   await pushUI()
  }catch(e){msg.textContent='No se pudieron activar los avisos: '+e.message}};
 (async()=>{
