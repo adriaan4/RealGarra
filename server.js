@@ -914,6 +914,7 @@ function prTotals() { // puntos de cada persona: partidos + final
     if (pt !== null) { u.match += pt; const c = prCalc(p, gbResult(m)); if (c === PR_EXACT) u.exact++; else if (c === PR_SIGN) u.sign++; }
   }
   for (const f of P.finals) { const t = prFinalOut(f).total; get(f.uid).final += t || 0; }
+  for (const gu of db.garrabet.users) get(gu.id); // todos los que tienen nombre (de GarraBet o de la porra) salen también en la clasificación de la porra, con 0 si aún no han jugado
   return Object.values(by).map(u => ({ ...u, total: Math.round((u.match + u.final) * 100) / 100 })).sort((a, b) => b.total - a.total || b.exact - a.exact || a.name.localeCompare(b.name));
 }
 function prFinalFields(b) { // valida los 6 campos de la porra final. Vacío = sin predicción en ese campo
@@ -970,7 +971,7 @@ app.get('/api/porra', (req, res) => {
 // Una predicción por persona y partido; se puede cambiar hasta que empiece (o el admin cierre la porra)
 app.post('/api/porra/pred', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device);
-  if (!user) return bad(res, 'Pon tu nombre de GarraBet para jugar');
+  if (!user) return bad(res, 'Pon tu nombre para jugar (arriba, en «Pon tu nombre para jugar»)');
   const act = prActive();
   if (!act) return bad(res, 'No hay ningún partido pendiente en el calendario');
   if (req.body.j != null && +req.body.j !== act.j) return bad(res, 'Ese partido ya no es el activo. Recarga la página');
@@ -983,7 +984,7 @@ app.post('/api/porra/pred', async (req, res) => {
 });
 app.post('/api/porra/final', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device), P = PR();
-  if (!user) return bad(res, 'Pon tu nombre de GarraBet para jugar');
+  if (!user) return bad(res, 'Pon tu nombre para jugar (arriba, en «Pon tu nombre para jugar»)');
   if (!P.cfg.open) return bad(res, 'La porra final ya está cerrada');
   const r = prFinalFields(req.body || {});
   if (r.error) return bad(res, r.error);
