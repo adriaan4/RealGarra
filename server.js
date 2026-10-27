@@ -223,7 +223,13 @@ async function gbNotifyWins() {
 }
 setInterval(() => { gbNotifyWins().catch(e => console.error('Apuestas ganadas: ' + e.message)); }, 20000);
 // Avisos PRIVADOS: solo llegan a los dispositivos que el admin ha activado (apuestas, combinadas y porras de la gente)
-const notifyAdmin = (title, body, tag = 'admin') => sendPush('adminSubs', JSON.stringify({ title, body, url: '/#admin', tag })).catch(e => console.error('Aviso admin: ' + e.message));
+const notifyAdmin = (title, body, tag = 'admin') => {
+  if (!PUSH) { console.warn('Aviso admin NO enviado (' + title + '): faltan las claves VAPID en el servidor'); return Promise.resolve(); }
+  if (!db.adminSubs.length) { console.warn('Aviso admin NO enviado (' + title + '): ningún dispositivo de admin activado (pulsa «Activar mis avisos» en Admin → Más)'); return Promise.resolve(); }
+  return sendPush('adminSubs', JSON.stringify({ title, body, url: '/#admin', tag }))
+    .then(r => console.log('Aviso admin «' + title + '»: enviado a ' + r.sent + ' de ' + (r.sent + r.removed) + ' dispositivo(s)'))
+    .catch(e => console.error('Aviso admin: ' + e.message));
+};
 
 // Recordatorio automático cuando falten 24 h o menos para el partido (una sola vez por partido)
 setInterval(async () => {
@@ -336,6 +342,13 @@ app.post('/api/push/admin-unsubscribe', admin, async (req, res) => {
   db.adminSubs = db.adminSubs.filter(x => x.endpoint !== ep);
   if (db.adminSubs.length !== n) await save();
   res.json({ ok: true });
+});
+app.post('/api/push/admin-test', admin, async (req, res) => { // aviso de prueba para comprobar que te llegan
+  if (!PUSH) return res.json({ ok: false, reason: 'novapid' });
+  const devices = db.adminSubs.length;
+  if (!devices) return res.json({ ok: false, reason: 'nodevices' });
+  const r = await sendPush('adminSubs', JSON.stringify({ title: '🔔 Aviso de prueba', body: 'Si ves esto, te llegará cada apuesta, combinada y porra.', url: '/#admin', tag: 'adm-test' }));
+  res.json({ ok: r.sent > 0, devices, sent: r.sent, removed: r.removed });
 });
 app.post('/api/push/admin-status', admin, (req, res) => { // ¿este dispositivo ya recibe los avisos del admin?
   const ep = String((req.body && req.body.endpoint) || '');
