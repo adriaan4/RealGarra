@@ -1179,8 +1179,8 @@ function prTabs(){
 // ---- Nombre: es el de GarraBet (misma lista de usuarios) ----
 function prRenderName(){
  const el=$('#prName');if(!el||isIn(el))return;
- el.innerHTML=PRS.me?`<p class="sub">Jugando como <b>${esc(PRS.me)}</b> · el mismo nombre que en GarraBet</p>`
-  :`<div class="pv"><b>Pon tu nombre para jugar</b><p class="sub" style="font-size:16px">Es el mismo nombre que usas en GarraBet: si ya lo tienes en este móvil te saldrá solo. Se queda fijo en este dispositivo.</p><div class="row"><input id="prNameIn" maxlength="20" placeholder="Tu nombre" autocomplete="off" style="flex:1;min-width:180px"><button id="prNameBtn" type="button">Guardar nombre</button></div></div>`}
+ el.innerHTML=PRS.me?`<p class="sub">Jugando como <b>${esc(PRS.me)}</b> · el mismo nombre en GarraBet y en la porra</p>`
+  :`<div class="pv" id="prNameBox" style="border:2px solid var(--gold)"><b>👋 Primero, pon tu nombre para jugar</b><p class="sub" style="font-size:16px">Sin nombre no puedes guardar tu porra. Es el mismo nombre que en GarraBet: lo pones una vez y te sale en las apuestas, en la porra y en las clasificaciones. Si ya lo tienes en este móvil te saldrá solo. Se queda fijo en este dispositivo.</p><div class="row"><input id="prNameIn" maxlength="20" placeholder="Tu nombre" autocomplete="off" style="flex:1;min-width:180px"><button id="prNameBtn" type="button">Guardar nombre</button></div></div>`}
 
 // ---- 1. Porra de partidos ----
 const tm=iso=>new Date(iso).toLocaleString('es-ES',{timeZone:'Europe/Madrid',weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
@@ -1198,8 +1198,8 @@ function prRenderMatch(){
   ${closed?`<div class="prlock">🔒 <b style="display:inline;font-size:inherit">Porra cerrada.</b> ${m?`Tu porra: <b style="display:inline;font-size:inherit">${m.gf}-${m.gc}</b>.`:'No hiciste porra de este partido.'} ⏳ Pendiente del resultado real.</div>`
   :`<p class="prinfo">${a.kickKnown?'Se cierra al empezar el partido ('+tm(a.kick)+')':'Aún sin hora confirmada: se cierra a las 00:00 del día del partido'}<br><span class="prcd" id="prCd"></span></p>
   ${m?`<div class="prok">✅ Tu porra: <b style="display:inline;font-size:inherit">${m.gf}-${m.gc}</b>. Puedes cambiarla hasta que empiece el partido.</div>`:''}
-  <div class="row" style="justify-content:center;margin-top:12px"><button type="button" id="prSave" style="min-width:230px"${PRS.me?'':' disabled'}>${m?'Modificar mi porra':'Guardar mi porra'}</button></div>
-  ${PRS.me?'':'<p class="prinfo" style="opacity:.85">Pon tu nombre arriba para poder jugar.</p>'}`}
+  <div class="row" style="justify-content:center;margin-top:12px"><button type="button" id="prSave" style="min-width:230px">${m?'Modificar mi porra':'Guardar mi porra'}</button></div>
+  ${PRS.me?'':'<p class="prinfo" style="opacity:.85">⚠️ Pon tu nombre arriba para poder guardar tu porra.</p>'}`}
  </div>`;
  who.innerHTML=closed?(PRS.revealed.length?`<h3 style="margin:14px 0 4px;font:800 22px 'Barlow Condensed',sans-serif;color:var(--gold)">Porras de este partido</h3><div class="prchips">${PRS.revealed.map(r=>`<span class="prchip${r.me?' me':''}">${esc(r.name)} <b>${r.gf}-${r.gc}</b></span>`).join('')}</div>`:'<p class="sub">Nadie hizo porra de este partido.</p>')
   :`<p class="sub" style="font-size:16px">${PRS.who.length?'Ya han jugado ('+PRS.who.length+'):':'Todavía no ha jugado nadie. ¡Sé el primero!'} <span style="opacity:.7">Los resultados se verán cuando empiece el partido.</span></p>${PRS.who.length?`<div class="prchips">${PRS.who.map(n=>`<span class="prchip${n===PRS.me?' me':''}">${esc(n)}</span>`).join('')}</div>`:''}`}
@@ -1229,7 +1229,7 @@ function prRenderFinal(){
   return `<select data-prf="${k}"${open&&PRS.me?'':' disabled'}><option value="">— Elige jugador —</option>${PRS.squad.map(n=>`<option${n===v?' selected':''}>${esc(n)}</option>`).join('')}</select>`};
  const info=k=>{const r=resTxt(k,F.result),g=m&&m.pts[k];return r?`<div class="prres">✅ Resultado real: <b>${esc(r)}</b>${m?` · tus puntos: <b>${pts(g)}</b>`:''}</div>`:''};
  el.innerHTML=`<p class="sub">${open?'Predice la temporada. Puedes cambiarla cuando quieras hasta que el admin cierre la porra final.':'🔒 La porra final está cerrada.'} Cada acierto vale <b>${pts(F.pts.scorer)}</b> puntos (según el apartado). En posición y goles de Antonio, quedarte cerca da la mitad.</p>
-  ${PRS.me?'':'<p class="prinfo" style="opacity:.85">Pon tu nombre arriba para poder jugar.</p>'}
+  ${PRS.me?'':'<p class="prinfo" style="opacity:.85">⚠️ Pon tu nombre arriba para poder guardar tu porra.</p>'}
   <div class="prf">${PRS.keys.map(k=>`<div class="prfld"><label>${esc(L[k])}<small>${pts(F.pts[k])} pts</small></label>${ctl(k)}${info(k)}</div>`).join('')}</div>
   ${m&&m.total!=null?`<div class="prok">Total de tu porra final: <b style="display:inline;font-size:inherit">${pts(m.total)} puntos</b></div>`:''}
   ${open&&PRS.me?`<div class="row" style="justify-content:center"><button type="button" id="prFSave" style="min-width:230px">${m?'Modificar mi porra final':'Guardar mi porra final'}</button></div>`:''}
@@ -1249,6 +1249,7 @@ function prRenderMine(){
   :`<p class="sub">Aún no has hecho tu porra final.${PRS.final.open?' Hazla en la pestaña «Porra final».':''}</p>`}`}
 
 // ---- Eventos ----
+const prAskName=()=>{toast('Pon tu nombre arriba para poder jugar');const i=$('#prNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}};
 document.addEventListener('click',async e=>{
  const t=e.target.closest('.prtab');
  if(t){prTab=t.dataset.pt;try{sessionStorage.prTab=prTab}catch{}prTabs();return}
@@ -1257,15 +1258,16 @@ document.addEventListener('click',async e=>{
  const nb=e.target.closest('#prNameBtn');
  if(nb){try{await api('/api/garrabet/name','POST',{device:dev,name:$('#prNameIn').value});toast('Nombre guardado');lastJ='';await load();await prLoad(true)}catch(err){toast(err.message)}return}
  const sv=e.target.closest('#prSave');
- if(sv){try{const a=PRS.active;await api('/api/porra/pred','POST',{device:dev,j:a.j,gf:prDraft.gf,gc:prDraft.gc});toast('¡Porra guardada! ✅');flash(sv);prDraft=null;await prLoad(true)}catch(err){toast(err.message);prLoad(true)}return}
+ if(sv){if(!PRS.me){prAskName();return}try{const a=PRS.active;await api('/api/porra/pred','POST',{device:dev,j:a.j,gf:prDraft.gf,gc:prDraft.gc});toast('¡Porra guardada! ✅');flash(sv);prDraft=null;await prLoad(true)}catch(err){toast(err.message);prLoad(true)}return}
  const fs=e.target.closest('#prFSave');
- if(fs){try{const b={device:dev};document.querySelectorAll('#prFinal [data-prf]').forEach(i=>b[i.dataset.prf]=i.value);await api('/api/porra/final','POST',b);prFin=null;toast('¡Porra final guardada! ✅');flash(fs);await prLoad(true)}catch(err){toast(err.message)}return}
+ if(fs){if(!PRS.me){prAskName();return}try{const b={device:dev};document.querySelectorAll('#prFinal [data-prf]').forEach(i=>b[i.dataset.prf]=i.value);await api('/api/porra/final','POST',b);prFin=null;toast('¡Porra final guardada! ✅');flash(fs);await prLoad(true)}catch(err){toast(err.message)}return}
 });
 document.addEventListener('input',e=>{
  const g=e.target.closest&&e.target.closest('[data-prg]');if(g&&prDraft){prDraft[g.dataset.prg]=g.value;return}
  const f=e.target.closest&&e.target.closest('#prFinal [data-prf]');if(f){prFin=prFin||{};document.querySelectorAll('#prFinal [data-prf]').forEach(i=>prFin[i.dataset.prf]=i.value)}
 });
 document.addEventListener('change',e=>{const f=e.target.closest&&e.target.closest('#prFinal [data-prf]');if(f){prFin=prFin||{};document.querySelectorAll('#prFinal [data-prf]').forEach(i=>prFin[i.dataset.prf]=i.value)}});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const id=e.target&&e.target.id;if(id==='prNameIn'){e.preventDefault();$('#prNameBtn').click()}else if(id==='gbNameIn'){e.preventDefault();$('#gbNameBtn').click()}});
 addEventListener('hashchange',()=>{if(location.hash==='#porra')prLoad(true)});
 if(location.hash==='#porra')prLoad(true);
 setInterval(()=>{if(location.hash==='#porra'&&!document.hidden)prLoad()},30000);
