@@ -788,6 +788,68 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
   await save();
   res.json({ ok: true });
 });
+// Importar cuotas de varias jornadas de golpe desde un JSON (goles anotados / encajados / totales; también 1X2, doble oportunidad y ambos marcan).
+// Solo se cambia lo que viene en el JSON: el resto de cuotas de esa jornada (goleadores, amarillas, lo que no se nombre) se queda como está. Si algo falla, no se cambia nada.
+const GB_IMP_MK = { scored: 'scored', anotados: 'scored', anotado: 'scored', garra: 'scored', conceded: 'conceded', encajados: 'conceded', encajado: 'conceded', rival: 'conceded', total: 'total', totales: 'total' };
+const GB_IMP_SIDE = { o: 'o', over: 'o', mas: 'o', u: 'u', under: 'u', menos: 'u' };
+const gbImpKey = k => norm(k).toLowerCase();
+function gbImportPlan(body) {
+  const src = body && typeof body === 'object' && !Array.isArray(body) && body.odds && typeof body.odds === 'object' ? body.odds : body;
+  const entries = Array.isArray(src) ? src.map(x => [x && x.j, x]) : (src && typeof src === 'object' ? Object.entries(src) : []);
+  if (!entries.length) throw new Error('El JSON no trae ninguna jornada');
+  const plan = [];
+  for (const [key, v] of entries) {
+    const j = parseInt(String(key).replace(/\D/g, ''), 10);
+    if (!db.calendar.some(m => m.j === j)) throw new Error('La jornada «' + key + '» no existe en el calendario');
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('Jornada ' + j + ': tiene que ser un objeto con anotados / encajados / totales');
+    const p = { j, lines: [], res: null, dc: null, btts: null };
+    for (const [k0, val] of Object.entries(v)) {
+      const k = gbImpKey(k0), mk = GB_IMP_MK[k];
+      if (['j', 'rival', 'partido', 'jornada'].includes(k)) continue;
+      if (mk) {
+        if (!val || typeof val !== 'object' || Array.isArray(val)) throw new Error('Jornada ' + j + ', ' + k0 + ': pon las líneas, por ejemplo {"0.5": {"o": 1.2, "u": 4}}');
+        for (const [l0, c] of Object.entries(val)) {
+          const n = Number(String(l0).replace(',', '.')), line = Number.isFinite(n) ? n.toFixed(1) : '';
+          if (!GB_LINES[mk].includes(line)) throw new Error('Jornada ' + j + ', ' + k0 + ': la línea «' + l0 + '» no existe (valen de ' + GB_LINES[mk][0] + ' a ' + GB_LINES[mk][GB_LINES[mk].length - 1] + ')');
+          let o, u;
+          if (Array.isArray(c)) [o, u] = c;
+          else if (c && typeof c === 'object') for (const [s0, x] of Object.entries(c)) { const s = GB_IMP_SIDE[gbImpKey(s0)]; if (!s) throw new Error('Jornada ' + j + ', ' + k0 + ' ' + l0 + ': «' + s0 + '» no vale (usa o / u, o mas / menos)'); if (s === 'o') o = x; else u = x; }
+          else throw new Error('Jornada ' + j + ', ' + k0 + ' ' + l0 + ': pon {"o": cuota, "u": cuota} o [más, menos]');
+          const po = o === undefined ? undefined : gbOdd(o), pu = u === undefined ? undefined : gbOdd(u);
+          if (po === undefined && o !== undefined || pu === undefined && u !== undefined) throw new Error('Jornada ' + j + ', ' + k0 + ' ' + l0 + ': cuota no válida (mínimo 1,01)');
+          p.lines.push({ mk, line, o: po, u: pu });
+        }
+      } else if (['res', 'resultado', '1x2'].includes(k)) {
+        p.res = {};
+        for (const [s0, x] of Object.entries(val || {})) { const s = String(s0).toUpperCase(); if (!['1', 'X', '2'].includes(s)) throw new Error('Jornada ' + j + ', resultado: «' + s0 + '» no vale (1, X, 2)'); const o = gbOdd(x); if (o === undefined) throw new Error('Jornada ' + j + ', resultado ' + s + ': cuota no válida (mínimo 1,01)'); p.res[s] = o; }
+      } else if (['dc', 'doble', 'dobleoportunidad'].includes(k)) {
+        p.dc = {};
+        for (const [s0, x] of Object.entries(val || {})) { const s = String(s0).toUpperCase(); if (!GB_DC[s]) throw new Error('Jornada ' + j + ', doble oportunidad: «' + s0 + '» no vale (1X, 12, X2)'); const o = gbOdd(x); if (o === undefined) throw new Error('Jornada ' + j + ', doble oportunidad ' + s + ': cuota no válida (mínimo 1,01)'); p.dc[s] = o; }
+      } else if (['btts', 'ambosmarcan'].includes(k)) {
+        p.btts = {};
+        for (const [s0, x] of Object.entries(val || {})) { const s = { y: 'y', si: 'y', n: 'n', no: 'n' }[gbImpKey(s0)]; if (!s) throw new Error('Jornada ' + j + ', ambos marcan: «' + s0 + '» no vale (y / n, o si / no)'); const o = gbOdd(x); if (o === undefined) throw new Error('Jornada ' + j + ', ambos marcan ' + s + ': cuota no válida (mínimo 1,01)'); p.btts[s] = o; }
+      } else throw new Error('Jornada ' + j + ': «' + k0 + '» no se reconoce (usa anotados, encajados, totales; opcional res, dc, btts)');
+    }
+    plan.push(p);
+  }
+  return plan;
+}
+app.post('/api/garrabet-admin/import-odds', admin, async (req, res) => {
+  let plan;
+  try { plan = gbImportPlan(req.body); } catch (e) { return bad(res, e.message); }
+  snapshot('antes-de-importar-cuotas');
+  let n = 0;
+  for (const p of plan) {
+    const od = db.garrabet.odds[p.j] || (db.garrabet.odds[p.j] = {});
+    for (const k of ['res', 'scored', 'conceded', 'total']) if (!od[k] || typeof od[k] !== 'object') od[k] = {};
+    for (const l of p.lines) { const cur = od[l.mk][l.line] || { o: null, u: null }; if (l.o !== undefined) cur.o = l.o; if (l.u !== undefined) cur.u = l.u; od[l.mk][l.line] = cur; n++; }
+    if (p.res) Object.assign(od.res, p.res);
+    if (p.dc) od.dc = { ...(od.dc || {}), ...p.dc };
+    if (p.btts) od.btts = { ...(od.btts || {}), ...p.btts };
+  }
+  await save();
+  res.json({ ok: true, jornadas: plan.map(p => p.j), lineas: n });
+});
 // Nombre por dispositivo: se elige una vez (único); el admin puede cambiarlo
 app.post('/api/garrabet/name', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), name = String(req.body.name || '').trim().replace(/\s+/g, ' ').toUpperCase().slice(0, 20);

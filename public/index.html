@@ -530,6 +530,12 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
    <div id="gbAdmForm"></div>
   </div></details>
+  <details class="ad"><summary>📥 Importar cuotas desde JSON</summary><div class="adb">
+   <p class="sub">Pega un JSON con las cuotas de goles de varias jornadas a la vez (anotados, encajados y totales). Solo cambia lo que pongas: el resto de cuotas de esa jornada se queda como está. Si hay algún error no se cambia nada y te dice dónde está.</p>
+   <textarea id="gbImpTxt" class="cnT" style="min-height:220px;font-family:monospace;font-size:14px" spellcheck="false" placeholder='{"2": {"anotados": {"0.5": {"o": 1.1, "u": 6}}, "encajados": {...}, "totales": {...}}}'></textarea>
+   <div class="row"><input id="gbImpFile" type="file" accept=".json,application/json"><button type="button" class="ghost" id="gbImpEx">Ver ejemplo</button><button type="button" class="ghost" id="gbImpCur">Cargar las actuales</button><button type="button" id="gbImpGo">Importar cuotas</button></div>
+   <p class="msg" id="gbImpMsg"></p>
+  </div></details>
   <details class="ad" id="gbAdmDet"><summary>🎟️ Apuestas de la gente</summary><div class="adb">
    <div class="row"><select id="gbFJ" aria-label="Filtrar por jornada"></select><select id="gbFU" aria-label="Filtrar por persona"></select><button id="gbRefresh" type="button" class="ghost">Actualizar</button></div>
    <div id="gbAdmBets"></div>
@@ -1109,6 +1115,18 @@ $('#gbAdmMatch').onchange=gbAdmFill;
 $('#gbMatch').onchange=renderGB;
 $('#gbMarkets').addEventListener('input',e=>{const i=e.target;if(!i.dataset||!i.dataset.gbo)return;const j=+$('#gbMatch').value,o=gbOtherSc[j]||(gbOtherSc[j]={a:6,b:0});let v=Math.floor(Number(i.value));if(!Number.isFinite(v)||v<0)v=0;if(v>9)v=9;o[i.dataset.gbo]=v;const b=$('#gbOtherBtn');if(b)b.innerHTML=gbOtherBtn(j)});
 $('#gbSlip').addEventListener('input',e=>{if(e.target.id!=='gbStake')return;gbStake=e.target.value;const w=$('#gbWin');if(w)w.textContent=gbM(gbStakeN()*gbTot(gbSlip))});
+// Importar cuotas desde JSON (varias jornadas de golpe)
+$('#gbImpFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#gbImpTxt').value=await f.text();$('#gbImpMsg').textContent='Archivo cargado: pulsa «Importar cuotas»'}};
+$('#gbImpEx').onclick=()=>{const L=(o,u)=>({o,u});$('#gbImpTxt').value=JSON.stringify({
+ "2":{"anotados":{"0.5":L(1.08,8.68),"1.5":L(1.49,2.71),"2.5":L(2.55,1.54)},"encajados":{"0.5":L(1.11,7.1),"1.5":L(1.62,2.37)},"totales":{"1.5":L(1.04,12.33),"2.5":L(1.22,4.57),"3.5":L(1.59,2.43)}},
+ "4":{"anotados":{"0.5":[1.1,7],"1.5":[1.5,2.6]},"totales":{"2.5":[1.3,3.8]}}},null,1);
+ $('#gbImpMsg').textContent='Ejemplo: o = más de, u = menos de. Las líneas valen de 0.5 a 7.5 (anotados y encajados) y de 1.5 a 11.5 (totales). Cada línea se puede escribir como [más, menos].'};
+$('#gbImpCur').onclick=()=>{const out={},O=(S.garrabet||{}).odds||{};Object.keys(O).sort((a,b)=>a-b).forEach(j=>{const g={};for(const [k,n] of [['scored','anotados'],['conceded','encajados'],['total','totales']]){const m={};for(const l of Object.keys(O[j][k]||{})){const c=O[j][k][l];if(c&&(c.o||c.u))m[l]={o:c.o||null,u:c.u||null}}if(Object.keys(m).length)g[n]=m}if(Object.keys(g).length)out[j]=g});
+ $('#gbImpTxt').value=JSON.stringify(out,null,1);$('#gbImpMsg').textContent='Cuotas de goles actuales de cada jornada: edítalas y pulsa «Importar cuotas».'};
+$('#gbImpGo').onclick=async e=>{const b=e.currentTarget,m=$('#gbImpMsg');let o;
+ try{o=JSON.parse($('#gbImpTxt').value)}catch(err){m.textContent='El JSON no es válido: '+err.message;return}
+ try{const r=await adm('/api/garrabet-admin/import-odds','POST',o);m.textContent='✓ Importadas '+r.lineas+' líneas en las jornadas '+r.jornadas.join(', ');gbToast('Cuotas importadas');flash(b);lastJ='';await load();gbAdmFill()}
+ catch(err){m.textContent='❌ '+err.message}};
 $('#gbSave').onclick=async e=>{const b=e.currentTarget,j=+$('#gbAdmMatch').value;
  try{const o={res:{},scored:{},conceded:{},total:{}};
   document.querySelectorAll('#gbAdmForm [data-gbi]').forEach(i=>{const p=i.dataset.gbi.split('|');if(p[0]==='dc'){(o.dc=o.dc||{})[p[1]]=i.value;return}if(p[0]==='scorer'){(o.scorer=o.scorer||{})[p[1]]=i.value;return}if(p[0]==='yellow'){(o.yellow=o.yellow||{})[p[1]]=i.value;return}if(p[0]==='btts'){(o.btts=o.btts||{})[p[1]]=i.value;return}if(p[0]==='res')o.res[p[1]]=i.value;else(o[p[0]][p[1]]=o[p[0]][p[1]]||{})[p[2]]=i.value});

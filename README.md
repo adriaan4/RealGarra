@@ -55,3 +55,20 @@ En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la 
 - En las apuestas (y en la imagen del boleto), las selecciones de goleador y amarilla ponen «ha marcado / no ha marcado» y «ha visto amarilla / no ha visto amarilla» cuando el partido ya está resuelto.
 - Doble oportunidad + 1X2 del mismo partido: no multiplican. Cuenta solo la cuota del 1X2 (por ejemplo «Gana Garra» + «Garra o empate» = cuota de «Gana Garra»). Si se contradicen (por ejemplo «Gana Garra» + «Empate o rival») no se deja hacer el boleto.
 - Resultado exacto: debajo de la parrilla 0-5 hay «Otro resultado», donde se eligen los goles de cada equipo (0-9) con su cuota (más alta fuera de la parrilla, máximo 500).
+
+## GarraBet: importar cuotas desde un JSON
+Admin → GarraBet → «📥 Importar cuotas desde JSON». Pega (o sube) un JSON con una entrada por jornada; solo se cambia lo que pongas y el resto de cuotas de esa jornada se conserva. Si algo está mal no se cambia nada y el mensaje dice dónde.
+```json
+{
+  "2": {
+    "anotados":  { "0.5": { "o": 1.08, "u": 8.68 }, "1.5": [1.49, 2.71] },
+    "encajados": { "0.5": { "o": 1.11, "u": 7.10 } },
+    "totales":   { "2.5": { "o": 1.22, "u": 4.57 } }
+  },
+  "4": { "totales": { "2.5": [1.30, 3.80] } }
+}
+```
+- `o` = más de, `u` = menos de (también vale `mas` / `menos`, o escribir la línea como `[más, menos]`). En inglés también: `scored`, `conceded`, `total`.
+- Líneas: 0.5–7.5 en anotados y encajados, 1.5–11.5 en totales. Cuota mínima 1,01; `null` quita esa cuota.
+- Opcionales: `res` (`"1"`, `"X"`, `"2"`), `dc` (`"1X"`, `"12"`, `"X2"`) y `btts` (`"y"`, `"n"`).
+- «Cargar las actuales» rellena la caja con las cuotas de goles que ya hay, para editarlas y volver a importar. Antes de importar se guarda una copia de seguridad.
