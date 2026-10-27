@@ -794,7 +794,7 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
 // Los partidos del Garra salen solos del Calendario; los del resto de la liga se meten en Admin → GarraBet → «Cuotas automáticas».
 const LG_GARRA = 'Real Garra';
 const LG_SEED = [[1, 'Pachanga FC', 5, 'Potrero FC', 1], [1, 'THE OFFICE', 4, 'Gazilion', 2], [1, 'Bricomaniacos FC', 2, 'Piso Piloto FC', 1], [1, 'Atlético Sheriff', 2, 'Los Chicos Del Patio', 2]]; // jornada 1 de la clasificación (sin los del Garra)
-const LG_PRIOR_MU = 2.1, LG_K = 3, LG_FORM_N = 5, LG_MAXG = 15, LG_MARGIN_DEF = 0.08;
+const LG_PRIOR_MU = 2.1, LG_K = 6, LG_FORM_N = 5, LG_MAXG = 15, LG_MARGIN_DEF = 0.08;
 const r2 = x => Math.round(x * 100) / 100;
 function lgEnsure() { // crea los ajustes y la liga si todavía no existen (también tras importar una copia antigua)
   const g = db.garrabet;
@@ -836,7 +836,7 @@ function lgStats() {
 }
 function lgExpected(rival, st) { // goles esperados de cada equipo en Real Garra - rival
   const find = n => st.teams.find(t => t.key === norm(n)) || { att: 1, def: 1, tilt: 0 };
-  const g = find(LG_GARRA), r = find(rival), d = Math.exp(0.15 * (g.tilt - r.tilt)), c = x => Math.min(6, Math.max(0.3, x));
+  const g = find(LG_GARRA), r = find(rival), d = Math.exp(0.10 * (g.tilt - r.tilt)), c = x => Math.min(6, Math.max(0.3, x));
   return { lg: c(st.mu * g.att * r.def * d), lr: c(st.mu * r.att * g.def / d) };
 }
 function lgOdds(lg, lr, margin) { // Poisson independiente para cada equipo → todas las cuotas con el margen de la casa (cuota = 1 / (probabilidad × (1 + margen)))
