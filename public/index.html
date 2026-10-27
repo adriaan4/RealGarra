@@ -1006,11 +1006,20 @@ function renderGB(){
  const mine=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id);
  $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,`<div class="row" style="margin:6px 0 0"><button type="button" data-gbshare="${t.id}">📤 Compartir imagen</button>${(t.forced||t.sels.some(x=>gbRes(x.j)))?'':`<button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button>`}</div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
 const gbToast=t=>{$('#amsg').textContent=t};
+// Coherencia entre selecciones (la misma lógica que en el servidor): se busca un marcador que cumpla todas a la vez
+const GB_NOSC=['scorer','yellow'];
+function gbFeas(sels){const sc=new Set(sels.filter(x=>x.market==='scorer').map(x=>x.line)).size,cs=sels.filter(x=>!GB_NOSC.includes(x.market));for(let gf=sc;gf<=16;gf++)for(let gc=0;gc<=16;gc++)if(cs.every(x=>gbWin(x.market,x.line,x.side,{gf,gc})))return true;return false}
+function gbConf(sels){for(const j of [...new Set(sels.map(x=>x.j))]){const g=sels.filter(x=>x.j===j);if(gbFeas(g))continue;
+ for(let a=0;a<g.length;a++)for(let b=a+1;b<g.length;b++)if(!gbFeas([g[a],g[b]]))return[g[a],g[b]];
+ for(let a=0;a<g.length;a++)for(let b=a+1;b<g.length;b++)for(let c=b+1;c<g.length;c++)if(!gbFeas([g[a],g[b],g[c]]))return[g[a],g[b],g[c]];
+ return g}return null}
+function gbConfMsg(c){const l=c.map(x=>'«'+gbSelTxt(x)+'»');return '⚠️ Apuestas incompatibles: '+(l.length===1?l[0]+' no se puede cumplir':l.length===2?l[0]+' no es compatible con '+l[1]:'no se pueden cumplir a la vez '+l.slice(0,-1).join(', ')+' y '+l[l.length-1])+'. Quita una para continuar.'}
 function gbToggle(j,m,l,sd){
  const ex=gbInSlip(j,m,l,sd);
  if(ex){gbSlip=gbSlip.filter(x=>x!==ex);return}
  const cl=(m==='scorer'||m==='yellow')?null:gbSlip.find(x=>x.j===j&&x.market===m);
  if(cl){gbToast('Ya tienes «'+gbSelTxt(cl)+'» en este mercado del partido. Quítala del boleto para elegir otra.');return}
+ {const cf=gbConf([...gbSlip,{j,market:m,line:m==='res'?'':l,side:sd}]);if(cf){gbToast(gbConfMsg(cf));return}}
  if(m==='res'||m==='dc'){const o=gbSlip.find(x=>x.j===j&&x.market===(m==='res'?'dc':'res'));if(o){const r1=m==='res'?sd:o.side,d1=m==='res'?o.side:sd;if(!GBDC[d1].includes(r1)){gbToast('Esa doble oportunidad y ese resultado se contradicen. Quita «'+gbSelTxt(o)+'» del boleto para elegir esta.');return}}}
  if(m==='yellow'){const ch=gbSlip.filter(x=>x.j===j&&x.market==='yellow'&&((l==='NINGUNO')!==(x.line==='NINGUNO')));if(ch.length){gbSlip=gbSlip.filter(x=>!ch.includes(x));gbToast(l==='NINGUNO'?'«Ninguna amarilla» sustituye a las amarillas de jugadores de este partido':'La amarilla de un jugador sustituye a «Ninguna amarilla»')}}
  if(gbSlip.length>=8){gbToast('Máximo 8 selecciones por boleto');return}
@@ -1091,6 +1100,7 @@ $('#garrabet').addEventListener('click',async e=>{
   if(b.id==='gbAll'){gbStake=String(Math.floor((GBS().balance||0)*100)/100).replace('.',',');const i=$('#gbStake');if(i)i.value=gbStake;const w=$('#gbWin');if(w)w.textContent=gbM(gbStakeN()*gbTot(gbSlip));return}
   if(b.id==='gbPlace'){
    if(!GBS().me){gbToast('Pon tu nombre arriba para poder apostar');const i=$('#gbNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
+   {const cf=gbConf(gbSlip);if(cf){gbToast(gbConfMsg(cf));return}}
    await api('/api/garrabet/ticket','POST',{device:dev,stake:gbStake,sels:gbSlip.map(({j,market,line,side})=>({j,market,line,side}))});
    gbSlip=[];gbToast('¡Apuesta realizada!');lastJ='';await load();try{const nt=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id)[0];if(nt)await gbShowImg(nt)}catch(e2){console.error(e2)}return}
   if(b.dataset.gbshare){const t=(GBS().mine||[]).find(x=>x.id===+b.dataset.gbshare);if(t)await gbShowImg(t);return}
