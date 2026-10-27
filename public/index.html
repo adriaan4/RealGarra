@@ -483,6 +483,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <button type="button" class="atab" data-at="bet" role="tab">🎲 GarraBet</button>
    <button type="button" class="atab" data-at="porra" role="tab">🦁 Porra</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
+   <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/Nombres</button>
    <button type="button" class="atab" data-at="mas" role="tab">⚙️ Más</button>
   </div>
   <div class="apane" data-ap="partido">
@@ -552,6 +553,12 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
     <div class="ecoRow"><input id="gbAllIn" inputmode="decimal" placeholder="Pavos" aria-label="Pavos para todos"><button type="button" id="gbAllAdd">➕ Añadir</button><button type="button" id="gbAllSub" class="neg">➖ Quitar</button></div></div>
    <h3>Cada persona</h3>
    <div id="gbAdmUsers"><p>Cargando…</p></div>
+  </div>
+  <div class="apane" data-ap="users" hidden>
+  <details class="ad" open><summary>🪪 Usuarios/Nombres de GarraBet y la Porra</summary><div class="adb">
+   <p class="sub">Un solo nombre por persona: GarraBet y la Porra usan exactamente el mismo. Cambiar un nombre lo actualiza solo en todas sus apuestas, combinadas, porras, historial y puntos. Desactivar impide apuestas o porras nuevas desde ese nombre sin borrar nada de lo que ya tiene. Borrar de verdad solo se puede si no tiene ningún dato guardado.</p>
+   <div id="admUsersList"><p>Cargando…</p></div>
+  </div></details>
   </div>
   <div class="apane" data-ap="mas" hidden>
   <details class="ad" open><summary>🔔 Avisos solo para mí (admin)</summary><div class="adb">
@@ -1050,9 +1057,29 @@ function gbAdmRender(){
  const list=gbAdm.tickets.filter(t=>(!fj||t.sels.some(x=>x.j===+fj))&&(!fu||t.userId===+fu));
  box.innerHTML=`<h3>Apuestas (${list.length})</h3>`+(list.map(t=>`<div class="pv gbtk"><div class="top"><span><b>${esc(t.name)}</b> · <b>${t.sels.length>1?'Combinada ×'+t.sels.length:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b>${t.stake?` · <b>${gbM(t.stake)}</b> pavos`:''}</span><span class="gbchip ${t.status}">${gbChipTxt(t.status)}</span></div><ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul><div class="row" style="margin:6px 0 0"><small>${new Date(t.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}</small><button type="button" class="ghost" data-gbadel="${t.id}">Borrar</button></div><div class="row" style="margin:6px 0 0">${t.forced?`<small>Resuelta a mano por el admin</small><button type="button" class="ghost" data-gbset="${t.id}|reset">Quitar marca</button>`:`<button type="button" data-gbset="${t.id}|win">Dar por ganada</button><button type="button" class="ghost" data-gbset="${t.id}|lose">Dar por perdida</button><button type="button" class="ghost" data-gbset="${t.id}|void">Anular</button>`}</div></div>`).join('')||'<p>No hay apuestas con ese filtro.</p>')}
 async function gbAdmLoad(){if(!pw)return;try{gbAdm=await adm('/api/garrabet-admin/all');gbAdmRender()}catch(e){}}
-function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad()}
+// ---- Admin: Usuarios/Nombres (mismo sistema para GarraBet y Porra) ----
+let admUsers=[];
+function admUsersRender(){
+ const ub=$('#admUsersList');if(!ub||ub.contains(document.activeElement))return;
+ ub.innerHTML=admUsers.map(u=>{
+  const canDel=!u.tickets&&!u.preds&&!u.final;
+  return `<div class="pv ecoU"><div class="ecoH"><b>${esc(u.name)}</b>${u.disabled?'<span class="gbchip lose">Inactivo</span>':'<span class="gbchip win">Activo</span>'}</div>
+   <small>💰 ${gbM(u.balance)} pavos · ${u.tickets} apuesta${u.tickets===1?'':'s'} de GarraBet · ${u.preds} porra${u.preds===1?'s':'s'} de partido${u.final?' · tiene porra final':''}</small>
+   <div class="ecoRow" style="grid-template-columns:1fr auto"><input data-aun="${u.id}" value="${esc(u.name)}" maxlength="20" aria-label="Nombre de ${esc(u.name)}"><button type="button" class="ghost" data-auren="${u.id}">✏️ Cambiar nombre</button></div>
+   <div class="row" style="margin-top:6px">${u.disabled?`<button type="button" data-auact="${u.id}|1">🔓 Reactivar</button>`:`<button type="button" class="ghost" data-auact="${u.id}|0">🚫 Desactivar</button>`}<button type="button" class="ghost" data-audel="${u.id}" ${canDel?'':'disabled title="Tiene apuestas, porras o historial guardado: no se puede borrar sin perderlos. Desactívala en su lugar"'}>🗑️ Borrar</button></div>
+  </div>`}).join('')||'<p>Todavía nadie tiene nombre.</p>'}
+async function admUsersLoad(){if(!pw)return;try{const d=await adm('/api/admin/users');admUsers=d.users;admUsersRender()}catch(e){}}
+$('#admUsersList').addEventListener('click',async e=>{
+ const ren=e.target.closest('button[data-auren]'),act=e.target.closest('button[data-auact]'),del=e.target.closest('button[data-audel]');
+ if(!ren&&!act&&!del)return;
+ try{
+  if(ren){const id=ren.dataset.auren,v=$('#admUsersList').querySelector('input[data-aun="'+id+'"]').value;await adm('/api/garrabet-admin/user/'+id,'PUT',{name:v});gbToast('Nombre cambiado');await admUsersLoad();gbAdmLoad();lastJ='';await load();return}
+  if(act){const[id,v]=act.dataset.auact.split('|'),on=v==='1';if(!on&&!confirm('¿Desactivar este nombre? No podrá hacer apuestas ni porras nuevas, pero no se borra nada de lo que ya tiene.'))return;await adm('/api/garrabet-admin/user/'+id+'/active','PUT',{active:on});gbToast(on?'Nombre reactivado':'Nombre desactivado');await admUsersLoad();return}
+  if(del){if(del.disabled)return;if(!confirm('¿Borrar este nombre para siempre? Esta acción no se puede deshacer.'))return;await adm('/api/garrabet-admin/user/'+del.dataset.audel,'DELETE');gbToast('Nombre borrado');await admUsersLoad();gbAdmLoad();return}
+ }catch(err){gbToast(err.message)}});
+function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad();if(t==='users')admUsersLoad()}
 $('.atabs').addEventListener('click',e=>{const b=e.target.closest('.atab');if(b)adTab(b.dataset.at)});
-setInterval(()=>{const t=sessionStorage.adTab,a=document.activeElement;if($('#admin').hidden||$('#panel').hidden||(t!=='bet'&&t!=='eco')||(a&&a.matches('input,select,textarea')))return;gbAdmLoad()},15000);
+setInterval(()=>{const t=sessionStorage.adTab,a=document.activeElement;if($('#admin').hidden||$('#panel').hidden||(a&&a.matches('input,select,textarea')))return;if(t==='bet'||t==='eco')gbAdmLoad();else if(t==='users')admUsersLoad()},15000);
 // Guardar goleadores / amarillas: los botones están en #gbAdmForm (fuera de #gbAdmDet), por eso va en su propio manejador
 $('#gbAdmForm').addEventListener('click',async e=>{
  const sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave'),so=e.target.closest('#gbScOpen'),yo=e.target.closest('#gbYcOpen');if(!sv&&!yv&&!so&&!yo)return;

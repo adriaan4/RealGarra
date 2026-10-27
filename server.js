@@ -413,6 +413,10 @@ app.put('/api/squad', admin, async (req, res) => {
     }
     out.push({ id: prev.id || db.nextId++, n, name, x: clamp(p.x, 50), y: clamp(p.y, 50), c: !!p.c, goals, conceded, quote, photo, photoV });
   }
+  { // Dos jugadores con el mismo nombre (aunque cambien mayúsculas/acentos/espacios) rompen los mercados de goleador y amarilla de GarraBet y la Porra
+    const seen = new Set();
+    for (const p of out) { const nn = norm(p.name); if (seen.has(nn)) return bad(res, 'Hay dos jugadores con el mismo nombre en la plantilla: ' + p.name); seen.add(nn); }
+  }
   if (out.some(p => p.c)) { const i = out.findIndex(p => p.c); out.forEach((p, k) => (p.c = k === i)); } // un solo capitán
   db.squad = out;
   await save();
@@ -438,7 +442,10 @@ app.put('/api/calendar/:j', admin, async (req, res) => {
   if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return bad(res, 'Hora no válida');
   m.time = time;
   m.field = String(req.body.field || '').trim().slice(0, 80);
-  m.result = String(req.body.result || '').trim().slice(0, 20);
+  const result = String(req.body.result || '').trim().slice(0, 20);
+  // El resultado tiene que tener forma «3-1» (Real Garra primero): de él dependen GarraBet y la Porra, así que si no cuadra no se guarda en silencio
+  if (result && !gbResult({ result })) return bad(res, 'Resultado no válido: ponlo como «3-1» (Real Garra primero)');
+  m.result = result;
   await save();
   res.json({ ok: true });
 });
@@ -798,6 +805,7 @@ app.post('/api/garrabet/ticket', async (req, res) => {
   if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
   const user = gbUser(device);
   if (!user) return bad(res, 'Pon tu nombre para apostar');
+  if (user.disabled) return bad(res, 'Tu nombre está desactivado por el admin: no puedes hacer apuestas nuevas');
   const stake = gbMoney(Number(String(req.body.stake == null ? '' : req.body.stake).replace(',', '.')));
   if (!Number.isFinite(stake) || stake < GB_MIN_STAKE) return bad(res, 'Pon cuántos pavos apuestas (mínimo ' + GB_MIN_STAKE + ')');
   if (stake > gbBalance(user)) return bad(res, 'No tienes tantos pavos. Te quedan ' + gbBalance(user));
@@ -857,7 +865,7 @@ app.delete('/api/garrabet/ticket/:id', async (req, res) => { // el usuario puede
 app.get('/api/garrabet-admin/all', admin, (_, res) => {
   const name = d => (gbUser(d) || {}).name || 'SIN NOMBRE';
   res.json({
-    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name, balance: gbBalance(u) })),
+    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name, balance: gbBalance(u), disabled: !!u.disabled })),
     tickets: db.garrabet.tickets.slice().sort((a, b) => b.id - a.id).map(t => ({ ...gbTicketOut(t), name: name(t.device), userId: (gbUser(t.device) || {}).id || 0 }))
   });
 });
@@ -865,8 +873,40 @@ app.put('/api/garrabet-admin/user/:id', admin, async (req, res) => {
   const u = db.garrabet.users.find(x => x.id === +req.params.id), name = String(req.body.name || '').trim().replace(/\s+/g, ' ').toUpperCase().slice(0, 20);
   if (!u) return bad(res, 'Persona no encontrada');
   if (name.length < 2) return bad(res, 'Nombre demasiado corto');
+  // Normalizado (sin tildes, mayúsculas, sin espacios de sobra) para que «Carlos», «carlos», «CARLOS» o «Carlos » no puedan coexistir
   if (db.garrabet.users.some(x => x !== u && norm(x.name) === norm(name))) return bad(res, 'Ese nombre ya existe');
-  u.name = name;
+  u.name = name; // el nombre se guarda solo aquí (un único sitio): todas las apuestas, combinadas, porras, historial y puntos lo leen siempre a partir del id, así que cambian solos
+  await save();
+  res.json({ ok: true });
+});
+// Usuarios/Nombres: lista única para GarraBet y la Porra (comparten exactamente el mismo almacén, db.garrabet.users)
+app.get('/api/admin/users', admin, (_, res) => {
+  const P = PR();
+  res.json({
+    users: db.garrabet.users.map(u => ({
+      id: u.id, name: u.name, disabled: !!u.disabled, balance: gbBalance(u),
+      tickets: db.garrabet.tickets.filter(t => t.device === u.device).length,
+      preds: P.preds.filter(p => p.uid === u.id).length,
+      final: P.finals.some(f => f.uid === u.id)
+    })).sort((a, b) => a.name.localeCompare(b.name))
+  });
+});
+// Desactivar un nombre: no borra nada, solo impide apuestas/porras NUEVAS desde ese dispositivo. Todo su historial, puntos y estadísticas se quedan igual
+app.put('/api/garrabet-admin/user/:id/active', admin, async (req, res) => {
+  const u = db.garrabet.users.find(x => x.id === +req.params.id);
+  if (!u) return bad(res, 'Persona no encontrada');
+  if (req.body.active) delete u.disabled; else u.disabled = true;
+  await save();
+  res.json({ ok: true });
+});
+// Borrar un nombre de verdad: solo si no tiene NINGÚN dato (apuestas, porras de partido o porra final) para no perder historial por accidente
+app.delete('/api/garrabet-admin/user/:id', admin, async (req, res) => {
+  const id = +req.params.id, u = db.garrabet.users.find(x => x.id === id);
+  if (!u) return bad(res, 'Persona no encontrada');
+  const P = PR();
+  const hasData = db.garrabet.tickets.some(t => t.device === u.device) || P.preds.some(p => p.uid === id) || P.finals.some(f => f.uid === id);
+  if (hasData) return bad(res, 'Esa persona ya tiene apuestas, porras o historial guardado: bórralo todo antes o, mejor, desactívala para no perder datos');
+  db.garrabet.users = db.garrabet.users.filter(x => x.id !== id);
   await save();
   res.json({ ok: true });
 });
@@ -1091,6 +1131,7 @@ app.get('/api/porra', (req, res) => {
 app.post('/api/porra/pred', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device);
   if (!user) return bad(res, 'Pon tu nombre para jugar (arriba, en «Pon tu nombre para jugar»)');
+  if (user.disabled) return bad(res, 'Tu nombre está desactivado por el admin: no puedes jugar a la porra');
   const act = prActive();
   if (!act) return bad(res, 'No hay ningún partido pendiente en el calendario');
   if (req.body.j != null && +req.body.j !== act.j) return bad(res, 'Ese partido ya no es el activo. Recarga la página');
@@ -1106,6 +1147,7 @@ app.post('/api/porra/pred', async (req, res) => {
 app.post('/api/porra/final', async (req, res) => {
   const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device), P = PR();
   if (!user) return bad(res, 'Pon tu nombre para jugar (arriba, en «Pon tu nombre para jugar»)');
+  if (user.disabled) return bad(res, 'Tu nombre está desactivado por el admin: no puedes jugar a la porra');
   if (!P.cfg.open) return bad(res, 'La porra final ya está cerrada');
   const r = prFinalFields(req.body || {});
   if (r.error) return bad(res, r.error);
@@ -1120,7 +1162,7 @@ app.post('/api/porra/final', async (req, res) => {
 app.get('/api/porra-admin/all', admin, (_, res) => {
   const P = PR(), act = prActive();
   res.json({
-    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
+    users: db.garrabet.users.map(u => ({ id: u.id, name: u.name, disabled: !!u.disabled })).sort((a, b) => a.name.localeCompare(b.name)),
     activeJ: act ? act.j : null, forceJ: P.cfg.forceJ, squad: gbScNames(), teams: prTeams(), labels: PR_LABELS, keys: PR_KEYS,
     matches: prCal().map(m => ({
       j: m.j, date: m.date, time: m.time || '', rival: m.rival, result: gbResult(m), closed: prClosed(m), lock: P.locks[m.j] || 'auto', kickKnown: prKick(m).known,
