@@ -72,3 +72,13 @@ Admin → GarraBet → «📥 Importar cuotas desde JSON». Pega (o sube) un JSO
 - Líneas: 0.5–7.5 en anotados y encajados, 1.5–11.5 en totales. Cuota mínima 1,01; `null` quita esa cuota.
 - Opcionales: `res` (`"1"`, `"X"`, `"2"`), `dc` (`"1X"`, `"12"`, `"X2"`) y `btts` (`"y"`, `"n"`).
 - «Cargar las actuales» rellena la caja con las cuotas de goles que ya hay, para editarlas y volver a importar. Antes de importar se guarda una copia de seguridad.
+
+## GarraBet: cuotas automáticas (tipo casa de apuestas)
+Admin → GarraBet → «🤖 Cuotas automáticas».
+- Estadísticas de cada equipo (PJ, G, E, P, GF, GC, puntos y forma de los últimos 5) calculadas desde los resultados. Los del Garra salen solos del Calendario; los del resto de la liga se añaden ahí mismo («Resultados de otros equipos»).
+- Rating = goles (ataque/defensa) + rendimiento (puntos) + forma. Con él se calculan los goles esperados de cada equipo y, con Poisson, las probabilidades de 1X2, doble oportunidad, ambos marcan, goles totales y goles por equipo.
+- Cuota = 1 / (probabilidad × (1 + margen)). El margen de la casa es configurable (8 % por defecto).
+- Al guardar un resultado en Calendario (o añadir/quitar un resultado de otro equipo) se recalculan las cuotas del próximo partido. Botón «🔄 Recalcular cuotas» para hacerlo a mano.
+- Las cuotas se guardan en la base de datos de GarraBet (`garrabet.odds`). Las que escribas a mano o importes por JSON en una jornada no se pisan solas (solo el botón de recalcular, con confirmación). Goleadores y amarillas no se tocan.
+- Los boletos ya hechos conservan la cuota con la que se apostaron.
+- Ajustes del modelo (peso de la media, nº de partidos de forma…) al principio del bloque «Cuotas automáticas» de `server.js`.

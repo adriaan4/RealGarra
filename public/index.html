@@ -379,6 +379,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .prsq label{display:inline-flex;align-items:center;gap:4px;font-size:16px;opacity:1}
 .prsq input{width:18px;height:18px;min-height:0;padding:0}
 .atab[data-at=mas]{grid-column:span 3}
+.lgW{overflow-x:auto;margin:6px 0}.lgT{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}.lgT th,.lgT td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--line)}.lgT th:first-child,.lgT td:first-child{text-align:left}.lgT tr.me td{color:var(--gold)}.lgF{letter-spacing:2px;font-weight:700}
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
@@ -525,6 +526,18 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <details class="ad"><summary>🏅 MVPs anteriores</summary><div class="adb"><div id="adminHist"></div></div></details>
   </div>
   <div class="apane" data-ap="bet" hidden>
+  <details class="ad" open id="lgDet"><summary>🤖 Cuotas automáticas</summary><div class="adb">
+   <p class="sub">Las cuotas del próximo partido se calculan solas con los resultados (estadísticas → rating → goles esperados → Poisson) y se recalculan cada vez que pones un resultado. Las cuotas escritas a mano en una jornada no se pisan solas; el botón «Recalcular» sí las sustituye.</p>
+   <div class="row"><label class="row" style="margin:0;gap:6px"><input type="checkbox" id="lgAuto" style="width:auto"> Automáticas</label><label class="row" style="margin:0;gap:6px">Margen de la casa <input id="lgMargin" inputmode="decimal" style="width:80px;flex:0 0 auto" aria-label="Margen de la casa en %"> %</label><button type="button" class="ghost" id="lgCfgSave">Guardar ajustes</button></div>
+   <div class="row"><button type="button" id="lgRecalc">🔄 Recalcular cuotas</button><button type="button" class="ghost" id="lgRecalcAll">Recalcular también las demás pendientes</button></div>
+   <div id="lgNext"></div>
+   <h3>Clasificación y rating</h3><div class="lgW"><table class="lgT" id="lgTable"></table></div>
+   <h3>Resultados de otros equipos</h3>
+   <p class="sub">Los partidos del Garra salen solos del Calendario. Mete aquí los del resto de la liga: cuantos más resultados, mejores cuotas.</p>
+   <div class="row"><input id="lgJ" type="number" min="1" max="40" placeholder="Jornada" style="width:110px;flex:0 0 auto"><select id="lgA" aria-label="Equipo 1"></select><input id="lgGa" type="number" min="0" max="30" placeholder="0" style="width:70px;flex:0 0 auto" aria-label="Goles equipo 1"><input id="lgGb" type="number" min="0" max="30" placeholder="0" style="width:70px;flex:0 0 auto" aria-label="Goles equipo 2"><select id="lgB" aria-label="Equipo 2"></select><button type="button" id="lgAdd">Añadir</button></div>
+   <div id="lgList"></div>
+   <p class="msg" id="lgMsg"></p>
+  </div></details>
   <details class="ad" open><summary>🎲 Cuotas del partido</summary><div class="adb">
    <p class="sub">Elige la jornada y escribe las cuotas a mano (mínimo 1,01; vacío = no se ofrece esa opción). El resultado de cada selección se calcula solo cuando pones el resultado en Admin → Calendario (formato «3-1», Real Garra primero).</p>
    <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
@@ -1083,7 +1096,7 @@ $('#admUsersList').addEventListener('click',async e=>{
   if(act){const[id,v]=act.dataset.auact.split('|'),on=v==='1';if(!on&&!confirm('¿Desactivar este nombre? No podrá hacer apuestas ni porras nuevas, pero no se borra nada de lo que ya tiene.'))return;await adm('/api/garrabet-admin/user/'+id+'/active','PUT',{active:on});gbToast(on?'Nombre reactivado':'Nombre desactivado');await admUsersLoad();return}
   if(del){if(del.disabled)return;if(!confirm('¿Borrar este nombre para siempre? Esta acción no se puede deshacer.'))return;await adm('/api/garrabet-admin/user/'+del.dataset.audel,'DELETE');gbToast('Nombre borrado');await admUsersLoad();gbAdmLoad();return}
  }catch(err){gbToast(err.message)}});
-function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad();if(t==='users')admUsersLoad()}
+function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad();if(t==='bet')lgLoad();if(t==='users')admUsersLoad()}
 $('.atabs').addEventListener('click',e=>{const b=e.target.closest('.atab');if(b)adTab(b.dataset.at)});
 setInterval(()=>{const t=sessionStorage.adTab,a=document.activeElement;if($('#admin').hidden||$('#panel').hidden||(a&&a.matches('input,select,textarea')))return;if(t==='bet'||t==='eco')gbAdmLoad();else if(t==='users')admUsersLoad()},15000);
 // Guardar goleadores / amarillas: los botones están en #gbAdmForm (fuera de #gbAdmDet), por eso va en su propio manejador
@@ -1115,6 +1128,25 @@ $('#gbAdmMatch').onchange=gbAdmFill;
 $('#gbMatch').onchange=renderGB;
 $('#gbMarkets').addEventListener('input',e=>{const i=e.target;if(!i.dataset||!i.dataset.gbo)return;const j=+$('#gbMatch').value,o=gbOtherSc[j]||(gbOtherSc[j]={a:6,b:0});let v=Math.floor(Number(i.value));if(!Number.isFinite(v)||v<0)v=0;if(v>9)v=9;o[i.dataset.gbo]=v;const b=$('#gbOtherBtn');if(b)b.innerHTML=gbOtherBtn(j)});
 $('#gbSlip').addEventListener('input',e=>{if(e.target.id!=='gbStake')return;gbStake=e.target.value;const w=$('#gbWin');if(w)w.textContent=gbM(gbStakeN()*gbTot(gbSlip))});
+// ---- Cuotas automáticas (liga, estadísticas y recálculo) ----
+let lg=null;
+async function lgLoad(){if(!pw)return;try{lg=await adm('/api/garrabet-admin/league');lgRender()}catch(e){}}
+function lgRender(){const L=lg;if(!L)return;const fo=document.activeElement,busy=fo&&$('#lgDet').contains(fo)&&fo.matches('input,select');
+ const n=L.next,src={auto:'🤖 automáticas',manual:'✍️ puestas a mano',none:'sin cuotas'};
+ $('#lgNext').innerHTML=n?`<div class="pv"><b>Próximo partido: J${n.j} · Real Garra vs ${esc(n.rival)}</b><br><small>Goles esperados: Garra <b>${n.lg}</b> – ${esc(n.rival)} <b>${n.lr}</b> · Cuotas ahora: ${src[n.source]}${n.at?' ('+new Date(n.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})+')':''}</small><br>${[['1','Gana Garra'],['X','Empate'],['2','Gana '+n.rival]].map(([k,t])=>`${esc(t)} <b>${n.now&&n.now[k]?gbO(n.now[k]):'—'}</b>${n.source==='manual'?' <small>(calculada: '+gbO(n.calc[k])+')</small>':''}`).join(' · ')}</div>`:'<p>No quedan partidos sin resultado en el calendario.</p>';
+ $('#lgTable').innerHTML='<thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Forma</th><th>Rating</th></tr></thead><tbody>'+L.teams.map(t=>`<tr${t.garra?' class="me"':''}><td>${esc(t.name)}</td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td>${t.GF}</td><td>${t.GC}</td><td>${t.DG}</td><td><b>${t.Pts}</b></td><td class="lgF">${esc(t.form)||'—'}</td><td><b>${t.rating}</b></td></tr>`).join('')+'</tbody>';
+ $('#lgList').innerHTML=L.results.map(r=>`<div class="pv vh"><span><small>J${r.j}</small> ${esc(r.a)} <b>${r.ga} - ${r.gb}</b> ${esc(r.b)}</span><button type="button" class="ghost" data-lgdel="${r.id}">Quitar</button></div>`).join('')||'<p>Todavía no hay resultados de otros equipos.</p>';
+ if(!busy){$('#lgAuto').checked=L.cfg.auto;$('#lgMargin').value=String(L.cfg.margin).replace('.',',');
+  for(const id of ['lgA','lgB']){const s=$('#'+id),v=s.value;s.innerHTML='<option value="">Equipo…</option>'+L.names.map(x=>`<option>${esc(x)}</option>`).join('');s.value=v}}}
+$('#lgDet').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const msg=$('#lgMsg');
+ const after=async t=>{msg.textContent=t;gbToast(t);lastJ='';await load();await lgLoad();try{gbAdmFill()}catch(x){}};
+ try{
+  if(b.id==='lgCfgSave'){await adm('/api/garrabet-admin/auto-cfg','PUT',{margin:$('#lgMargin').value,auto:$('#lgAuto').checked});flash(b);await after('Ajustes guardados')}
+  else if(b.id==='lgRecalc'||b.id==='lgRecalcAll'){const n=lg&&lg.next;if(n&&n.source==='manual'&&!confirm('La J'+n.j+' tiene cuotas puestas a mano. ¿Sustituirlas por las calculadas?'))return;
+   const r=await adm('/api/garrabet-admin/recalc','POST',{all:b.id==='lgRecalcAll'});await after('Cuotas recalculadas: jornada'+(r.jornadas.length>1?'s ':' ')+r.jornadas.join(', '))}
+  else if(b.id==='lgAdd'){await adm('/api/garrabet-admin/league-result','POST',{j:$('#lgJ').value,a:$('#lgA').value,b:$('#lgB').value,ga:$('#lgGa').value,gb:$('#lgGb').value});$('#lgGa').value='';$('#lgGb').value='';$('#lgA').value='';$('#lgB').value='';await after('Resultado añadido y cuotas recalculadas')}
+  else if(b.dataset.lgdel){if(!confirm('¿Quitar este resultado?'))return;await adm('/api/garrabet-admin/league-result/'+b.dataset.lgdel,'DELETE');await after('Resultado quitado')}
+ }catch(err){msg.textContent='❌ '+err.message;gbToast(err.message)}});
 // Importar cuotas desde JSON (varias jornadas de golpe)
 $('#gbImpFile').onchange=async e=>{const f=e.target.files[0];if(f){$('#gbImpTxt').value=await f.text();$('#gbImpMsg').textContent='Archivo cargado: pulsa «Importar cuotas»'}};
 $('#gbImpEx').onclick=()=>{const L=(o,u)=>({o,u});$('#gbImpTxt').value=JSON.stringify({

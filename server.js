@@ -140,8 +140,7 @@ async function init() {
   if (!db.garrabet.odds || typeof db.garrabet.odds !== 'object') db.garrabet.odds = {};
   if (!Array.isArray(db.garrabet.users)) db.garrabet.users = [];
   if (!Array.isArray(db.garrabet.tickets)) db.garrabet.tickets = [];
-  // Cuotas de la jornada 2 (Real Garra - Bricomaniacos FC): se cargan solo si esa jornada aún no tiene cuotas; goleadores y amarillas usan las de por defecto. Luego se pueden editar en Admin
-  if (!db.garrabet.odds[2]) db.garrabet.odds[2] = {"res":{"1":2.35,"X":3.25,"2":2.85},"scored":{"0.5":{"o":1.33,"u":3.07},"1.5":{"o":2.74,"u":1.4},"2.5":{"o":7.68,"u":1.05},"3.5":{"o":27.42,"u":1.01},"4.5":{"o":119.54,"u":1.01},"5.5":{"o":617.19,"u":1.01},"6.5":{"o":1000,"u":1.01},"7.5":{"o":1000,"u":1.01}},"conceded":{"0.5":{"o":1.42,"u":2.65},"1.5":{"o":3.28,"u":1.29},"2.5":{"o":10.32,"u":1.02},"3.5":{"o":41.69,"u":1.01},"4.5":{"o":206.43,"u":1.01},"5.5":{"o":1000,"u":1.01},"6.5":{"o":1000,"u":1.01},"7.5":{"o":1000,"u":1.01}},"total":{"1.5":{"o":1.41,"u":2.7},"2.5":{"o":2.37,"u":1.52},"3.5":{"o":4.86,"u":1.14},"4.5":{"o":11.87,"u":1.01},"5.5":{"o":33.84,"u":1.01},"6.5":{"o":110.6,"u":1.01},"7.5":{"o":408.42,"u":1.01},"8.5":{"o":1000,"u":1.01},"9.5":{"o":1000,"u":1.01},"10.5":{"o":1000,"u":1.01},"11.5":{"o":1000,"u":1.01}},"dc":{"1X":1.37,"12":1.29,"X2":1.52},"btts":{"y":2.04,"n":1.7}};
+  lgEnsure(); // ajustes y liga de las cuotas automáticas
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
   for (const p of db.squad) if (!p.id) p.id = db.nextId++; // cada jugador de la plantilla tiene id (para su ficha y su foto)
@@ -159,6 +158,7 @@ async function init() {
     for (const t of db.garrabet.tickets) if (gbTicketOut(t).status === 'win') t.winNotified = true;
     db.winNotifV1 = true;
   }
+  { const nm = lgNextMatch(); if (nm && db.garrabet.cfg.auto && !lgHasOdds(db.garrabet.odds[nm.j])) lgApply(nm, false); } // si el próximo partido no tiene cuotas, se generan
   await save();
 }
 
@@ -446,6 +446,7 @@ app.put('/api/calendar/:j', admin, async (req, res) => {
   // El resultado tiene que tener forma «3-1» (Real Garra primero): de él dependen GarraBet y la Porra, así que si no cuadra no se guarda en silencio
   if (result && !gbResult({ result })) return bad(res, 'Resultado no válido: ponlo como «3-1» (Real Garra primero)');
   m.result = result;
+  lgAutoNext(); // al meter un resultado se actualizan las estadísticas y se recalculan las cuotas del próximo partido
   await save();
   res.json({ ok: true });
 });
@@ -788,6 +789,143 @@ app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda toda
   await save();
   res.json({ ok: true });
 });
+// ---- Cuotas automáticas tipo casa de apuestas ----
+// Estadísticas de cada equipo (PJ, G, E, P, GF, GC, puntos, forma) a partir de los resultados → rating → goles esperados → Poisson → cuotas con margen de la casa.
+// Los partidos del Garra salen solos del Calendario; los del resto de la liga se meten en Admin → GarraBet → «Cuotas automáticas».
+const LG_GARRA = 'Real Garra';
+const LG_SEED = [[1, 'Pachanga FC', 5, 'Potrero FC', 1], [1, 'THE OFFICE', 4, 'Gazilion', 2], [1, 'Bricomaniacos FC', 2, 'Piso Piloto FC', 1], [1, 'Atlético Sheriff', 2, 'Los Chicos Del Patio', 2]]; // jornada 1 de la clasificación (sin los del Garra)
+const LG_PRIOR_MU = 2.1, LG_K = 3, LG_FORM_N = 5, LG_MAXG = 15, LG_MARGIN_DEF = 0.08;
+const r2 = x => Math.round(x * 100) / 100;
+function lgEnsure() { // crea los ajustes y la liga si todavía no existen (también tras importar una copia antigua)
+  const g = db.garrabet;
+  if (!g.cfg || typeof g.cfg !== 'object') g.cfg = {};
+  if (!(Number.isFinite(g.cfg.margin) && g.cfg.margin >= 0 && g.cfg.margin <= 0.3)) g.cfg.margin = LG_MARGIN_DEF;
+  if (typeof g.cfg.auto !== 'boolean') g.cfg.auto = true;
+  if (!g.league || !Array.isArray(g.league.results)) g.league = { results: LG_SEED.map(([j, a, ga, b, gb]) => ({ id: db.nextId++, j, a, b, ga, gb })) };
+}
+function lgMatches() { // todos los partidos jugados: los de la liga (otros equipos) + los del Garra con resultado en el calendario
+  const out = db.garrabet.league.results.map(r => ({ j: r.j, id: r.id, a: r.a, b: r.b, ga: r.ga, gb: r.gb }));
+  for (const m of db.calendar) { const r = gbResult(m); if (r) out.push({ j: m.j, id: 1e9 + m.j, a: LG_GARRA, b: m.rival, ga: r.gf, gb: r.gc }); }
+  return out.sort((x, y) => x.j - y.j || x.id - y.id);
+}
+function lgStats() {
+  lgEnsure();
+  const ms = lgMatches(), T = new Map();
+  const get = n => { const k = norm(n); if (!T.has(k)) T.set(k, { key: k, name: n, PJ: 0, G: 0, E: 0, P: 0, GF: 0, GC: 0, Pts: 0, seq: [] }); return T.get(k); };
+  get(LG_GARRA); db.calendar.forEach(m => get(m.rival)); db.garrabet.league.results.forEach(r => { get(r.a); get(r.b); });
+  let goals = 0;
+  for (const m of ms) {
+    for (const [t, gf, gc] of [[get(m.a), m.ga, m.gb], [get(m.b), m.gb, m.ga]]) {
+      const p = gf > gc ? 3 : gf === gc ? 1 : 0;
+      t.PJ++; t.GF += gf; t.GC += gc; t.Pts += p; t.seq.push(p); if (p === 3) t.G++; else if (p === 1) t.E++; else t.P++;
+    }
+    goals += m.ga + m.gb;
+  }
+  const mu = (goals + 4 * LG_PRIOR_MU) / (2 * ms.length + 4); // media de goles por equipo y partido (con un pequeño peso a favor de la media habitual)
+  for (const t of T.values()) {
+    t.att = ((t.GF + LG_K * mu) / (t.PJ + LG_K)) / mu;              // ataque: 1 = media de la liga
+    t.def = ((t.GC + LG_K * mu) / (t.PJ + LG_K)) / mu;              // defensa (goles encajados): menos de 1 = defiende mejor que la media
+    const perf = (t.Pts + 1.5 * LG_K) / (3 * (t.PJ + LG_K));        // rendimiento: puntos sobre los posibles
+    const last = t.seq.slice(-LG_FORM_N), n = last.length;          // forma: últimos 5 partidos
+    const form = n ? (last.reduce((a, b) => a + b, 0) / (3 * n) - 0.5) * (n / (n + 3)) : 0;
+    t.form = last.map(p => (p === 3 ? 'G' : p === 1 ? 'E' : 'P')).join('');
+    t.tilt = 0.6 * 2 * (perf - 0.5) + 0.4 * 2 * form;               // rendimiento + forma, de -1 a 1
+    t.rating = Math.round(100 + 40 * Math.log(t.att / t.def) + 25 * t.tilt); // fuerza: goles + puntos + forma (100 = equipo medio)
+  }
+  return { teams: [...T.values()], mu, matches: ms.length };
+}
+function lgExpected(rival, st) { // goles esperados de cada equipo en Real Garra - rival
+  const find = n => st.teams.find(t => t.key === norm(n)) || { att: 1, def: 1, tilt: 0 };
+  const g = find(LG_GARRA), r = find(rival), d = Math.exp(0.15 * (g.tilt - r.tilt)), c = x => Math.min(6, Math.max(0.3, x));
+  return { lg: c(st.mu * g.att * r.def * d), lr: c(st.mu * r.att * g.def / d) };
+}
+function lgOdds(lg, lr, margin) { // Poisson independiente para cada equipo → todas las cuotas con el margen de la casa (cuota = 1 / (probabilidad × (1 + margen)))
+  const pmf = l => { const a = [Math.exp(-l)]; for (let i = 1; i <= LG_MAXG; i++) a.push(a[i - 1] * l / i); return a; };
+  const H = pmf(lg), A = pmf(lr), T = new Array(2 * LG_MAXG + 1).fill(0);
+  let w = 0, d = 0, l = 0, tot = 0;
+  for (let i = 0; i <= LG_MAXG; i++) for (let j = 0; j <= LG_MAXG; j++) { const p = H[i] * A[j]; tot += p; T[i + j] += p; if (i > j) w += p; else if (i === j) d += p; else l += p; }
+  w /= tot; d /= tot; l /= tot;
+  const od = p => Math.min(1000, Math.max(1.01, Math.round(100 / (Math.max(p, 1e-9) * (1 + margin))) / 100));
+  const cum = (P, n) => { let s = 0; for (let i = 0; i <= n; i++) s += P[i]; return Math.min(1, s / (P === T ? tot : 1)); };
+  const out = { res: { '1': od(w), X: od(d), '2': od(l) }, dc: { '1X': od(w + d), '12': od(w + l), X2: od(d + l) }, scored: {}, conceded: {}, total: {} };
+  const pb = (1 - H[0]) * (1 - A[0]);
+  out.btts = { y: od(pb), n: od(1 - pb) };
+  for (const [mk, P] of [['scored', H], ['conceded', A], ['total', T]]) for (const line of GB_LINES[mk]) { const u = cum(P, Math.floor(Number(line))); out[mk][line] = { o: od(1 - u), u: od(u) }; }
+  return out;
+}
+const lgHasOdds = od => !!(od && od.res && ['1', 'X', '2'].some(k => od.res[k]));
+const lgNextMatch = () => db.calendar.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.j - b.j).find(m => !gbResult(m)) || null;
+function lgApply(m, force) { // pone las cuotas automáticas en una jornada. Las que se escribieron a mano no se pisan salvo que se fuerce
+  lgEnsure();
+  const cur = db.garrabet.odds[m.j];
+  if (!force && lgHasOdds(cur) && !cur.auto) return false;
+  const st = lgStats(), e = lgExpected(m.rival, st), o = lgOdds(e.lg, e.lr, db.garrabet.cfg.margin);
+  db.garrabet.odds[m.j] = { ...(cur || {}), ...o, auto: { at: new Date().toISOString(), margin: db.garrabet.cfg.margin, lg: r2(e.lg), lr: r2(e.lr) } }; // goleadores y amarillas se conservan
+  return true;
+}
+function lgAutoNext() { // al meter un resultado: recalcula el próximo partido (si las cuotas automáticas están activadas)
+  lgEnsure();
+  const m = lgNextMatch();
+  return m && db.garrabet.cfg.auto && lgApply(m, false) ? m.j : null;
+}
+function lgAdminView() {
+  lgEnsure();
+  const st = lgStats(), cfg = db.garrabet.cfg, nm = lgNextMatch();
+  const teams = st.teams.map(t => ({ name: t.name, garra: t.key === norm(LG_GARRA), PJ: t.PJ, G: t.G, E: t.E, P: t.P, GF: t.GF, GC: t.GC, DG: t.GF - t.GC, Pts: t.Pts, form: t.form, rating: t.rating }))
+    .sort((a, b) => b.Pts - a.Pts || b.DG - a.DG || b.GF - a.GF || a.name.localeCompare(b.name));
+  let next = null;
+  if (nm) {
+    const od = db.garrabet.odds[nm.j], e = lgExpected(nm.rival, st);
+    next = { j: nm.j, rival: nm.rival, date: nm.date, lg: r2(e.lg), lr: r2(e.lr), source: !lgHasOdds(od) ? 'none' : od.auto ? 'auto' : 'manual', now: lgHasOdds(od) ? od.res : null, calc: lgOdds(e.lg, e.lr, cfg.margin).res, at: od && od.auto ? od.auto.at : null };
+  }
+  return { cfg: { margin: r2(cfg.margin * 100), auto: cfg.auto }, mu: r2(st.mu), teams, next, names: lgOtherTeams(), results: db.garrabet.league.results.slice().sort((a, b) => b.j - a.j || b.id - a.id) };
+}
+const lgOtherTeams = () => { const s = new Map(); db.calendar.forEach(m => s.set(norm(m.rival), m.rival)); db.garrabet.league.results.forEach(r => { s.set(norm(r.a), r.a); s.set(norm(r.b), r.b); }); s.delete(norm(LG_GARRA)); return [...s.values()].sort((a, b) => a.localeCompare(b)); };
+app.get('/api/garrabet-admin/league', admin, (_, res) => res.json(lgAdminView()));
+app.put('/api/garrabet-admin/auto-cfg', admin, async (req, res) => {
+  lgEnsure();
+  const pct = Number(String(req.body.margin).replace(',', '.'));
+  if (!Number.isFinite(pct) || pct < 0 || pct > 30) return bad(res, 'El margen va del 0 al 30 %');
+  db.garrabet.cfg.margin = Math.round(pct * 100) / 10000;
+  db.garrabet.cfg.auto = !!req.body.auto;
+  lgAutoNext();
+  await save();
+  res.json({ ok: true });
+});
+app.post('/api/garrabet-admin/recalc', admin, async (req, res) => { // 🔄 Recalcular cuotas: el próximo partido siempre (aunque tenga cuotas a mano); con all también las demás jornadas pendientes que no sean a mano
+  lgEnsure();
+  const nm = lgNextMatch();
+  if (!nm) return bad(res, 'No quedan partidos sin resultado en el calendario');
+  const done = [];
+  if (lgApply(nm, true)) done.push(nm.j);
+  if (req.body && req.body.all) for (const m of db.calendar) if (!gbResult(m) && m.j !== nm.j && lgApply(m, false)) done.push(m.j);
+  await save();
+  res.json({ ok: true, jornadas: done });
+});
+app.post('/api/garrabet-admin/league-result', admin, async (req, res) => { // resultado de un partido entre otros dos equipos (los del Garra van en Calendario)
+  lgEnsure();
+  const b = req.body || {}, j = +b.j, ga = Number(b.ga), gb = Number(b.gb), names = lgOtherTeams();
+  const A = names.find(n => norm(n) === norm(b.a)), B = names.find(n => norm(n) === norm(b.b));
+  if (!Number.isInteger(j) || j < 1 || j > 40) return bad(res, 'Pon la jornada (1 a 40)');
+  if (!A || !B) return bad(res, 'Elige los dos equipos de la lista (los partidos del Garra se ponen en Calendario)');
+  if (A === B) return bad(res, 'Tienen que ser dos equipos distintos');
+  if (![ga, gb].every(n => Number.isInteger(n) && n >= 0 && n <= 30)) return bad(res, 'Pon los goles de cada equipo (0 a 30)');
+  const busy = [A, B].find(n => db.garrabet.league.results.some(r => r.j === j && (norm(r.a) === norm(n) || norm(r.b) === norm(n))) || db.calendar.some(m => m.j === j && norm(m.rival) === norm(n)));
+  if (busy) return bad(res, busy + ' ya tiene partido en la jornada ' + j);
+  db.garrabet.league.results.push({ id: db.nextId++, j, a: A, b: B, ga, gb });
+  lgAutoNext();
+  await save();
+  res.json({ ok: true });
+});
+app.delete('/api/garrabet-admin/league-result/:id', admin, async (req, res) => {
+  lgEnsure();
+  const n = db.garrabet.league.results.length;
+  db.garrabet.league.results = db.garrabet.league.results.filter(r => r.id !== +req.params.id);
+  if (db.garrabet.league.results.length === n) return bad(res, 'Resultado no encontrado');
+  lgAutoNext();
+  await save();
+  res.json({ ok: true });
+});
 // Importar cuotas de varias jornadas de golpe desde un JSON (goles anotados / encajados / totales; también 1X2, doble oportunidad y ambos marcan).
 // Solo se cambia lo que viene en el JSON: el resto de cuotas de esa jornada (goleadores, amarillas, lo que no se nombre) se queda como está. Si algo falla, no se cambia nada.
 const GB_IMP_MK = { scored: 'scored', anotados: 'scored', anotado: 'scored', garra: 'scored', conceded: 'conceded', encajados: 'conceded', encajado: 'conceded', rival: 'conceded', total: 'total', totales: 'total' };
@@ -846,6 +984,7 @@ app.post('/api/garrabet-admin/import-odds', admin, async (req, res) => {
     if (p.res) Object.assign(od.res, p.res);
     if (p.dc) od.dc = { ...(od.dc || {}), ...p.dc };
     if (p.btts) od.btts = { ...(od.btts || {}), ...p.btts };
+    delete od.auto; // importadas a mano: las cuotas automáticas ya no las pisan solas
   }
   await save();
   res.json({ ok: true, jornadas: plan.map(p => p.j), lineas: n });
