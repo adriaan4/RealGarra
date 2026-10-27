@@ -154,6 +154,11 @@ async function init() {
     }
     db.squadV2 = true;
   }
+  // Migración de una sola vez: las apuestas que ya estaban ganadas no avisan (solo las que se ganen a partir de ahora)
+  if (!db.winNotifV1) {
+    for (const t of db.garrabet.tickets) if (gbTicketOut(t).status === 'win') t.winNotified = true;
+    db.winNotifV1 = true;
+  }
   await save();
 }
 
@@ -175,11 +180,11 @@ if (PUSH) {
 const TZ = process.env.TZ_AVISOS || 'Europe/Madrid';
 const fmtDate = iso => new Date(iso).toLocaleString('es-ES', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 
-async function sendPush(list, payload) { // list = 'subs' (todos) o 'adminSubs' (solo el admin)
+async function sendPush(list, payload, only) { // list = 'subs' (todos) o 'adminSubs' (solo el admin); only = filtro opcional (por ejemplo, un solo dispositivo)
   if (!PUSH || !(db[list] || []).length) return { sent: 0, removed: 0 };
   let sent = 0;
   const dead = new Set();
-  await Promise.all(db[list].map(async s => {
+  await Promise.all(db[list].filter(s => !only || only(s)).map(async s => {
     try { await webpush.sendNotification(s, payload, { TTL: 86400 }); sent++; }
     catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) dead.add(s.endpoint); // suscripción caducada o dada de baja
@@ -193,6 +198,30 @@ async function notifyAll(title, body, url = '/#inicio', tag = 'garra') {
   return sendPush('subs', JSON.stringify({ title, body, url, tag }));
 }
 const notify = (...a) => notifyAll(...a).catch(e => console.error('Aviso push: ' + e.message));
+// Aviso al usuario cuando una apuesta suya pasa a ganada (por resultado, goleadores, amarillas o porque el admin la da por ganada). Se revisa cada 20 s
+let winBusy = false;
+async function gbNotifyWins() {
+  if (winBusy || !db.garrabet) return;
+  winBusy = true;
+  try {
+    const todo = [];
+    for (const t of db.garrabet.tickets) {
+      if (t.winNotified) continue;
+      const o = gbTicketOut(t);
+      if (o.status !== 'win') continue;
+      t.winNotified = true; // se marca antes de enviar para no repetir nunca el aviso
+      todo.push({ t, o });
+    }
+    if (!todo.length) return;
+    await save();
+    const fm = n => String(n).replace('.', ',');
+    for (const { t, o } of todo) {
+      const body = '¡Has ganado ' + fm(o.payout) + ' pavos con tu ' + (t.sels.length > 1 ? 'combinada de ' + t.sels.length : 'apuesta') + ' (cuota ' + fm(t.odd) + ')! 💰';
+      await sendPush('subs', JSON.stringify({ title: '🎉 ¡Apuesta ganada!', body, url: '/#garrabet', tag: 'win-' + t.id }), s => s.device === t.device).catch(e => console.error('Aviso apuesta ganada: ' + e.message));
+    }
+  } finally { winBusy = false; }
+}
+setInterval(() => { gbNotifyWins().catch(e => console.error('Apuestas ganadas: ' + e.message)); }, 20000);
 // Avisos PRIVADOS: solo llegan a los dispositivos que el admin ha activado (apuestas, combinadas y porras de la gente)
 const notifyAdmin = (title, body, tag = 'admin') => sendPush('adminSubs', JSON.stringify({ title, body, url: '/#admin', tag })).catch(e => console.error('Aviso admin: ' + e.message));
 
@@ -274,6 +303,8 @@ app.post('/api/push/subscribe', async (req, res) => {
     && s.keys && typeof s.keys.p256dh === 'string' && typeof s.keys.auth === 'string';
   if (!ok) return bad(res, 'Suscripción no válida');
   const clean = { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
+  const dv = String((req.body && req.body.device) || '').slice(0, 80);
+  if (dv.length >= 8) clean.device = dv; // enlaza este aviso con el dispositivo de GarraBet (para avisar de apuestas ganadas)
   const i = db.subs.findIndex(x => x.endpoint === clean.endpoint);
   if (i >= 0) { if (JSON.stringify(db.subs[i]) === JSON.stringify(clean)) return res.json({ ok: true }); db.subs[i] = clean; }
   else { if (db.subs.length >= 2000) return bad(res, 'Demasiados dispositivos suscritos'); db.subs.push(clean); }
