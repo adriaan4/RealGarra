@@ -1,12 +1,11 @@
 {
-  "name": "real-garra-balonpie",
-  "version": "1.1.0",
-  "description": "Sistema web oficial de Real Garra Balonpi\u00e9 con Porra integrada",
+  "name": "web-real-garra",
+  "version": "2.2.0",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.19.2",
+    "web-push": "^3.6.7"
   }
 }

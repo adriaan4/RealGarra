@@ -1,118 +1,974 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Garra Balonpié</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header>
-        <div class="logo-title">
-            <h2>🦁 Real Garra Balonpié</h2>
-        </div>
-        <nav class="nav-menu">
-            <button class="nav-btn active" onclick="mostrarSeccion('inicio')">Inicio</button>
-            <button class="nav-btn" onclick="mostrarSeccion('calendario')">Calendario</button>
-            <button class="nav-btn" onclick="mostrarSeccion('porra')">🦁 PORRA</button>
-        </nav>
-    </header>
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Real Garra Balonpié</title>
+<link rel="icon" href="escudo.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0d0b09">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Real Garra">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script>try{if(sessionStorage.splash)document.documentElement.classList.add("nosplash");sessionStorage.splash=1}catch(e){}</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
+<style>
+:root{--bg:#0d0b09;--ink:#f6eedb;--gold:#e2ab2c;--red:#a01f22;--card:#1a1512;--line:#3b2e1f}
+*{box-sizing:border-box}
+html{background:var(--bg);-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+body{margin:0;overflow-x:hidden;min-height:100vh;color:var(--ink);font:400 17px/1.5 Barlow,system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(1200px 500px at 50% -100px,#2a1d0c,var(--bg))}
+h1,h2,.big{font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;margin:0}
+h1,h2{color:var(--gold)}
+nav{display:flex;gap:6px;align-items:center;padding:10px 18px;border-bottom:3px solid var(--gold);position:sticky;top:0;background:var(--bg);flex-wrap:wrap;z-index:2}
+nav img{height:46px;margin-right:8px}
+nav a{color:var(--ink);text-decoration:none;font:600 20px "Barlow Condensed",sans-serif;padding:4px 14px;border-radius:99px}
+nav a.on{background:var(--gold);color:#0d0b09}
+main{max-width:1000px;margin:0 auto;padding:24px 18px 60px}
+.home{display:grid;grid-template-columns:1fr 300px;gap:28px;align-items:start}
+@media(max-width:780px){.home{grid-template-columns:1fr}}
+.hero{text-align:center;padding:10px 0}
+.crest{width:min(260px,60vw);filter:drop-shadow(0 8px 24px rgba(226,171,44,.25))}
+.vs{display:flex;align-items:center;justify-content:center;gap:clamp(10px,4vw,26px);flex-wrap:nowrap}
+.vs .crest{width:min(150px,32vw)}
+.vsTxt{font:800 clamp(20px,5vw,32px) "Barlow Condensed",sans-serif;color:var(--red)}
+.crestPrev{height:70px;width:70px;object-fit:contain;background:#0d0b09;border-radius:8px;border:1px solid var(--line)}
+.sub{margin:4px 0;opacity:.8;font-size:18px}
+.big{font-size:clamp(52px,12vw,110px);line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.units{display:flex;justify-content:center;gap:clamp(10px,3vw,28px)}
+.units small{display:block;font-size:15px;opacity:.7}
+.pend{font-size:clamp(34px,8vw,60px);background:var(--red);color:var(--ink);display:inline-block;padding:6px 22px;border:3px solid var(--gold);transform:rotate(-2deg)}
+.salon{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:16px}
+.hit{border-left:4px solid var(--red);padding:6px 0 6px 12px;margin-top:12px}
+.hit small{display:block;opacity:.7}.hit b{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}.hit span{display:block;font-size:14px;opacity:.7}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+.p{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.cands{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.pbtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0}
+.pbtn{font:800 clamp(20px,5vw,28px) "Barlow Condensed",sans-serif;padding:14px 8px;border-radius:10px;border:2px solid var(--gold);background:var(--card);color:var(--gold);text-transform:uppercase;overflow-wrap:anywhere;line-height:1.1}
+.pbtn:hover{background:var(--gold);color:#0d0b09}
+.cand{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 8px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:space-between;min-width:0}
+.cand b{font:800 clamp(18px,4.8vw,30px) "Barlow Condensed",sans-serif;color:var(--gold);overflow-wrap:anywhere;line-height:1.1}
+.cand button{width:100%;padding:6px 4px}
+.cand.sel{border-color:var(--gold);background:#2a1d0c}
+.tag{background:var(--gold);color:#0d0b09;font:800 15px "Barlow Condensed",sans-serif;padding:2px 10px;border-radius:99px}
+.pv{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;margin-top:10px}
+.vh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.banner{background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:14px 18px;margin:14px 0}
+.banner b{font:800 34px "Barlow Condensed",sans-serif;display:block}
+button,input{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{cursor:pointer;background:var(--gold);color:#0d0b09;font-weight:500;border-color:var(--gold)}
+button.mine{background:var(--red);color:var(--ink)}
+button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.bar{height:8px;background:var(--line);border-radius:4px;margin:8px 0 4px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--gold))}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;align-items:center}
+.msg{min-height:24px;font-weight:500;color:var(--gold)}
+ol.rank{padding-left:22px}
+dialog{background:var(--card);color:var(--ink);border:3px solid var(--gold);border-radius:14px;text-align:center;padding:24px 34px}
+dialog::backdrop{background:rgba(0,0,0,.75)}
+dialog b{display:block;font:800 clamp(36px,9vw,64px) "Barlow Condensed",sans-serif;color:var(--gold)}
+.spons{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:18px}
+a.spon{display:flex;flex-direction:column;gap:10px;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:16px;color:var(--ink);text-decoration:none;transition:transform .15s,border-color .15s}
+a.spon:hover{border-color:var(--gold);transform:translateY(-3px)}
+a.spon .logo{height:280px;display:flex;align-items:center;justify-content:center;background:#0d0b09;border-radius:10px;overflow:hidden}
+a.spon .logo img{max-width:100%;max-height:100%;object-fit:contain}
+a.spon .web{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center;overflow-wrap:anywhere}
+a.spon p{margin:0;opacity:.85;font-size:16px}
+.ezRow{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:8px 12px;margin-top:8px}
+.ezRow span{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}.ezRow small{font:400 14px Barlow,sans-serif;color:var(--ink);opacity:.7;margin-left:6px}
+.step{display:flex;gap:6px;align-items:center}.step button{width:42px;padding:8px 0;font-size:20px;line-height:1}
+.step input{width:64px;text-align:center;padding:8px 4px}
+.ezA{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin:10px 0}.ezA label{font-size:14px;opacity:.85}.ezA input{width:100%;margin-top:2px}
+.ezNum{font:800 28px "Barlow Condensed",sans-serif;color:var(--gold);white-space:nowrap}
+.trofeo{margin-top:22px;padding-top:16px;border-top:1px solid var(--line);text-align:center}
+.trofeo b{display:block;font:800 32px "Barlow Condensed",sans-serif;color:var(--gold);letter-spacing:.5px}
+.trofeo span{display:block;font-size:14px;opacity:.75}
+.tw{overflow-x:auto;margin-top:16px}
+table.cal{width:100%;border-collapse:collapse;min-width:560px}
+.cal th{font:800 18px "Barlow Condensed",sans-serif;color:var(--gold);text-align:left;padding:8px 10px;border-bottom:3px solid var(--gold);white-space:nowrap}
+.cal td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.cal td:first-child{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}
+.cal tr.next td{background:#2a1d0c}
+.cal tr.next td:first-child{border-left:4px solid var(--red)}
+.cal .tbc{opacity:.55}
+.calA{display:grid;grid-template-columns:110px 1fr 130px auto;gap:8px;align-items:center;margin-top:8px}
+@media(max-width:600px){.calA{grid-template-columns:1fr 1fr}}
 
-    <main>
-        <section id="sec-inicio" class="seccion-contenido">
-            <div class="card">
-                <h2>Bienvenido a Real Garra Balonpié</h2>
-                <p>Sitio web oficial del club. Revisa el calendario y participa en la nueva Porra oficial.</p>
-            </div>
-        </section>
+#splash{position:fixed;inset:0;z-index:99;background:radial-gradient(700px 500px at 50% 40%,#2a1d0c,#0d0b09 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .5s}
+#splash.out{opacity:0;pointer-events:none}
+.nosplash #splash{display:none}
+#splash img{width:min(240px,56vw);filter:drop-shadow(0 10px 34px rgba(226,171,44,.4));animation:spIn .9s cubic-bezier(.2,.9,.3,1.2) both}
+#splash b{font:800 clamp(26px,8vw,40px) "Barlow Condensed",Impact,sans-serif;letter-spacing:3px;color:var(--gold);animation:spUp .7s .35s both}
+#splash i{display:block;width:120px;height:4px;border-radius:4px;background:var(--line);overflow:hidden;animation:spUp .7s .5s both}
+#splash i::after{content:"";display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--red),var(--gold));border-radius:4px;animation:spBar 1.1s ease-in-out infinite}
+@keyframes spIn{from{opacity:0;transform:scale(.6) rotate(-6deg)}to{opacity:1;transform:none}}
+@keyframes spUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes spBar{from{transform:translateX(-100%)}to{transform:translateX(300%)}}
+@media(prefers-reduced-motion:reduce){#splash img,#splash b,#splash i,#splash i::after{animation:none}}
+nav{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+main{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+.garroName{font:800 clamp(38px,10vw,54px)/1 "Barlow Condensed",Impact,sans-serif;color:var(--gold);margin:8px 0 2px;text-shadow:0 0 22px rgba(226,171,44,.45);overflow-wrap:anywhere}
+.garroBox{background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:12px 16px;margin:10px 0}
+.garroBox b{font:800 30px "Barlow Condensed",sans-serif}
+.podio{display:grid;gap:6px;margin:8px 0}
+.podio div{display:flex;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.ezCount{text-align:center;background:var(--card);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:12px;padding:14px 10px;margin:14px 0}
+.ezCount h3{margin:0;font:800 clamp(20px,5vw,28px) "Barlow Condensed",sans-serif;color:var(--gold)}
+.ezCount .units small{font-size:13px}
+.ezCount p{margin:6px 0 0;opacity:.85}
+.ezSmall p{font:800 clamp(18px,4.5vw,24px) "Barlow Condensed",sans-serif;color:var(--ink);opacity:1}
+.ezBig .big{font-size:clamp(40px,11vw,76px)}
+.ezSmall .big{font-size:clamp(26px,7vw,40px)}
+.crestGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0}
+.crestCard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:10px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.crestCard b{font:800 20px "Barlow Condensed",sans-serif;color:var(--gold);overflow-wrap:anywhere;line-height:1.1}
+.crestImg{width:90px;height:90px;display:flex;align-items:center;justify-content:center;background:#0d0b09;border-radius:8px;border:1px solid var(--line);overflow:hidden}
+.crestImg img{max-width:100%;max-height:100%;object-fit:contain}
+.crestImg span{font-size:12px;opacity:.6}
+.crestCard .row{justify-content:center;margin:0}
+.crestPickBtn{background:none;border:0;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;width:100%;cursor:pointer}
+.crestCard button.ghost{font-size:13px;padding:4px 8px}
+#crestDlg{width:min(620px,94vw);max-height:88vh;overflow:auto}
+img.mini{height:22px;width:22px;object-fit:contain;vertical-align:middle;margin-right:6px}
+[hidden]{display:none}
+@media(prefers-reduced-motion:no-preference){.bar i{transition:width .5s}}
+/* ===== Móvil: sin saltos, controles grandes, nada se sale de la pantalla ===== */
+img{max-width:100%}
+button,a,input,summary,select{touch-action:manipulation}
+input{min-width:0;max-width:100%}
+input[type=datetime-local],input[type=time],input[type=number]{-webkit-appearance:none;appearance:none;min-height:44px}
+input[type=number]{-moz-appearance:textfield}
+button{min-height:44px}
+nav{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;gap:4px;padding-left:12px;padding-right:12px;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}
+nav img{height:38px;flex:none;margin-right:4px}
+nav a{flex:none;white-space:nowrap;font-size:19px;padding:6px 13px}
+.toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:200;max-width:520px;margin:0 auto;background:var(--ink);color:#0d0b09;font-weight:500;border-radius:12px;padding:12px 16px;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.55);pointer-events:none}
+.toast:empty{display:none}
+details.ad{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;margin:12px 0;overflow:hidden}
+details.ad>summary{list-style:none;cursor:pointer;padding:12px 16px;min-height:54px;font:800 24px "Barlow Condensed",Impact,sans-serif;color:var(--gold);display:flex;justify-content:space-between;align-items:center;gap:10px}
+details.ad>summary::-webkit-details-marker{display:none}
+details.ad>summary::after{content:"▾";font-size:20px;transition:transform .2s}
+details.ad[open]>summary::after{transform:rotate(180deg)}
+details.ad>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px}
+.atabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 14px}
+.atab[data-at=eco]{grid-column:span 2}
+.ecoAll b{display:block;font-size:18px}.ecoAll small{display:block}
+.atab{padding:8px 6px;min-height:44px;font:800 18px "Barlow Condensed",Impact,sans-serif;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;text-align:center;line-height:1.1}
+.atab.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
+.atab[data-at=eco]:not(.on){border-color:var(--gold);color:var(--gold)}
+.apane h3{margin:14px 0 6px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.apane>.pv{background:#120e0b}
+.ecoSum{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.ecoSum span{flex:1 1 90px;background:#120e0b;border:1px solid var(--line);border-radius:10px;padding:8px 10px;text-align:center}
+.ecoSum b{display:block;font:800 28px "Barlow Condensed",sans-serif;color:var(--gold)}
+.ecoSum small{opacity:.8}
+.ecoRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;margin:8px 0 0}
+.ecoH{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ecoBal{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold);white-space:nowrap}
+.ecoRn summary{cursor:pointer;font-size:14px;opacity:.8;margin-top:8px}
+button.neg{background:var(--red);border-color:var(--red);color:var(--ink)}
+.adb{padding:0 14px 14px}
+.adb h3{margin:14px 0 4px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.adb .pv{background:#120e0b}
+.adb .sub{font-size:15px}
+.calA button{min-width:104px}
+.calA input{width:100%}
+.sqRow{display:grid;gap:8px}
+.sqTop{display:grid;grid-template-columns:72px 1fr auto;gap:8px;align-items:center}
+.sqBot{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
+.sqBot label,.sqc{display:flex;align-items:center;gap:6px;font-size:15px;opacity:.9}
+.sqBot input{width:100%}
+.sqm{text-transform:uppercase}
+.sqc input{width:22px;height:22px;min-height:0;padding:0;accent-color:var(--gold)}
+.sqHead{text-align:center;margin-bottom:6px}
+.sqHead h1{font-style:italic;letter-spacing:1px;font-size:clamp(34px,10vw,54px);line-height:1.05;text-shadow:0 0 24px rgba(226,171,44,.35)}
+.sqHead p{margin:2px 0 0;opacity:.75;font-size:15px}
+/* Ficha de jugador */
+.pl{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.pl:hover i,.pl:focus-visible i{transform:scale(1.12)}
+.pl i{transition:transform .12s}
+.pl:focus-visible{outline:none}
+#plDlg{padding:0;width:min(88vw,340px);background:linear-gradient(180deg,#2a1d0c,var(--card) 60%);overflow:hidden}
+.fch{position:relative;padding:14px 16px 16px;text-align:center}
+.fch .x{position:absolute;right:8px;top:8px;width:34px;height:34px;padding:0;border-radius:50%;line-height:1;font-size:18px;background:transparent;color:var(--ink);border-color:var(--line)}
+.fch h2{margin:0 34px 10px;font:800 clamp(30px,9vw,40px)/1.05 "Barlow Condensed",Impact,sans-serif;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
+.fch h2 small{display:block;font-size:.55em;letter-spacing:3px;color:var(--ink);opacity:.8}
+.fch .ph{width:100%;aspect-ratio:4/3;border:3px solid var(--gold);border-radius:10px;background:#0d0b09 center/cover no-repeat;display:grid;place-items:center;overflow:hidden}
+.fch .ph img.nofoto{width:42%;opacity:.35}
+.fch .fr{margin:12px 4px 6px;font:italic 600 19px/1.25 "Barlow Condensed",sans-serif;min-height:24px;overflow-wrap:anywhere}
+.fch .gl{margin-top:8px;padding:8px 12px;background:var(--red);border:2px solid var(--gold);border-radius:10px;font:800 22px "Barlow Condensed",sans-serif;letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.fch .gl[hidden]{display:none}
+.fch .gl b{display:inline;font-size:34px;line-height:1;color:var(--gold)}
+.sqExtra{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center}
+.sqExtra label{display:flex;align-items:center;gap:6px;font-size:15px;opacity:.9}
+.sqExtra input.sqg{width:100%}
+.sqExtra input.sqq{width:100%;grid-column:1/-1}
+.sqPh{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sqPh img{height:56px;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:#0d0b09}
+#pitch{position:relative;width:100%;max-width:460px;margin:12px auto 0;aspect-ratio:583/948;border-radius:16px;overflow:hidden;border:3px solid var(--gold);background:#1d5f27 url(cesped.jpg) center/100% 100% no-repeat;container-type:inline-size;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.pl{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:25%;pointer-events:auto;cursor:pointer}
+.pl i{position:relative;display:grid;place-items:center;font-style:normal;font-weight:800;font-family:"Barlow Condensed",Impact,sans-serif;line-height:1;width:27px;height:27px;font-size:15px;width:max(27px,8.2cqw);height:max(27px,8.2cqw);font-size:max(15px,4.7cqw);border-radius:50%;background:var(--gold);color:#0d0b09;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.65)}
+.pl span{margin-top:3px;max-width:100%;white-space:nowrap;font-family:"Barlow Condensed",Impact,sans-serif;font-weight:800;line-height:1.1;letter-spacing:.3px;color:#fff;background:rgba(10,8,6,.72);padding:1px 7px;border-radius:99px;font-size:12px;font-size:max(12px,3.9cqw)}
+.pl.cap i::after{content:"C";position:absolute;right:-7px;top:-7px;display:grid;place-items:center;width:15px;height:15px;font-size:10px;width:max(15px,4.4cqw);height:max(15px,4.4cqw);font-size:max(10px,2.9cqw);border-radius:50%;background:var(--red);color:#fff;border:1.5px solid #fff}
+.sqEmpty{text-align:center;opacity:.7}
+@media(max-width:640px){
+ body{font-size:16px}
+ main{padding:16px 12px calc(70px + env(safe-area-inset-bottom,0px))}
+ h1{font-size:32px;line-height:1.1}
+ .row{gap:8px}
+ .row>input:not([type=file]):not([type=checkbox]):not([type=radio]){flex:1 1 100%}
+ .row>button{flex:1 1 auto}
+ .calA{grid-template-columns:1fr 1fr;grid-template-areas:"t r" "f f" "b b"}
+ .calA [data-c=time]{grid-area:t}.calA [data-c=result]{grid-area:r}.calA [data-c=field]{grid-area:f}.calA button{grid-area:b}
+ .pbtns{grid-template-columns:1fr 1fr}
+ .cands{gap:8px}
+ .ezA{grid-template-columns:repeat(3,1fr)}
+ .ezRow{padding:8px 10px}
+ .salon{padding:14px}
+ dialog{width:min(94vw,520px);padding:18px 14px}
+ dialog b{font-size:clamp(34px,11vw,56px)}
+ .crestGrid{grid-template-columns:repeat(2,1fr)}
+ a.spon .logo{height:200px}
+ .tw{overflow:visible;margin-top:12px}
+ table.cal,.cal tbody{display:block;min-width:0;width:100%}
+ .cal thead{display:none}
+ .cal tbody{display:grid;gap:10px}
+ .cal tr{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"j d r" "m m m" "h f f";gap:2px 10px;align-items:center;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:10px 12px}
+ .cal td{display:block;padding:0;border:0;min-width:0}
+ .cal td.cj{grid-area:j;font-size:26px}
+ .cal td.cd{grid-area:d;opacity:.85}
+ .cal td.cr{grid-area:r;font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}
+ .cal td.cm{grid-area:m;font:800 22px/1.2 "Barlow Condensed",sans-serif;padding:4px 0}
+ .cal td.ch{grid-area:h;font-size:15px}
+ .cal td.cf{grid-area:f;font-size:15px;overflow-wrap:anywhere}
+ .cal td.ch::before{content:"🕒 "}.cal td.cf::before{content:"📍 "}
+ .cal tr.next{border-color:var(--gold);background:#2a1d0c}
+ .cal tr.next td,.cal tr.next td:first-child{background:none;border-left:0}
+ #pitch{border-width:2px;border-radius:14px}
+}
+@media(max-width:360px){nav a{font-size:18px;padding:6px 10px}.units{gap:8px}}
 
-        <section id="sec-calendario" class="seccion-contenido" style="display:none;">
-            <div class="card">
-                <h2>📅 Calendario de Partidos</h2>
-                <div id="calendario-lista">
-                    <p>Cargando partidos...</p>
-                </div>
-            </div>
-        </section>
+/* GarraBet */
+select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:44px;max-width:100%}
+.gbm{background:linear-gradient(160deg,#4a2a12,#2a1608);border:1px solid var(--line);border-radius:16px;padding:14px;margin:14px 0}
+.gbm h3{margin:0 0 10px;font:800 22px "Barlow Condensed",sans-serif;color:var(--ink)}
+.gbbtns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gbbtns.three{grid-template-columns:1fr 1fr 1fr}
+.gbb{background:#fff;color:#2b2b2b;border:3px solid #fff;border-radius:10px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;line-height:1.25;position:relative;min-height:62px}
+.gbb small{font-size:15px;opacity:.85}.gbb b{font:800 22px "Barlow Condensed",sans-serif;color:#c3000b}
+.gbb.on{border-color:#e0121b;box-shadow:0 0 0 2px #e0121b66}
+.gbb.win{background:#d8f5dd}.gbb.lose{background:#f3d6d6;opacity:.8}
+.gbb:disabled{opacity:.55;cursor:default}
+.gbb i{position:absolute;top:-9px;right:-4px;font:700 12px/1 Barlow,sans-serif;font-style:normal;background:#e0121b;color:#fff;padding:3px 6px;border-radius:5px}
+.gbs{width:100%;margin:16px 0 4px;padding:0;min-height:28px;border:0;background:transparent;-webkit-appearance:none;appearance:none;--p:0%}
+.gbs::-webkit-slider-runnable-track{height:5px;border-radius:9px;background:linear-gradient(90deg,#fff var(--p),#ffffff40 var(--p))}
+.gbs::-moz-range-track{height:5px;border-radius:9px;background:#ffffff40}.gbs::-moz-range-progress{height:5px;border-radius:9px;background:#fff}
+.gbs::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #fff;margin-top:-10px;box-shadow:0 1px 5px #0008}
+.gbs::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #fff}
+.gbnone{opacity:.75;margin:0}
+.gbmine{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.gbchip{font-weight:700;border-radius:99px;padding:2px 12px;font-size:15px;background:#3b2e1f}.gbchip.win{background:#1f7a33}.gbchip.lose{background:#a01f22}.gbchip.void{background:#5c5c5c}
+.gbadm{background:#120e0b;border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0}
+.gbadm h4{margin:0 0 8px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
+.gbgrid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px 8px;align-items:center}
+.gbgrid.r3{grid-template-columns:repeat(3,1fr)}
+.gbgrid input{width:100%;min-height:40px;padding:6px 8px}
+.gbgrid span{font-size:16px}.gbgrid .h{opacity:.7;font-size:14px}
 
-        <!-- Sección Porra -->
-        <section id="sec-porra" class="seccion-contenido" style="display:none;">
-            <h2>🦁 PORRA GARRA</h2>
-            
-            <div id="porra-login-card" class="card">
-                <h3>👤 ¿Cuál es tu nombre?</h3>
-                <div class="form-group">
-                    <input type="text" id="porra-input-nombre" placeholder="Introduce tu nombre" class="input-text" />
-                    <button class="btn-primary" onclick="guardarNombreUsuario()">Entrar a la Porra</button>
-                </div>
-            </div>
+.gbslip{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;background:#1a1512;border:2px solid var(--gold);border-radius:14px;padding:12px;margin:14px 0;box-shadow:0 6px 24px #000a}
+.gbslip h3{margin:0 0 6px;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}
+.gbsl{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:16px}
+.gbsl button{min-height:34px;padding:2px 10px}
+.gbtot{display:flex;justify-content:space-between;align-items:center;margin:10px 0 8px;font:800 22px "Barlow Condensed",sans-serif}
+.gbtot b{color:var(--gold);font-size:28px}
+.gbex{overflow-x:auto}
+.gbexg{display:grid;grid-template-columns:34px repeat(6,minmax(48px,1fr));gap:5px;min-width:340px;align-items:stretch}
+.gbexg .h{font-size:13px;text-align:center;opacity:.85;align-self:center}
+.gbexg .gbb{min-height:42px;padding:3px 2px;border-width:2px;border-radius:8px}
+.gbexg .gbb b{font-size:16px}.gbexg .gbb i{display:none}
+.gbtk{margin:8px 0}.gbtk ul{margin:6px 0 0;padding-left:18px;font-size:15px}
+.gbtk li{margin:2px 0}
+.gbtk .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+</style></head><body>
+<div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#calendario">Calendario</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<main>
+<section id="inicio" hidden><div class="home">
+ <div class="hero">
+  <div class="vs" id="vsBox" hidden><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><span class="vsTxt">VS</span><img class="crest" id="rivalCrest" alt=""></div>
+  <img class="crest" id="soloCrest" src="escudo.png" alt="Escudo Real Garra Balonpié">
+  <h2>Siguiente partido</h2><p class="sub" id="rival"></p><div id="count"></div><p class="sub" id="fecha"></p><p class="sub" id="campo"></p>
+  <div id="installBox" hidden style="margin-top:18px"><button id="installBtn" type="button">📲 Instalar la app</button><p class="sub" id="installMsg"></p></div>
+  <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
+ <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div>
+  <div class="trofeo" id="trofeo"><b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span></div></aside>
+</div></section>
 
-            <div id="porra-main-dashboard" style="display:none;">
-                <div class="user-welcome-bar card">
-                    <span id="txt-bienvenida"></span>
-                    <button class="btn-secondary" onclick="cambiarUsuario()">Cambiar nombre</button>
-                </div>
+<section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
+ <div id="ultimo"></div>
+ <p>Pulsa el nombre de tu MVP para votar: <b>solo se puede votar una vez</b>.</p>
+ <p class="msg" id="vmsg"></p><div id="miVoto"></div>
+ <div class="pbtns" id="votos"></div>
+ <h2 style="margin-top:28px">Votos de esta votación</h2><div id="ranking"></div>
+ <h2 style="margin-top:28px">Clasificación de MVPs</h2><ol class="rank" id="rank"></ol>
+</section>
 
-                <div class="card resumen-personal">
-                    <h3>👤 Resumen de <span id="resumen-nombre"></span></h3>
-                    <p>Puntos: <strong id="resumen-puntos">0</strong> | Posición: <strong id="resumen-posicion">#-</strong></p>
-                    <p>Aciertos exactos: <strong id="resumen-exactos">0</strong> | Porras realizadas: <strong id="resumen-total">0</strong></p>
-                </div>
+<section id="ez" hidden><h1>GARRO DE ORO</h1>
+ <div id="ezCount"></div>
+ <p>Pon tu nombre y apunta lo que has bebido. Puedes volver y cambiar tus cantidades cuando quieras.</p>
+ <div class="row"><input id="ezName" placeholder="Tu nombre" maxlength="30" autocomplete="off" style="flex:1;min-width:200px"></div>
+ <div id="ezForm"></div>
+ <div class="row"><button id="ezSave" type="button">Guardar</button><span class="ezNum" id="ezTotal"></span></div>
+ <p class="msg" id="ezMsg"></p>
+ <h2 style="margin-top:28px">Clasificación</h2><div id="ezRank"></div>
+</section>
 
-                <div class="subnav-porra">
-                    <button class="btn-subnav active" onclick="verSubPorra('partidos')">⚽ PORRA DE PARTIDOS</button>
-                    <button class="btn-subnav" onclick="verSubPorra('final')">🏆 PORRA FINAL DE TEMPORADA</button>
-                    <button class="btn-subnav" onclick="verSubPorra('mis-porras')">👤 MIS PORRAS</button>
-                    <button class="btn-subnav" onclick="verSubPorra('clasificacion')">🏆 CLASIFICACIÓN GENERAL</button>
-                </div>
+<section id="garrabet" hidden><h1>GarraBet</h1>
+ <p class="sub">Toca las cuotas para armar tu boleto: una selección es sencilla y varias, combinada (se multiplican). Solo una selección por mercado y partido.</p>
+ <div id="gbName"></div>
+ <div class="row"><select id="gbMatch" aria-label="Partido"></select></div>
+ <div id="gbMarkets"></div>
+ <div id="gbSlip"></div>
+ <h2 style="margin-top:22px">Mis apuestas</h2><div id="gbMine"></div>
+</section>
 
-                <div id="subporra-partidos" class="subporra-box">
-                    <h3>⚽ Próximos Partidos</h3>
-                    <div id="lista-partidos-porra"></div>
-                </div>
+<section id="calendario" hidden><h1>Calendario</h1>
+ <p>Todos los partidos de la temporada. La hora y el campo se irán confirmando.</p>
+ <div class="tw"><table class="cal"><thead><tr><th>Jornada</th><th>Fecha</th><th>Horario</th><th>Partido</th><th>Resultado</th><th>Campo</th></tr></thead><tbody id="calBody"></tbody></table></div>
+</section>
 
-                <div id="subporra-final" class="subporra-box" style="display:none;">
-                    <h3>🏆 MI PORRA FINAL</h3>
-                    <form id="form-porra-final" class="card">
-                        <label>⚽ Máximo goleador:</label><br>
-                        <select id="pf-goleador" class="select-plantilla"></select><br><br>
+<section id="plantilla" hidden>
+ <div class="sqHead"><h1>PLANTILLA OFICIAL</h1><p>Real Garra Balonpié</p></div>
+ <div id="pitch" role="img" aria-label="Plantilla oficial colocada sobre el campo"></div>
+</section>
 
-                        <label>📊 Posición final de Garra:</label><br>
-                        <input type="number" id="pf-posicion" min="1" max="20" required class="input-text" /><br><br>
+<section id="patrocinadores" hidden><h1>Patrocinadores</h1>
+ <p>Gracias a quienes apoyan al Real Garra Balonpié. Pulsa en cualquiera para visitar su web.</p>
+ <div class="spons">
+  <a class="spon" href="https://menajealacon.com" target="_blank" rel="noopener noreferrer">
+   <div class="logo"><img src="patrocinadores/menaje-alacon.jpg" alt="Logo de Menaje Alacón, desde 1972" loading="lazy"></div>
+   <span class="web">menajealacon.com</span>
+   <p>Empresa familiar que empezó vendiendo menaje de cocina de forma ambulante por pueblos de Teruel y hoy también lo hace online: sartenes, ollas, cuchillos y todo lo que necesita tu cocina.</p>
+  </a>
+  <a class="spon" href="https://trakeballer.s.gy/store" target="_blank" rel="noopener noreferrer">
+   <div class="logo"><img src="patrocinadores/trakeballer.jpg" alt="Logo de Trakeballer" loading="lazy"></div>
+   <span class="web">https://trakeballer.s.gy/store</span>
+   <p>Tienda online de camisetas de fútbol actuales y retro de clubes y selecciones, personalizadas con tu nombre y dorsal y enviadas a domicilio.</p>
+  </a>
+ </div>
+</section>
 
-                        <label>🧤 Goles encajados por Antonio:</label><br>
-                        <input type="number" id="pf-goles-antonio" min="0" required class="input-text" /><br><br>
+<section id="admin" hidden><h1>Administración</h1>
+ <div class="row" id="loginRow"><input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password"><button id="login">Entrar</button></div>
+ <div id="panel" hidden>
+  <div class="atabs" role="tablist" aria-label="Secciones del panel">
+   <button type="button" class="atab on" data-at="partido" role="tab">⚽ Partido</button>
+   <button type="button" class="atab" data-at="votos" role="tab">🗳️ Votaciones</button>
+   <button type="button" class="atab" data-at="bet" role="tab">🎲 GarraBet</button>
+   <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
+   <button type="button" class="atab" data-at="mas" role="tab">⚙️ Más</button>
+  </div>
+  <div class="apane" data-ap="partido">
+  <details class="ad" open><summary>⚽ Próximo partido</summary><div class="adb">
+   <div class="row"><input id="fecha-in" type="datetime-local"><input id="rivalIn" placeholder="Rival"><input id="campoIn" placeholder="Campo donde se juega" maxlength="80"></div>
+   <div class="row">Escudo del rival: <button id="crestSel" type="button">Seleccionar escudo</button><img id="crestPreview" class="crestPrev" hidden alt=""><button id="delCrest" class="ghost" type="button" hidden>Quitar escudo</button><input id="crestFile" type="file" accept="image/*" hidden></div>
+   <div class="row"><button id="saveMatch">Guardar partido</button><button id="delMatch" class="ghost">Borrar partido</button></div>
+  </div></details>
+  <details class="ad"><summary>📅 Calendario</summary><div class="adb">
+   <p class="sub">Pon la hora, el campo y el resultado de cada jornada y pulsa Guardar. Si dejas la hora o el campo vacíos, en la web sale «Por confirmar».</p><div id="adminCal"></div>
+  </div></details>
+  <details class="ad"><summary>📋 Plantilla</summary><div class="adb">
+   <p class="sub">Dorsal, nombre y posición de cada jugador en el campo. ↔ es izquierda–derecha y ↕ es arriba–abajo (0 a 100; arriba es el ataque, abajo la portería). La «C» marca al capitán.</p>
+   <div id="adminSquad"></div>
+   <div class="row"><button id="addSq" type="button" class="ghost">+ Añadir jugador</button><button id="saveSq" type="button">Guardar plantilla</button></div>
+  </div></details>
+  </div>
+  <div class="apane" data-ap="votos" hidden>
+  <details class="ad" open><summary>🗳️ Votación MVP</summary><div class="adb">
+   <div class="row"><input id="roundRival" placeholder="Rival del partido votado"><button id="saveRound">Guardar rival</button><button id="closeRound">Cerrar votación y mostrar MVP</button></div>
+   <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
+  </div></details>
+  <details class="ad"><summary>🏆 GARRO DE ORO</summary><div class="adb">
+   <div id="garroAdmin"></div><div class="row"><button id="garroClose" type="button">🏆 Proclamar Garro de Oro</button><button id="garroDel" class="ghost" type="button" hidden>Quitar Garro de Oro del inicio</button></div>
+   <div class="row"><button id="ezReset" class="ghost" type="button">Vaciar clasificación</button><small>(cambia las cantidades de cada persona y pulsa Guardar)</small></div><div id="adminEz"></div>
+  </div></details>
+  <details class="ad"><summary>👥 Jugadores (votación MVP)</summary><div class="adb">
+   <div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
+   <div class="grid" id="adminList"></div>
+  </div></details>
+  <details class="ad"><summary>🏅 MVPs anteriores</summary><div class="adb"><div id="adminHist"></div></div></details>
+  </div>
+  <div class="apane" data-ap="bet" hidden>
+  <details class="ad" open><summary>🎲 Cuotas del partido</summary><div class="adb">
+   <p class="sub">Elige la jornada y escribe las cuotas a mano (mínimo 1,01; vacío = no se ofrece esa opción). El resultado de cada selección se calcula solo cuando pones el resultado en Admin → Calendario (formato «3-1», Real Garra primero).</p>
+   <div class="row"><select id="gbAdmMatch" aria-label="Jornada"></select><button id="gbSave" type="button">Guardar cuotas</button></div>
+   <div id="gbAdmForm"></div>
+  </div></details>
+  <details class="ad" id="gbAdmDet"><summary>🎟️ Apuestas de la gente</summary><div class="adb">
+   <div class="row"><select id="gbFJ" aria-label="Filtrar por jornada"></select><select id="gbFU" aria-label="Filtrar por persona"></select><button id="gbRefresh" type="button" class="ghost">Actualizar</button></div>
+   <div id="gbAdmBets"></div>
+  </div></details>
+  </div>
+  <div class="apane" data-ap="eco" hidden>
+   <div class="ecoSum" id="ecoSum"></div>
+   <div class="pv ecoAll"><b>Toda la gente a la vez</b><small>Escribe una cantidad (sin signo) y elige si se añade o se quita a todos.</small>
+    <div class="ecoRow"><input id="gbAllIn" inputmode="decimal" placeholder="Pavos" aria-label="Pavos para todos"><button type="button" id="gbAllAdd">➕ Añadir</button><button type="button" id="gbAllSub" class="neg">➖ Quitar</button></div></div>
+   <h3>Cada persona</h3>
+   <div id="gbAdmUsers"><p>Cargando…</p></div>
+  </div>
+  <div class="apane" data-ap="mas" hidden>
+  <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
+   <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
+  </div></details>
+  <details class="ad"><summary>💾 Copia de seguridad</summary><div class="adb">
+   <div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
+  </div></details>
+  </div>
+ </div>
+</section>
+</main>
+<div id="amsg" class="toast" role="status" aria-live="polite"></div>
+<input id="crestPick" type="file" accept="image/*" hidden>
+<dialog id="crestDlg"><h2>Elige el escudo del rival</h2><p class="sub" style="font-size:15px">Pulsa el equipo. Si todavía no tiene escudo, te pide la foto y la guarda para siempre.</p><div class="crestGrid" id="crestPickGrid"></div><p class="msg" id="crestMsg"></p><div class="row" style="justify-content:center"><button id="crestOther" type="button" class="ghost">📷 Subir otro escudo (solo este partido)</button><button id="crestClose" type="button" class="ghost">Cerrar</button></div></dialog>
+<dialog id="gbShareDlg"><h2>Tu boleto</h2><img id="gbShareImg" alt="Boleto de GarraBet" style="width:100%;max-width:420px;border-radius:10px;display:block;margin:10px auto"><div class="row" style="justify-content:center"><button id="gbShareBtn" type="button">📤 Compartir</button><button id="gbDlBtn" type="button" class="ghost">⬇️ Descargar</button><button id="gbShareClose" type="button" class="ghost">Cerrar</button></div></dialog>
+<dialog id="plDlg" aria-label="Ficha del jugador"><div class="fch"><button type="button" class="x" id="plX" aria-label="Cerrar">✕</button><h2><small id="plNum"></small><span id="plName"></span></h2><div class="ph" id="plPh"></div><p class="fr" id="plFr"></p><div class="gl"><span>Goles anotados:</span><b id="plGl">0</b></div><div class="gl" id="plCRow" hidden><span>Goles encajados:</span><b id="plCo">0</b></div></div></dialog>
+<dialog id="dlg"><h2>MVP del Garra vs <span id="dlgRival"></span></h2><b id="dlgTxt"></b><p><button id="dlgOk">Cerrar</button></p></dialog>
+<script>
+const $=s=>document.querySelector(s);
+let dev='';try{dev=localStorage.dev||(localStorage.dev=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)))}catch{dev=Math.random().toString(36).slice(2)}
+let S={garrabet:{odds:{},exact:{},results:{},mine:[],lines:{},me:null},players:[],next:{},calendar:[],round:{votes:[]},history:[],mine:null,ez:[],ezPts:{},ezMine:null,crests:[]},pw=sessionStorage.getItem('pw')||'',timer,filled=false,crestData='';
+function updateCrestPreview(){const p=$('#crestPreview'),d=$('#delCrest'),lc=crestFor($('#rivalIn').value),src=crestData||(lc?crestUrl(lc):'');if(src){p.src=src;p.hidden=false}else p.hidden=true;d.hidden=!crestData}
+$('#crestFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();
+ fr.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s)||1;c.height=Math.round(img.height*s)||1;c.getContext('2d').drawImage(img,0,0,c.width,c.height);crestData=c.toDataURL('image/png');updateCrestPreview()};img.src=fr.result};
+ fr.readAsDataURL(f)};
+$('#delCrest').onclick=()=>{crestData='';$('#crestFile').value='';updateCrestPreview()};
+const api=async(u,m='GET',b,h={})=>{const r=await fetch(u,{method:m,headers:{'Content-Type':'application/json',...h},body:b&&JSON.stringify(b)});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||'Error');return d};
+const adm=(u,m,b)=>api(u,m,b,{'x-admin':pw});
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mv=h=>Array.isArray(h.mvps)?h.mvps:[];
+const names=h=>mv(h).map(m=>esc(m.name)).join(' y ')+(mv(h).length>1?' (empate)':'');
+const top1=h=>(mv(h)[0]||{}).votes||0;
+const loc=iso=>{if(!iso)return'';const d=new Date(iso);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
+let lastJ='';
+// solo se vuelve a pintar si los datos han cambiado: así la pantalla no se mueve cada 30 s mientras escribes o te desplazas
+async function load(){const d=await api('/api/state?d='+encodeURIComponent(dev)),j=JSON.stringify(d);if(j===lastJ&&filled)return;lastJ=j;S=d;render()}
+{const t=$('#amsg');let h;new MutationObserver(()=>{clearTimeout(h);if(t.textContent)h=setTimeout(()=>{t.textContent=''},3200)}).observe(t,{childList:true,characterData:true,subtree:true})}
+function flash(b,t='✓ Guardado'){if(!b)return;const o=b.dataset.o||(b.dataset.o=b.textContent);b.textContent=t;clearTimeout(b._t);b._t=setTimeout(()=>{b.textContent=o},1600)}
+function render(){
+ const fut=S.next.date&&new Date(S.next.date)>Date.now();
+ $('#rival').textContent=fut&&S.next.rival?'Garra vs '+S.next.rival:'';
+ $('#fecha').textContent=fut?new Date(S.next.date).toLocaleString('es-ES',{dateStyle:'full',timeStyle:'short'}):'';
+ $('#campo').textContent=fut&&S.next.field?'📍 Campo: '+S.next.field:'';
+ const lc=fut&&S.next.rival?crestFor(S.next.rival):null,rcs=S.next.crest||(lc?crestUrl(lc):''),showVs=fut&&rcs;
+ $('#vsBox').hidden=!showVs;$('#soloCrest').hidden=!!showVs;
+ if(showVs){$('#rivalCrest').src=rcs;$('#rivalCrest').alt='Escudo de '+(S.next.rival||'el rival')}
+ $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${top1(h)} de ${h.totalVotes||0} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
+ try{renderMvp()}catch(e){console.error(e)}
+ try{renderEz()}catch(e){console.error(e)}
+ try{renderGarro()}catch(e){console.error(e)}
+ try{renderCal()}catch(e){console.error(e)}
+ try{renderGB()}catch(e){console.error(e)}
+ try{renderCrests()}catch(e){console.error(e)}
+ try{renderSquad()}catch(e){console.error(e)}
+ $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
+ $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
+ $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
+ if(!filled){$('#fecha-in').value=loc(S.next.date);$('#rivalIn').value=S.next.rival||'';$('#campoIn').value=S.next.field||'';$('#roundRival').value=S.round.rival||'';crestData=S.next.crest||'';$('#crestFile').value='';updateCrestPreview();filled=true}
+ tick()}
+function renderMvp(){
+ $('#mvpTitulo').textContent=S.round.rival?'MVP del Garra vs '+S.round.rival:'MVP del partido';
+ const l=S.history[0];
+ $('#ultimo').innerHTML=l?`<div class="banner">Último MVP · Garra vs ${esc(l.rival)}<b>${names(l)}</b></div>`:'';
+ const votes=S.round.votes,mine=S.mine,mp=mine&&S.players.find(p=>p.id===mine.playerId);
+ $('#miVoto').innerHTML=mine?`<div class="banner">Ya has votado<b>${mp?esc(mp.name):'tu MVP'}</b></div>`:'';
+ // botones de jugadores; al votar desaparecen y el voto entra en la lista de abajo
+ $('#votos').hidden=!!mine;
+ $('#votos').innerHTML=S.players.map(p=>`<button class="pbtn" data-v="${p.id}" data-n="${esc(p.name)}">${esc(p.name)}</button>`).join('')||'<p>Aún no hay jugadores.</p>';
+ // lista: solo los votados, de más a menos votos
+ const cnt=id=>votes.filter(v=>v.playerId===id);
+ const ranked=S.players.map(p=>({p,vs:cnt(p.id)})).filter(x=>x.vs.length).sort((a,b)=>b.vs.length-a.vs.length||a.p.name.localeCompare(b.p.name));
+ const top=ranked.length?ranked[0].vs.length:1;
+ $('#ranking').innerHTML=ranked.map(({p,vs})=>{const pos=ranked.findIndex(x=>x.vs.length===vs.length)+1;
+  return `<div class="pv"><div class="vh"><b>${pos}. ${esc(p.name)}</b><span>${vs.length} voto${vs.length==1?'':'s'}</span></div><div class="bar"><i style="width:${vs.length/top*100}%"></i></div>${mine&&mine.playerId===p.id?'<span class="tag">Tu voto</span>':''}</div>`}).join('')||'<p>Todavía no ha votado nadie.</p>';
+ const tot={};S.history.forEach(h=>mv(h).forEach(m=>tot[m.name]=(tot[m.name]||0)+1));
+ $('#rank').innerHTML=Object.entries(tot).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`<li>${esc(n)} — ${c} MVP${c>1?'s':''}</li>`).join('')||'<li style="list-style:none">Todavía no hay clasificación.</li>'}
+// ---- GARRO DE ORO (antes Garra vs EZ) ----
+const EZ=[['cigarros','🚬','Cigarros'],['cubatas','🍹','Cubata'],['chupitos','🥃','Chupito'],['cervezas','🍺','Cerveza'],['porros','🌿','Porro']];
+const ezN=v=>Math.min(999,Math.max(0,Math.floor(Number(v))||0));
+const ezPts=e=>EZ.reduce((t,[k])=>t+ezN(e[k])*(S.ezPts[k]||0),0);
+const ezFmt=n=>(Math.round(n*10)/10).toString().replace('.',',');
+let ezInit=false;
+function ezBuildForm(){
+ $('#ezForm').innerHTML=EZ.map(([k,ic,l])=>`<div class="ezRow"><span>${ic} ${l}<small>${ezFmt(S.ezPts[k]||0)} pts</small></span><div class="step"><button type="button" class="ghost" data-ek="${k}" data-es="-1" aria-label="Quitar ${l}">−</button><input type="number" inputmode="numeric" min="0" max="999" id="ez-${k}" value="0" aria-label="${l}"><button type="button" data-ek="${k}" data-es="1" aria-label="Añadir ${l}">+</button></div></div>`).join('')}
+function ezDraft(){const c={};EZ.forEach(([k])=>c[k]=ezN($('#ez-'+k).value));return c}
+function ezUpdTotal(){$('#ezTotal').textContent=ezFmt(ezPts(ezDraft()))+' pts'}
+function ezBreak(e){return EZ.filter(([k])=>ezN(e[k])).map(([k,ic])=>ic+' '+ezN(e[k])).join(' · ')||'Sin apuntar nada'}
+function renderEz(){
+ if(!$('#ez-cigarros')){if(!Object.keys(S.ezPts).length)return;ezBuildForm()}
+ const mine=S.ez.find(e=>e.id===S.ezMine);
+ if(!ezInit){ezInit=true;if(mine){$('#ezName').value=mine.name;EZ.forEach(([k])=>$('#ez-'+k).value=ezN(mine[k]))}ezUpdTotal()}
+ $('#ezName').disabled=!!mine;$('#ezSave').textContent=mine?'Actualizar':'Guardar';ezLock();
+ const rk=[...S.ez].map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));
+ const top=rk.length&&rk[0].p>0?rk[0].p:1;
+ $('#ezRank').innerHTML=rk.map(({e,p})=>{const pos=rk.findIndex(x=>x.p===p)+1;
+  return `<div class="pv"><div class="vh"><b>${pos}. ${esc(e.name)}</b><span class="cnt">${ezFmt(p)} pts</span></div><div class="bar"><i style="width:${p/top*100}%"></i></div><small>${ezBreak(e)}</small>${S.ezMine===e.id?' <span class="tag">Tú</span>':''}</div>`}).join('')||'<p>Todavía no ha apuntado nadie.</p>';
+ // admin: no se vuelve a pintar mientras se está escribiendo dentro
+ const ad=$('#adminEz');
+ if(!ad.contains(document.activeElement))ad.innerHTML=rk.map(({e,p})=>`<div class="pv" data-ezbox="${e.id}"><div class="vh"><b>${esc(e.name)}</b><span class="cnt">${ezFmt(p)} pts</span></div><div class="ezA">${EZ.map(([k,ic,l])=>`<label>${ic} ${l}<input type="number" min="0" max="999" inputmode="numeric" data-k="${k}" value="${ezN(e[k])}"></label>`).join('')}</div><div class="row"><button type="button" data-ezs="${e.id}">Guardar</button><button type="button" class="ghost" data-ezx="${e.id}">Borrar</button></div></div>`).join('')||'<p>Nadie ha apuntado todavía.</p>'}
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.ek){const i=$('#ez-'+b.dataset.ek);i.value=ezN(ezN(i.value)+(+b.dataset.es));ezUpdTotal()}
+  if(b.dataset.ezs){const box=b.closest('[data-ezbox]'),c={};box.querySelectorAll('input[data-k]').forEach(i=>c[i.dataset.k]=ezN(i.value));
+   await adm('/api/ez/'+b.dataset.ezs,'PUT',{counts:c});$('#amsg').textContent='Cantidades guardadas';flash(b);const pe=box.querySelector('.cnt');if(pe)pe.textContent=ezFmt(ezPts(c))+' pts';await load()}
+  if(b.dataset.ezx&&confirm('¿Borrar a esta persona de la clasificación?')){await adm('/api/ez/'+b.dataset.ezx,'DELETE');await load()}
+ }catch(err){$('#amsg').textContent=err.message}});
+document.addEventListener('input',e=>{if(e.target.id&&e.target.id.startsWith('ez-'))ezUpdTotal()});
+$('#ezSave').onclick=async()=>{const m=$('#ezMsg');
+ try{await api('/api/ez','POST',{device:dev,name:$('#ezName').value,counts:ezDraft()});m.textContent='Guardado';ezInit=true;await load()}
+ catch(err){m.textContent=err.message}};
+$('#ezReset').onclick=async()=>{if(!confirm('¿Vaciar toda la clasificación de GARRO DE ORO? Se hace copia de seguridad antes.'))return;
+ try{await adm('/api/ez/reset','POST');ezInit=false;$('#ezName').value='';EZ.forEach(([k])=>{const i=$('#ez-'+k);if(i)i.value=0});$('#amsg').textContent='Clasificación vaciada';await load()}catch(err){$('#amsg').textContent=err.message}};
+// ---- Calendario ----
+const dmy=d=>d.split('-').reverse().join('/');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function renderCal(){
+ const cal=S.calendar||[],nx=cal.find(m=>m.date>=today());
+ $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td class="cj">J${m.j}</td><td class="cd">${dmy(m.date)}</td><td class="ch${m.time?'':' tbc'}">${m.time?esc(m.time):'Por confirmar'}</td><td class="cm">Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td class="cr">${m.result?esc(m.result):'-'}</td><td class="cf${m.field?'':' tbc'}">${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';
+ // admin: no se vuelve a pintar mientras se está escribiendo dentro
+ const ad=$('#adminCal');
+ if(!ad.contains(document.activeElement))ad.innerHTML=cal.map(m=>`<div class="pv" data-calbox="${m.j}"><b>J${m.j} · ${dmy(m.date)} · vs ${esc(m.rival)}</b><div class="calA"><input type="time" data-c="time" value="${esc(m.time)}" aria-label="Hora"><input data-c="field" placeholder="Campo" maxlength="80" value="${esc(m.field)}"><input data-c="result" placeholder="Resultado" maxlength="20" value="${esc(m.result)}"><button type="button" data-cals="${m.j}">Guardar</button></div></div>`).join('')||'<p>No hay calendario.</p>'}
+document.addEventListener('click',async e=>{const b=e.target.closest('button[data-cals]');if(!b)return;
+ try{const box=b.closest('[data-calbox]'),g=k=>box.querySelector('[data-c='+k+']').value;
+  await adm('/api/calendar/'+b.dataset.cals,'PUT',{time:g('time'),field:g('field'),result:g('result')});
+  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';flash(b);await load()}
+ catch(err){$('#amsg').textContent=err.message}});
+function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
+ if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
+ const f=()=>{let d=new Date(S.next.date)-Date.now();if(d<=0){tick();return}
+  el.innerHTML='<div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'};
+ f();timer=setInterval(f,1000)}
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.v){
+   if(!confirm('¿Votar a '+b.dataset.n+'? Solo puedes votar una vez y no podrás cambiarlo.'))return;
+   await api('/api/vote','POST',{playerId:+b.dataset.v,device:dev});$('#vmsg').textContent='Voto registrado';await load()}
+  if(b.dataset.d&&confirm('¿Borrar jugador? Se borran sus votos actuales; el historial de MVPs se mantiene.')){await adm('/api/players/'+b.dataset.d,'DELETE');await load()}
+  if(b.dataset.h&&confirm('¿Borrar este MVP del historial?')){await adm('/api/history/'+b.dataset.h,'DELETE');await load()}
+  if(b.dataset.rv){await adm('/api/votes/'+b.dataset.rv,'DELETE');await load()}
+ }catch(err){$('#vmsg').textContent=$('#amsg').textContent=err.message}});
+function showPanel(){$('#panel').hidden=false;$('#loginRow').hidden=true;adTab(sessionStorage.adTab||'partido')}
+$('#login').onclick=async()=>{pw=$('#pw').value;try{await adm('/api/admin/check');sessionStorage.pw=pw;showPanel();$('#amsg').textContent=''}catch{pw='';$('#amsg').textContent='Contraseña incorrecta'}};
+if(pw)adm('/api/admin/check').then(showPanel).catch(()=>{pw='';sessionStorage.removeItem('pw')});
+const act=(sel,fn,ok)=>$(sel).onclick=async()=>{try{await fn();if(ok)$('#amsg').textContent=ok;await load()}catch(e){$('#amsg').textContent=e.message}};
+act('#saveMatch',()=>adm('/api/match','PUT',{date:$('#fecha-in').value?new Date($('#fecha-in').value).toISOString():'',rival:$('#rivalIn').value,crest:crestData,field:$('#campoIn').value}),'Partido guardado');
+$('#delMatch').onclick=async()=>{if(!confirm('¿Borrar el próximo partido (fecha, rival y escudo)?'))return;
+ try{await adm('/api/match','PUT',{date:'',rival:'',crest:'',field:''});$('#fecha-in').value='';$('#rivalIn').value='';$('#campoIn').value='';crestData='';$('#crestFile').value='';updateCrestPreview();$('#amsg').textContent='Partido borrado';await load()}catch(e){$('#amsg').textContent=e.message}};
+act('#saveRound',()=>adm('/api/round','PUT',{rival:$('#roundRival').value}),'Rival de la votación guardado');
+act('#addP',async()=>{await adm('/api/players','POST',{name:$('#pn').value});$('#pn').value=''},'Jugador añadido');
+$('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;
+ try{const e=await adm('/api/round/close','POST');filled=false;await load();$('#dlgRival').textContent=e.rival;$('#dlgTxt').innerHTML=names(e);$('#dlg').showModal()}catch(err){$('#amsg').textContent=err.message}};
+$('#dlgOk').onclick=()=>$('#dlg').close();
+$('#exportBtn').onclick=async()=>{const r=await fetch('/api/export',{headers:{'x-admin':pw}});const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='garra-datos.json';a.click()};
+$('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('Esto reemplaza todos los datos actuales por los del archivo. ¿Seguro?'))return;
+ try{await adm('/api/import','POST',JSON.parse(await f.text()));filled=false;$('#amsg').textContent='Datos restaurados';await load()}catch(err){$('#amsg').textContent=err.message}};
+function route(first){const h=(location.hash||'#inicio').slice(1);document.querySelectorAll('main>section').forEach(s=>s.hidden=s.id!==h);document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h));
+ const nv=$('nav'),on=nv.querySelector('a.on');if(on)nv.scrollTo({left:on.offsetLeft-(nv.clientWidth-on.offsetWidth)/2,behavior:first===true?'auto':'smooth'});
+ if(first!==true)scrollTo(0,0)}
+addEventListener('hashchange',()=>route());route(true);load();setInterval(load,30000);
 
-                        <label>🎯 Máximo asistente:</label><br>
-                        <select id="pf-asistente" class="select-plantilla"></select><br><br>
+// ---- Avisos push ----
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;
+const b64=k=>{const p='='.repeat((4-k.length%4)%4),r=atob((k+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+const pushOK='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+let pushKey='';
+const sendSub=(sub)=>api('/api/push/subscribe','POST',{sub:sub.toJSON()});
+async function pushUI(){
+ const box=$('#pushBox'),btn=$('#pushBtn'),msg=$('#pushMsg');
+ if(!pushKey)return;
+ box.hidden=false;
+ if(!pushOK){btn.hidden=true;msg.textContent=isIOS&&!standalone?'En iPhone/iPad: pulsa Compartir → «Añadir a pantalla de inicio», abre la app desde su icono y activa aquí los avisos.':'Este navegador no admite avisos.';return}
+ const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+ if(Notification.permission==='denied'){btn.hidden=true;msg.textContent='Los avisos están bloqueados. Actívalos en los ajustes del navegador o del móvil para esta web.';return}
+ btn.hidden=false;
+ if(sub&&Notification.permission==='granted'){btn.textContent='🔕 Desactivar avisos';btn.className='ghost';msg.textContent='Avisos activados en este dispositivo.'}
+ else{btn.textContent='🔔 Activar avisos';btn.className='';msg.textContent='Te avisamos de nuevos partidos, recordatorios y del MVP.'}
+}
+$('#pushBtn').onclick=async()=>{const msg=$('#pushMsg');
+ try{
+  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+  if(sub&&Notification.permission==='granted'){await api('/api/push/unsubscribe','POST',{endpoint:sub.endpoint});await sub.unsubscribe()}
+  else{
+   if(await Notification.requestPermission()!=='granted'){msg.textContent='No has dado permiso para los avisos.';return pushUI()}
+   const s=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
+   await sendSub(s);
+   try{await reg.showNotification('¡Avisos activados! 🔔',{body:'Te avisaremos de partidos, MVP y del Garro de Oro. ¡Vamos Garra! 🦁',icon:'/icon-192.png',badge:'/badge.png',vibrate:[120,60,120],tag:'bienvenida'})}catch{}}
+  await pushUI()
+ }catch(e){msg.textContent='No se pudieron activar los avisos: '+e.message}};
+(async()=>{
+ if(!pushOK){try{pushKey=(await api('/api/push/key')).key}catch{}return pushUI()}
+ try{
+  await navigator.serviceWorker.register('/sw.js');
+  pushKey=(await api('/api/push/key')).key;
+  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
+  if(sub&&pushKey&&Notification.permission==='granted')sendSub(sub).catch(()=>{}); // re-sincroniza el dispositivo con el servidor
+  await pushUI()
+ }catch(e){console.error(e)}
+})();
 
-                        <label>🟨 Jugador con más amarillas:</label><br>
-                        <select id="pf-amarillas" class="select-plantilla"></select><br><br>
+// ---- Garro de Oro: quién gana según lo bebido (se proclama desde Admin y sale en el Inicio) ----
+function ezLeaders(){const rk=S.ez.map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));const max=rk.length?rk[0].p:0;return{rk,max,top:max>0?rk.filter(x=>x.p===max):[]}}
+function renderGarro(){
+ const g=S.garro,tr=$('#trofeo');
+ if(g&&g.winners&&g.winners.length){
+  const nm=g.winners.map(w=>esc(w.name)).join(' y ')+(g.winners.length>1?' (empate)':'');
+  const w0=g.winners[0],pts=+g.pts||0;
+  const det=EZ.filter(([k])=>ezN(w0.counts&&w0.counts[k])).map(([k,ic])=>ic+' '+ezN(w0.counts[k])).join(' · ');
+  tr.innerHTML=`<b>🏆 GARRO DE ORO</b><div class="garroName">${nm}</div><span>${ezFmt(pts)} pts${g.winners.length===1&&det?' · '+det:''}</span>`}
+ else tr.innerHTML='<b>🏆 GARRO DE ORO</b><span>El trofeo se otorgará a final de temporada</span>';
+ const L=ezLeaders(),medals=['🥇','🥈','🥉'];
+ $('#garroAdmin').innerHTML=(L.top.length?`<div class="garroBox"><small>Ahora mismo va ganando</small><b>${L.top.map(x=>esc(x.e.name)).join(' y ')}${L.top.length>1?' (empate)':''} · ${ezFmt(L.max)} pts</b></div><div class="podio">${L.rk.slice(0,3).map((x,i)=>`<div><span>${medals[i]} ${esc(x.e.name)}</span><b>${ezFmt(x.p)} pts</b></div>`).join('')}</div>`:'<p>Todavía nadie tiene puntos.</p>')
+  +(g&&g.winners&&g.winners.length?`<p class="msg">En el inicio sale: ${g.winners.map(w=>esc(w.name)).join(' y ')}</p>`:'<p class="sub" style="font-size:15px">Aún no hay Garro de Oro proclamado: en el inicio sale «a final de temporada».</p>');
+ $('#garroDel').hidden=!(g&&g.winners&&g.winners.length)}
+$('#garroClose').onclick=async()=>{const L=ezLeaders();if(!L.top.length){$('#amsg').textContent='Todavía nadie tiene puntos';return}
+ if(!confirm('¿Proclamar GARRO DE ORO a '+L.top.map(x=>x.e.name).join(' y ')+'? Saldrá en el inicio y se avisará a todos.'))return;
+ try{await adm('/api/garro/close','POST');$('#amsg').textContent='Garro de Oro proclamado';await load()}catch(e){$('#amsg').textContent=e.message}};
+$('#garroDel').onclick=async()=>{if(!confirm('¿Quitar el Garro de Oro del inicio? La clasificación no se toca.'))return;
+ try{await adm('/api/garro','DELETE');$('#amsg').textContent='Garro de Oro quitado del inicio';await load()}catch(e){$('#amsg').textContent=e.message}};
 
-                        <label>⭐ MVP de la temporada:</label><br>
-                        <select id="pf-mvp" class="select-plantilla"></select><br><br>
+// ---- Cuenta atrás de GARRO DE ORO: inicio de temporada (25/10/2026 18:00) y después gala (1/6/2027) ----
+const EZ_START=new Date('2026-10-25T18:00:00+01:00'),EZ_GALA=new Date('2027-06-01T00:00:00+02:00');
+const EZ_LOCK_MSG='Aún no se puede apuntar nada: espera a que termine la cuenta atrás.';
+function ezLock(){ // hasta que acabe la cuenta atrás nadie puede apuntar bebidas (el admin sí, desde su panel)
+ const locked=Date.now()<EZ_START,nm=$('#ezName'),sv=$('#ezSave'),fm=$('#ezForm'),mg=$('#ezMsg');if(!nm||!sv||!fm)return;
+ nm.disabled=locked||!!S.ez.find(e=>e.id===S.ezMine);sv.disabled=locked;
+ fm.querySelectorAll('input,button').forEach(i=>{i.disabled=locked});
+ if(mg){if(locked)mg.textContent=EZ_LOCK_MSG;else if(mg.textContent===EZ_LOCK_MSG)mg.textContent=''}}
+function ezCountTick(){
+ const el=$('#ezCount');if(!el)return;
+ ezLock();
+ const now=Date.now();let d,cls,head,foot;
+ if(now<EZ_START){d=EZ_START-now;cls='ezBig';head='⏳ Empieza la temporada';foot=''}
+ else if(now<EZ_GALA){d=EZ_GALA-now;cls='ezSmall';head='🏆 Gala del GARRO DE ORO';foot='🍻 ¡Venga chavales, a beber!'}
+ else{el.innerHTML='<div class="ezCount"><h3>🏆 ¡Hoy es la gala del GARRO DE ORO!</h3></div>';return}
+ el.innerHTML='<div class="ezCount '+cls+'"><h3>'+head+'</h3><div class="units">'+[['días',864e5],['horas',36e5],['min',6e4],['seg',1e3]].map(([l,m])=>{const v=Math.floor(d/m);d-=v*m;return `<div><span class="big">${String(v).padStart(2,'0')}</span><small>${l}</small></div>`}).join('')+'</div>'+(foot?'<p>'+foot+'</p>':'')+'</div>'}
+ezCountTick();setInterval(ezCountTick,1000);
+// ---- Escudos de equipos: se eligen en «Próximo partido → Seleccionar escudo» y se guardan una sola vez ----
+function nrm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase()}
+function crestFor(n){const k=nrm(n);return k?(S.crests||[]).find(c=>nrm(c.name)===k):null}
+function crestUrl(c){return '/api/crest/'+c.id+'?v='+c.v}
+function crestImg(n){const c=crestFor(n);return c?`<img class="mini" src="${crestUrl(c)}" alt="">`:''}
+let crestTarget='',crestPickIt=false;
+const cm=t=>{$('#crestMsg').textContent=t;$('#amsg').textContent=t};
+function renderCrests(){
+ const g=$('#crestPickGrid');if(!g)return;
+ const teams=new Map();
+ (S.calendar||[]).forEach(m=>teams.set(nrm(m.rival),m.rival));
+ (S.crests||[]).forEach(c=>{if(!teams.has(nrm(c.name)))teams.set(nrm(c.name),c.name)});
+ g.innerHTML=[...teams.values()].sort((a,b)=>a.localeCompare(b)).map(n=>{const c=crestFor(n);
+  return `<div class="crestCard"><button type="button" class="crestPickBtn" data-ct="${esc(n)}"><span class="crestImg">${c?`<img src="${crestUrl(c)}" alt="">`:'<span>Sin escudo<br>(pulsa para subirlo)</span>'}</span><b>${esc(n)}</b></button>${c?`<button type="button" class="ghost" data-cc="${esc(n)}">Cambiar foto</button>`:''}</div>`}).join('')||'<p>Aún no hay equipos en el calendario.</p>';
+ updateCrestPreview()}
+// reduce la imagen en el móvil antes de subirla (WebP pequeño; si el navegador no lo admite, PNG)
+function crestPack(file){return new Promise((ok,ko)=>{const fr=new FileReader();fr.onerror=()=>ko(Error('No se pudo leer la imagen'));
+ fr.onload=()=>{const img=new Image();img.onerror=()=>ko(Error('Esa imagen no es válida'));
+  img.onload=()=>{for(const max of [220,160,110]){const k=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
+    c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    let d=c.toDataURL('image/webp',.85);if(d.indexOf('data:image/webp')!==0)d=c.toDataURL('image/png');if(d.length<=110000)return ok(d)}
+   ko(Error('La imagen pesa demasiado, prueba con otra'))};
+  img.src=fr.result};fr.readAsDataURL(file)})}
+function crestChoose(n){$('#rivalIn').value=n;crestData='';$('#crestFile').value='';updateCrestPreview();$('#crestMsg').textContent='';$('#crestDlg').close()}
+function crestUpload(n,andPick){crestTarget=n;crestPickIt=andPick;$('#crestPick').value='';$('#crestPick').click()}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.ct!==undefined){const n=b.dataset.ct;if(crestFor(n))crestChoose(n);else crestUpload(n,true)}
+ if(b.dataset.cc!==undefined)crestUpload(b.dataset.cc,false)});
+$('#crestSel').onclick=()=>{renderCrests();$('#crestMsg').textContent='';$('#crestDlg').showModal()};
+$('#crestClose').onclick=()=>$('#crestDlg').close();
+$('#crestOther').onclick=()=>{$('#crestDlg').close();$('#crestFile').click()};
+$('#crestPick').onchange=async e=>{const f=e.target.files[0];if(!f||!crestTarget)return;
+ try{cm('Subiendo escudo...');const img=await crestPack(f);await adm('/api/crests','PUT',{name:crestTarget,img});cm('Escudo de '+crestTarget+' guardado');await load();if(crestPickIt)crestChoose(crestTarget)}
+ catch(err){cm(err.message)}};
+$('#rivalIn').addEventListener('input',updateCrestPreview);
 
-                        <button type="button" id="btn-guardar-pf" class="btn-primary" onclick="guardarPorraFinal()">GUARDAR PORRA FINAL</button>
-                    </form>
-                </div>
 
-                <div id="subporra-mis-porras" class="subporra-box" style="display:none;">
-                    <h3>👤 Historial de tus Predicciones</h3>
-                    <div id="historial-porras-usuario" class="card">
-                        <p>Tus predicciones se irán listando aquí a medida que las realices.</p>
-                    </div>
-                </div>
+// ---- GarraBet: líneas Over/Under con barra (estilo Winamax), resultado exacto, boleto sencillo/combinado y nombre por dispositivo ----
+const GBM=[['scored','Goles anotados – Real Garra'],['conceded','Goles encajados – Real Garra'],['total','Goles totales']];
+const gbChipTxt=st=>st==='win'?'GANADA':st==='lose'?'PERDIDA':st==='void'?'ANULADA':'Pendiente';
+const gbM=n=>(Math.round(Number(n)*100)/100).toString().replace('.',','),gbL=l=>String(l).replace('.',','),gbO=n=>Number(n).toFixed(2).replace('.',','),gbN=v=>v==null?'':String(v).replace('.',',');
+const GBS=()=>S.garrabet||{},gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
+const gbRival=j=>((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
+function gbWin(m,l,sd,r){if(m==='dc')return sd==='1X'?r.gf>=r.gc:sd==='X2'?r.gf<=r.gc:r.gf!==r.gc;if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;if(m==='exact')return l===r.gf+'-'+r.gc;if(m==='btts')return sd==='y'?(r.gf>0&&r.gc>0):!(r.gf>0&&r.gc>0);const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
+const gbNote=x=>{if(x.market!=='scorer'&&x.market!=='yellow')return '';const o=x.market==='scorer'?['ha marcado','no ha marcado']:['ha visto amarilla','no ha visto amarilla'];return x.status==='win'?o[0]:x.status==='lose'?o[1]:''};
+function gbSelTxt(s){
+ if(s.market==='dc')return ({'1X':'Doble oportunidad · Real Garra o empate','12':'Doble oportunidad · Real Garra o '+gbRival(s.j),'X2':'Doble oportunidad · Empate o '+gbRival(s.j)})[s.side];
+ if(s.market==='scorer')return 'Marca '+s.line;
+ if(s.market==='yellow')return 'Amarilla a '+s.line;
+ if(s.market==='btts')return 'Ambos equipos marcan · '+(s.side==='y'?'Sí':'No');
+ if(s.market==='res')return ({1:'Gana Real Garra',X:'Empate',2:'Gana '+gbRival(s.j)})[s.side];
+ if(s.market==='exact')return 'Resultado exacto '+s.line.replace('-',' - ');
+ return ((GBM.find(x=>x[0]===s.market)||[])[1]||s.market).replace(' – Real Garra','')+(s.market==='total'?'':' Garra')+' · '+(s.side==='o'?'Más de ':'Menos de ')+gbL(s.line)}
+function gbOddNow(s){const od=gbOdds(s.j);if(!od)return null;
+ if(s.market==='dc')return((GBS().dc||{})[s.j]||{})[s.side]||null;
+ if(s.market==='scorer')return((GBS().scorerOdds||{})[s.j]||{})[s.line]||null;
+ if(s.market==='yellow')return((GBS().yellowOdds||{})[s.j]||{})[s.line]||null;
+ if(s.market==='res')return od.res[s.side]||null;
+ if(s.market==='btts')return(od.btts||{})[s.side]||null;
+ if(s.market==='exact')return(gbEx(s.j)||{})[s.line]||null;
+ const c=(od[s.market]||{})[s.line];return(c&&c[s.side])||null}
+let gbSlip=[],gbIdx={},gbDrag=false,gbStake='10';
+const gbStakeN=()=>{const n=Number(String(gbStake).replace(',','.'));return Number.isFinite(n)&&n>0?n:0};
+const gbInSlip=(j,m,l,sd)=>gbSlip.find(x=>x.j===j&&x.market===m&&x.line===(m==='res'?'':l)&&x.side===sd);
+const GBDC={'1X':['1','X'],'12':['1','2'],'X2':['X','2']};
+const gbNM=(a,x)=>x.market==='dc'&&a.some(y=>y.j===x.j&&y.market==='res'); // la doble oportunidad no multiplica si va con el 1X2 del mismo partido
+const gbTot=a=>Math.round(a.reduce((p,x)=>gbNM(a,x)?p:p*x.odd,1)*100)/100;
+function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?y.includes(l):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
+function gbBtn(j,m,l,sd,label,odd,c0){
+ const r0=gbRes(j),pl=m==='scorer'||m==='yellow',w0=pl&&odd?gbWinJ(j,m,l,sd,r0):null,r=r0||(w0!==null?1:null),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=pl?w0:gbWinJ(j,m,l,sd,r0);if(w!==null)c.push(w?'win':'lose')}
+ return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
+function gbMarket(j,k,t){
+ const od=gbOdds(j),L=(GBS().lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
+ if(!ok.length)return `<div class="gbm"><h3>${t}</h3><p class="gbnone">Sin cuotas todavía.</p></div>`;
+ const key=j+k;if(!(key in gbIdx)){let best=0,bd=1e9;ok.forEach((l,i)=>{const c=od[k][l];if(c.o&&c.u){const d=Math.abs(c.o-c.u);if(d<bd){bd=d;best=i}}});gbIdx[key]=best}
+ const i=Math.min(gbIdx[key],ok.length-1),l=ok[i],c=od[k][l];
+ return `<div class="gbm" data-gbm="${j}|${k}"><h3>${t}</h3>
+  <div class="gbbtns">${gbBtn(j,k,l,'o','Más de '+gbL(l),c.o)}${gbBtn(j,k,l,'u','Menos de '+gbL(l),c.u)}</div>
+  ${ok.length>1?`<input class="gbs" type="range" min="0" max="${ok.length-1}" step="1" value="${i}" style="--p:${i/(ok.length-1)*100}%" aria-label="Línea de ${t}">`:''}</div>`}
+function gbMarketRes(j){
+ const od=gbOdds(j);if(!od||!['1','X','2'].some(k=>od.res[k]))return '';
+ return `<div class="gbm"><h3>Resultado</h3><div class="gbbtns three">${gbBtn(j,'res','','1','Real Garra',od.res['1'])}${gbBtn(j,'res','','X','Empate',od.res.X)}${gbBtn(j,'res','','2',esc(gbRival(j)),od.res['2'])}</div></div>`}
+function gbMarketDc(j){
+ const d=(GBS().dc||{})[j]||{};if(!d['1X']&&!d['12']&&!d.X2)return '';
+ return `<div class="gbm"><h3>Doble oportunidad</h3><div class="gbbtns three">${gbBtn(j,'dc','','1X','Garra o empate',d['1X'])}${gbBtn(j,'dc','','12','Garra o '+esc(gbRival(j)),d['12'])}${gbBtn(j,'dc','','X2','Empate o '+esc(gbRival(j)),d.X2)}</div></div>`}
+function gbMarketBtts(j){
+ const od=gbOdds(j),b=(od&&od.btts)||{};if(!b.y&&!b.n)return '';
+ return `<div class="gbm"><h3>Ambos equipos marcan</h3><div class="gbbtns">${gbBtn(j,'btts','','y','Sí',b.y)}${gbBtn(j,'btts','','n','No',b.n)}</div></div>`}
+function gbMarketScorer(j){
+ const so=(GBS().scorerOdds||{})[j]||{},names=Object.keys(so).sort((a,b)=>so[a]-so[b]);if(!names.length)return '';
+ return `<div class="gbm"><h3>Goleador · marca en cualquier momento</h3><div class="gbbtns">${names.map(n=>gbBtn(j,'scorer',n,'s',esc(n),so[n])).join('')}</div></div>`}
+function gbMarketYellow(j){
+ const yo=(GBS().yellowOdds||{})[j]||{},names=Object.keys(yo).sort((a,b)=>yo[a]-yo[b]);if(!names.length)return '';
+ return `<div class="gbm"><h3>🟨 Tarjeta amarilla · ve amarilla en el partido</h3><div class="gbbtns">${names.map(n=>gbBtn(j,'yellow',n,'s',esc(n),yo[n])).join('')}</div></div>`}
+let gbOtherSc={};
+function gbOtherBtn(j){const o=gbOtherSc[j]||{a:6,b:0},k=o.a+'-'+o.b;return gbBtn(j,'exact',k,'s','Garra '+o.a+' – '+o.b+' '+esc(gbRival(j)),(gbEx(j)||{})[k])}
+function gbMarketExact(j){
+ const ex=gbEx(j);if(!ex)return '';let h='<span></span>';
+ for(let b=0;b<=5;b++)h+=`<span class="h">${b}</span>`;
+ for(let a=0;a<=5;a++){h+=`<span class="h">${a}</span>`;for(let b=0;b<=5;b++)h+=gbBtn(j,'exact',a+'-'+b,'s','',ex[a+'-'+b])}
+ return `<div class="gbm"><h3>Resultado exacto</h3><p class="sub" style="margin:0 0 8px">Filas: goles de Real Garra · Columnas: goles de ${esc(gbRival(j))}</p><div class="gbex"><div class="gbexg">${h}</div></div><h4 style="margin:14px 0 6px">Otro resultado</h4><p class="sub" style="margin:0 0 8px">¿Otro marcador que no está arriba? Elige los goles (de 0 a 9) y apuesta a él.</p><div class="row" style="margin:0 0 8px"><label>Real Garra <input type="number" min="0" max="9" inputmode="numeric" data-gbo="a" value="${(gbOtherSc[j]||{a:6}).a}" style="width:70px"></label><label>${esc(gbRival(j))} <input type="number" min="0" max="9" inputmode="numeric" data-gbo="b" value="${(gbOtherSc[j]||{b:0}).b}" style="width:70px"></label></div><div class="gbbtns" id="gbOtherBtn" style="grid-template-columns:1fr">${gbOtherBtn(j)}</div></div>`}
+function gbTicketHtml(t,del){
+ const n=t.sels.length;
+ return `<div class="pv gbtk"><div class="top"><span><b>${n>1?'Combinada ×'+n:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b>${t.stake?` · apuesta <b>${gbM(t.stake)}</b>`:''}</span><span class="gbchip ${t.status}">${gbChipTxt(t.status)}</span></div>
+  ${t.stake?`<p class="sub" style="margin:4px 0 0">${t.status==='win'?'Cobras <b>'+gbM(t.payout)+'</b> pavos':t.status==='void'?'Apuesta anulada: te devolvemos '+gbM(t.stake)+' pavos':t.status==='lose'?'Pierdes '+gbM(t.stake)+' pavos':'Si ganas: <b>'+gbM(t.stake*t.odd)+'</b> pavos'}</p>`:''}<ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul>${del||''}</div>`}
+function renderGB(){
+ const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;
+ const nx=cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
+ if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill();gbFilters()}
+ // nombre
+ const nb=$('#gbName');if(!(document.activeElement&&document.activeElement.id==='gbNameIn')){const me=GBS().me;
+  nb.innerHTML=me?`<p class="sub">Apostando como <b>${esc(me)}</b> · 💰 Saldo: <b id="gbBal">${gbM(GBS().balance)}</b> pavos</p>`:`<div class="row"><input id="gbNameIn" maxlength="20" placeholder="Tu nombre para apostar" autocomplete="off"><button id="gbNameBtn" type="button">Guardar nombre</button></div><p class="sub" style="font-size:15px">Se queda fijo en este dispositivo.</p>`}
+ // boleto: se actualizan cuotas y se quitan selecciones de partidos cerrados o sin cuota
+ gbSlip=gbSlip.map(x=>({...x,odd:gbOddNow(x)})).filter(x=>x.odd&&!gbRes(x.j));
+ if(!(gbDrag||($('#gbMarkets').contains(document.activeElement)&&(document.activeElement.type==='range'||(document.activeElement.dataset&&document.activeElement.dataset.gbo))))){
+  const j=+sel.value;if(!j){$('#gbMarkets').innerHTML='<p>Todavía no hay calendario.</p>'}
+  else{const r=gbRes(j),has=gbOdds(j);
+   $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(has?gbMarketRes(j)+gbMarketDc(j)+gbMarketBtts(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join('')+gbMarketScorer(j)+gbMarketYellow(j)+gbMarketExact(j):'<p>Este partido todavía no tiene cuotas.</p>')}}
+ if(!(document.activeElement&&document.activeElement.id==='gbStake'))$('#gbSlip').innerHTML=gbSlip.length?`<div class="gbslip"><h3>Tu boleto · ${gbSlip.length>1?'Combinada ×'+gbSlip.length:'Sencilla'}</h3>${gbSlip.map((x,i)=>`<div class="gbsl"><span>J${x.j} · ${esc(gbSelTxt(x))} @ <b>${gbO(x.odd)}</b>${gbNM(gbSlip,x)?' <small>(no multiplica)</small>':''}</span><button type="button" class="ghost" data-gbrm="${i}" aria-label="Quitar">✕</button></div>`).join('')}<div class="gbtot"><span>Cuota total</span><b>${gbO(gbTot(gbSlip))}</b></div><div class="row" style="margin:6px 0"><label for="gbStake">Pavos a apostar</label><input id="gbStake" inputmode="decimal" autocomplete="off" placeholder="10" value="${esc(gbStake)}" style="width:110px"><button type="button" class="ghost" id="gbAll">Todo</button></div><div class="gbtot"><span>Ganarías</span><b id="gbWin">${gbM(gbStakeN()*gbTot(gbSlip))}</b></div><button type="button" id="gbPlace" style="width:100%">Apostar</button></div>`:'';
+ const mine=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id);
+ $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,`<div class="row" style="margin:6px 0 0"><button type="button" data-gbshare="${t.id}">📤 Compartir imagen</button>${(t.forced||t.sels.some(x=>gbRes(x.j)))?'':`<button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button>`}</div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
+const gbToast=t=>{$('#amsg').textContent=t};
+function gbToggle(j,m,l,sd){
+ const ex=gbInSlip(j,m,l,sd);
+ if(ex){gbSlip=gbSlip.filter(x=>x!==ex);return}
+ const cl=(m==='scorer'||m==='yellow')?null:gbSlip.find(x=>x.j===j&&x.market===m);
+ if(cl){gbToast('Ya tienes «'+gbSelTxt(cl)+'» en este mercado del partido. Quítala del boleto para elegir otra.');return}
+ if(m==='res'||m==='dc'){const o=gbSlip.find(x=>x.j===j&&x.market===(m==='res'?'dc':'res'));if(o){const r1=m==='res'?sd:o.side,d1=m==='res'?o.side:sd;if(!GBDC[d1].includes(r1)){gbToast('Esa doble oportunidad y ese resultado se contradicen. Quita «'+gbSelTxt(o)+'» del boleto para elegir esta.');return}}}
+ if(gbSlip.length>=8){gbToast('Máximo 8 selecciones por boleto');return}
+ const s={j,market:m,line:m==='res'?'':l,side:sd},odd=gbOddNow(s);if(!odd)return;gbSlip.push({...s,odd})}
+function gbAdmFill(){
+ const ad=$('#gbAdmForm'),j=+$('#gbAdmMatch').value;if(!ad||!j)return;
+ const od=gbOdds(j)||{res:{},scored:{},conceded:{},total:{}},inp=(a,v)=>`<input inputmode="decimal" placeholder="—" data-gbi="${a}" value="${gbN(v)}">`;
+ const so=(GBS().scorerOdds||{})[j]||GBS().scorerDef||{},scNames=Object.keys(GBS().scorerDef||{}).sort((a,b)=>(GBS().scorerDef[a]||0)-(GBS().scorerDef[b]||0)),scDone=(GBS().scorers||{})[j]||[];
+ const yo=(GBS().yellowOdds||{})[j]||GBS().yellowDef||{},ycNames=Object.keys(GBS().yellowDef||{}).sort((a,b)=>(GBS().yellowDef[a]||0)-(GBS().yellowDef[b]||0)),ycDone=(GBS().yellows||{})[j]||[];
+ const ex=gbEx(j),top=ex?Object.entries(ex).sort((a,b)=>a[1]-b[1]).slice(0,10).map(([k,v])=>k.replace('-','–')+' → '+gbO(v)).join(' · '):'';
+ ad.innerHTML=`<div class="gbadm"><h4>Resultado</h4><div class="gbgrid r3"><span class="h">Local (Real Garra)</span><span class="h">Empate</span><span class="h">Visitante</span>${inp('res|1',od.res['1'])}${inp('res|X',od.res.X)}${inp('res|2',od.res['2'])}</div><h4 style="margin-top:10px">Doble oportunidad</h4><div class="gbgrid r3"><span class="h">Garra o empate (1X)</span><span class="h">Garra o rival (12)</span><span class="h">Empate o rival (X2)</span>${inp('dc|1X',(od.dc||{})['1X'])}${inp('dc|12',(od.dc||{})['12'])}${inp('dc|X2',(od.dc||{}).X2)}</div><p class="sub">Si la dejas vacía, sale sola a partir de las cuotas 1/X/2.</p><h4 style="margin-top:10px">Ambos equipos marcan</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr"><span class="h">Sí (marcan los dos)</span><span class="h">No (alguno se queda a 0)</span>${inp('btts|y',(od.btts||{}).y)}${inp('btts|n',(od.btts||{}).n)}</div><p class="sub">El <b>resultado exacto</b> se genera solo con estas tres cuotas (no hay que rellenarlo).${top?'<br>Marcadores más probables: '+top:''}</p></div>`+
+ `<div class="gbadm"><h4>Goleadores (marca en cualquier momento)</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr">${scNames.map(n=>`<span>${esc(n)}</span>${inp('scorer|'+n,so[n])}`).join('')}</div><p class="sub">Cuotas de menor a mayor; vacío = no se ofrece ese jugador.</p><h4 style="margin-top:10px">¿Quién marcó en este partido?</h4><div class="row">${scNames.map(n=>`<label class="row" style="margin:0"><input type="checkbox" data-gbsc="${esc(n)}" ${scDone.includes(n)?'checked':''}> ${esc(n)}</label>`).join('')}</div><div class="row"><button type="button" id="gbScSave">Guardar goleadores</button></div><p class="sub">Hasta que los guardes (aunque sea sin marcar a nadie) las apuestas a goleador quedan pendientes. Si el Garra marca 0, se pierden solas.</p></div>`+
+ `<div class="gbadm"><h4>🟨 Tarjetas amarillas (ve amarilla en el partido)</h4><div class="gbgrid" style="grid-template-columns:1fr 1fr">${ycNames.map(n=>`<span>${esc(n)}</span>${inp('yellow|'+n,yo[n])}`).join('')}</div><p class="sub">Cuotas de menor a mayor; vacío = no se ofrece ese jugador.</p><h4 style="margin-top:10px">¿Quién vio amarilla en este partido?</h4><div class="row">${ycNames.map(n=>`<label class="row" style="margin:0"><input type="checkbox" data-gbyc="${esc(n)}" ${ycDone.includes(n)?'checked':''}> ${esc(n)}</label>`).join('')}</div><div class="row"><button type="button" id="gbYcSave">Guardar amarillas</button></div><p class="sub">Hasta que las guardes (aunque sea sin marcar a nadie) las apuestas a amarilla quedan pendientes.</p></div>`+
+ GBM.map(([k,t])=>`<div class="gbadm"><h4>${t}</h4><div class="gbgrid"><span class="h">Línea</span><span class="h">Más (+)</span><span class="h">Menos (−)</span>${((GBS().lines||{})[k]||[]).map(l=>{const c=(od[k]||{})[l]||{};return `<span>${gbL(l)}</span>${inp(k+'|'+l+'|o',c.o)}${inp(k+'|'+l+'|u',c.u)}`}).join('')}</div></div>`).join('')}
+// ---- Admin: apuestas de todos (sencillas y combinadas) ----
+let gbAdm={users:[],tickets:[]};
+function gbFilters(){const fj=$('#gbFJ'),fu=$('#gbFU');if(!fj||!fu)return;const vj=fj.value,vu=fu.value;
+ fj.innerHTML='<option value="">Todas las jornadas</option>'+(S.calendar||[]).map(m=>`<option value="${m.j}">J${m.j} · vs ${esc(m.rival)}</option>`).join('');fj.value=vj;
+ fu.innerHTML='<option value="">Todas las personas</option>'+gbAdm.users.map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');fu.value=vu}
+function gbAdmRender(){
+ const box=$('#gbAdmBets'),ub=$('#gbAdmUsers');if(!box)return;
+ const tot=gbAdm.users.reduce((a,u)=>a+Number(u.balance||0),0),pend=gbAdm.tickets.filter(x=>x.status==='pending').length,es=$('#ecoSum');
+ if(es)es.innerHTML=`<span><b>${gbAdm.users.length}</b><small>personas</small></span><span><b>${gbM(tot)}</b><small>pavos en total</small></span><span><b>${pend}</b><small>apuestas pendientes</small></span>`;
+ if(!ub.contains(document.activeElement))ub.innerHTML=(gbAdm.users.map(u=>{const t=gbAdm.tickets.filter(x=>x.userId===u.id),c=s=>t.filter(x=>x.status===s).length;
+  return `<div class="pv ecoU"><div class="ecoH"><b>${esc(u.name)}</b><span class="ecoBal">💰 ${gbM(u.balance)}</span></div><small>${t.length} apuesta${t.length===1?'':'s'} · ✅ ${c('win')} · ❌ ${c('lose')} · ⏳ ${c('pending')}</small><div class="ecoRow"><input data-gbmn="${u.id}" inputmode="decimal" placeholder="Pavos" aria-label="Pavos para ${esc(u.name)}"><button type="button" data-gbmoney="${u.id}|add">➕ Añadir</button><button type="button" class="neg" data-gbmoney="${u.id}|sub">➖ Quitar</button></div><details class="ecoRn"><summary>✏️ Cambiar nombre</summary><div class="ecoRow" style="grid-template-columns:1fr auto"><input data-gbrn="${u.id}" value="${esc(u.name)}" maxlength="20"><button type="button" class="ghost" data-gbren="${u.id}">Guardar</button></div></details></div>`}).join('')||'<p>Todavía nadie ha puesto su nombre.</p>');
+ gbFilters();
+ const fj=$('#gbFJ').value,fu=$('#gbFU').value;
+ const list=gbAdm.tickets.filter(t=>(!fj||t.sels.some(x=>x.j===+fj))&&(!fu||t.userId===+fu));
+ box.innerHTML=`<h3>Apuestas (${list.length})</h3>`+(list.map(t=>`<div class="pv gbtk"><div class="top"><span><b>${esc(t.name)}</b> · <b>${t.sels.length>1?'Combinada ×'+t.sels.length:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b>${t.stake?` · <b>${gbM(t.stake)}</b> pavos`:''}</span><span class="gbchip ${t.status}">${gbChipTxt(t.status)}</span></div><ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul><div class="row" style="margin:6px 0 0"><small>${new Date(t.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})}</small><button type="button" class="ghost" data-gbadel="${t.id}">Borrar</button></div><div class="row" style="margin:6px 0 0">${t.forced?`<small>Resuelta a mano por el admin</small><button type="button" class="ghost" data-gbset="${t.id}|reset">Quitar marca</button>`:`<button type="button" data-gbset="${t.id}|win">Dar por ganada</button><button type="button" class="ghost" data-gbset="${t.id}|lose">Dar por perdida</button><button type="button" class="ghost" data-gbset="${t.id}|void">Anular</button>`}</div></div>`).join('')||'<p>No hay apuestas con ese filtro.</p>')}
+async function gbAdmLoad(){if(!pw)return;try{gbAdm=await adm('/api/garrabet-admin/all');gbAdmRender()}catch(e){}}
+function adTab(t){if(!document.querySelector('.apane[data-ap="'+t+'"]'))t='partido';document.querySelectorAll('.atab').forEach(b=>b.classList.toggle('on',b.dataset.at===t));document.querySelectorAll('.apane').forEach(p=>p.hidden=p.dataset.ap!==t);try{sessionStorage.adTab=t}catch(e){}if(t==='bet'||t==='eco')gbAdmLoad()}
+$('.atabs').addEventListener('click',e=>{const b=e.target.closest('.atab');if(b)adTab(b.dataset.at)});
+setInterval(()=>{const t=sessionStorage.adTab,a=document.activeElement;if($('#admin').hidden||$('#panel').hidden||(t!=='bet'&&t!=='eco')||(a&&a.matches('input,select,textarea')))return;gbAdmLoad()},15000);
+// Guardar goleadores / amarillas: los botones están en #gbAdmForm (fuera de #gbAdmDet), por eso va en su propio manejador
+$('#gbAdmForm').addEventListener('click',async e=>{
+ const sv=e.target.closest('#gbScSave'),yv=e.target.closest('#gbYcSave');if(!sv&&!yv)return;
+ try{const j=+$('#gbAdmMatch').value;
+  if(sv){await adm('/api/garrabet-admin/scorers/'+j,'PUT',{scorers:[...document.querySelectorAll('#gbAdmForm [data-gbsc]:checked')].map(i=>i.dataset.gbsc)});gbToast('Goleadores guardados')}
+  else{await adm('/api/garrabet-admin/yellows/'+j,'PUT',{yellows:[...document.querySelectorAll('#gbAdmForm [data-gbyc]:checked')].map(i=>i.dataset.gbyc)});gbToast('Amarillas guardadas')}
+  lastJ='';await load();gbAdmFill();await gbAdmLoad()}
+ catch(err){gbToast(err.message)}});
+$('#gbRefresh').onclick=gbAdmLoad;$('#gbFJ').onchange=gbAdmRender;$('#gbFU').onchange=gbAdmRender;
+$('#panel').addEventListener('click',async e=>{
+ const d=e.target.closest('button[data-gbadel]'),r=e.target.closest('button[data-gbren]'),m=e.target.closest('button[data-gbmoney]'),ma=e.target.closest('#gbAllAdd,#gbAllSub'),st=e.target.closest('button[data-gbset]');
+ try{
+  if(st){const[id,a]=st.dataset.gbset.split('|');if(a!=='reset'&&!confirm(a==='win'?'¿Dar esta apuesta por ganada? Se le pagará el premio.':a==='lose'?'¿Dar esta apuesta por perdida? Pierde el importe.':'¿Anular esta apuesta? Se le devuelve el importe.'))return;await adm('/api/garrabet-admin/ticket/'+id+'/settle','POST',{action:a});gbToast(a==='win'?'Apuesta dada por ganada':a==='lose'?'Apuesta dada por perdida':a==='void'?'Apuesta anulada y importe devuelto':'Marca quitada');await gbAdmLoad();lastJ='';await load();return}
+  if(m){const[id,a]=m.dataset.gbmoney.split('|'),i=$('#panel').querySelector('input[data-gbmn="'+id+'"]'),n=Math.abs(Number(String(i.value).replace(',','.'))),u=gbAdm.users.find(x=>x.id===+id)||{name:'',balance:0};
+   if(!n){gbToast('Escribe una cantidad de pavos');return}
+   if(a==='sub'&&n>Number(u.balance)&&!confirm(u.name+' tiene '+gbM(u.balance)+' pavos. Si le quitas '+gbM(n)+' se quedará en negativo. ¿Seguro?'))return;
+   await adm('/api/garrabet-admin/user/'+id+'/money','POST',{amount:a==='sub'?-n:n});i.value='';gbToast((a==='sub'?'Quitados ':'Añadidos ')+gbM(n)+' pavos a '+u.name);await gbAdmLoad();lastJ='';await load();return}
+  if(ma){const sub=ma.id==='gbAllSub',n=Math.abs(Number(String($('#gbAllIn').value).replace(',','.')));if(!n){gbToast('Escribe una cantidad de pavos');return}
+   if(!confirm((sub?'¿Quitar ':'¿Añadir ')+gbM(n)+' pavos '+(sub?'a':'a')+' TODAS las personas?'))return;
+   await adm('/api/garrabet-admin/money-all','POST',{amount:sub?-n:n});$('#gbAllIn').value='';gbToast((sub?'Quitados ':'Añadidos ')+gbM(n)+' pavos a todos');await gbAdmLoad();lastJ='';await load();return}
+  if(d){if(!confirm('¿Borrar esta apuesta?'))return;await adm('/api/garrabet-admin/ticket/'+d.dataset.gbadel,'DELETE');await gbAdmLoad();return}
+  if(r){const v=$('#panel').querySelector('input[data-gbrn="'+r.dataset.gbren+'"]').value;await adm('/api/garrabet-admin/user/'+r.dataset.gbren,'PUT',{name:v});gbToast('Nombre cambiado');await gbAdmLoad();lastJ='';await load()}
+ }catch(err){gbToast(err.message)}});
+$('#gbAdmMatch').onchange=gbAdmFill;
+$('#gbMatch').onchange=renderGB;
+$('#gbMarkets').addEventListener('input',e=>{const i=e.target;if(!i.dataset||!i.dataset.gbo)return;const j=+$('#gbMatch').value,o=gbOtherSc[j]||(gbOtherSc[j]={a:6,b:0});let v=Math.floor(Number(i.value));if(!Number.isFinite(v)||v<0)v=0;if(v>9)v=9;o[i.dataset.gbo]=v;const b=$('#gbOtherBtn');if(b)b.innerHTML=gbOtherBtn(j)});
+$('#gbSlip').addEventListener('input',e=>{if(e.target.id!=='gbStake')return;gbStake=e.target.value;const w=$('#gbWin');if(w)w.textContent=gbM(gbStakeN()*gbTot(gbSlip))});
+$('#gbSave').onclick=async e=>{const b=e.currentTarget,j=+$('#gbAdmMatch').value;
+ try{const o={res:{},scored:{},conceded:{},total:{}};
+  document.querySelectorAll('#gbAdmForm [data-gbi]').forEach(i=>{const p=i.dataset.gbi.split('|');if(p[0]==='dc'){(o.dc=o.dc||{})[p[1]]=i.value;return}if(p[0]==='scorer'){(o.scorer=o.scorer||{})[p[1]]=i.value;return}if(p[0]==='yellow'){(o.yellow=o.yellow||{})[p[1]]=i.value;return}if(p[0]==='btts'){(o.btts=o.btts||{})[p[1]]=i.value;return}if(p[0]==='res')o.res[p[1]]=i.value;else(o[p[0]][p[1]]=o[p[0]][p[1]]||{})[p[2]]=i.value});
+  await adm('/api/garrabet/'+j,'PUT',o);gbToast('Cuotas de la jornada '+j+' guardadas');flash(b);lastJ='';await load();gbAdmFill()}
+ catch(err){gbToast(err.message)}};
+$('#gbMarkets').addEventListener('input',e=>{const r=e.target.closest('.gbs');if(!r)return;const box=r.closest('[data-gbm]'),[j,k]=box.dataset.gbm.split('|');gbIdx[j+k]=+r.value;
+ const t=(GBM.find(x=>x[0]===k)||[])[1],tmp=document.createElement('div');tmp.innerHTML=gbMarket(+j,k,t);box.querySelector('.gbbtns').replaceWith(tmp.firstElementChild.querySelector('.gbbtns'));r.style.setProperty('--p',(r.value/r.max*100)+'%')});
+$('#gbMarkets').addEventListener('pointerdown',e=>{if(e.target.closest('.gbs'))gbDrag=true});
+addEventListener('pointerup',()=>{gbDrag=false});
+$('#garrabet').addEventListener('click',async e=>{
+ const b=e.target.closest('button');if(!b)return;
+ try{
+  if(b.dataset.gb){const[j,m,l,sd]=b.dataset.gb.split('|');gbToggle(+j,m,l,sd);renderGB();return}
+  if(b.dataset.gbrm!==undefined){gbSlip.splice(+b.dataset.gbrm,1);renderGB();return}
+  if(b.id==='gbNameBtn'){await api('/api/garrabet/name','POST',{device:dev,name:$('#gbNameIn').value});lastJ='';await load();gbToast('Nombre guardado');return}
+  if(b.id==='gbAll'){gbStake=String(Math.floor((GBS().balance||0)*100)/100).replace('.',',');const i=$('#gbStake');if(i)i.value=gbStake;const w=$('#gbWin');if(w)w.textContent=gbM(gbStakeN()*gbTot(gbSlip));return}
+  if(b.id==='gbPlace'){
+   if(!GBS().me){gbToast('Pon tu nombre arriba para poder apostar');const i=$('#gbNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
+   await api('/api/garrabet/ticket','POST',{device:dev,stake:gbStake,sels:gbSlip.map(({j,market,line,side})=>({j,market,line,side}))});
+   gbSlip=[];gbToast('¡Apuesta realizada!');lastJ='';await load();try{const nt=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id)[0];if(nt)await gbShowImg(nt)}catch(e2){console.error(e2)}return}
+  if(b.dataset.gbshare){const t=(GBS().mine||[]).find(x=>x.id===+b.dataset.gbshare);if(t)await gbShowImg(t);return}
+  if(b.dataset.gbdel){if(!confirm('¿Quitar esta apuesta?'))return;await api('/api/garrabet/ticket/'+b.dataset.gbdel+'?d='+encodeURIComponent(dev),'DELETE');lastJ='';await load()}
+ }catch(err){gbToast(err.message)}});
 
-                <div id="subporra-clasificacion" class="subporra-box" style="display:none;">
-                    <h3>🏆 CLASIFICACIÓN DE LA PORRA</h3>
-                    <div class="card">
-                        <ol id="tabla-ranking-porra"></ol>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <script src="porra.js"></script>
-</body>
-</html>
+// ---- GarraBet: imagen compartible del boleto (canvas, mismo formato que las casas de apuestas) ----
+const gbPv=n=>{n=Math.round(Number(n||0)*100)/100;const [i,d]=n.toFixed(2).split('.');return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(d==='00'?'':','+d)};
+function gbSelParts(x){const t=gbSelTxt(x),k=t.indexOf(' · '),rv=gbRival(x.j),m=x.market;
+ let big=t,sm='';
+ if(k>0){sm=t.slice(0,k);big=t.slice(k+3)}
+ else if(m==='res')sm='Resultado del partido';
+ else if(m==='scorer')sm='Goleador'+(gbNote(x)?' · '+gbNote(x):'');
+ else if(m==='yellow')sm='Tarjeta amarilla'+(gbNote(x)?' · '+gbNote(x):'');
+ else if(m==='exact')sm='Resultado exacto',big=x.line.replace('-',' - ');
+ return {big,sm:(sm?sm+' · ':'')+'J'+x.j+' vs '+rv}}
+async function gbTicketCanvas(t){
+ try{await Promise.all([document.fonts.load('800 40px "Barlow Condensed"'),document.fonts.load('600 40px "Barlow Condensed"')])}catch{}
+ const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src='escudo.png'});
+ const GOLD='#e2ab2c',INK='#0d0b09',RED='#a01f22',CREAM='#f6eedb',BROWN='#2a1d0c',F='"Barlow Condensed",Impact,sans-serif';
+ const W=1080,M=36,IN=44,rows=t.sels.length,ROW=134,HEAD=158,TOP=162,BOX=150,H=M+HEAD+TOP+rows*ROW+BOX+60+M;
+ const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');g.textBaseline='alphabetic';
+ const rect=(x,y,w,h,f,st,lw)=>{g.beginPath();g.rect(x,y,w,h);if(f){g.fillStyle=f;g.fill()}if(st){g.lineWidth=lw||4;g.strokeStyle=st;g.stroke()}};
+ const fit=(txt,font,max,min)=>{let sz=min[1];while(sz>min[0]){g.font=font(sz);if(g.measureText(txt).width<=max)break;sz-=2}g.font=font(sz);return sz};
+ // fondo dorado + sombra dura
+ rect(0,0,W,H,GOLD);rect(M+10,M+10,W-2*M,H-2*M,INK);rect(M,M,W-2*M,H-2*M,CREAM);
+ // cabecera oscura
+ rect(M,M,W-2*M,HEAD,INK);
+ let lx=M+IN;if(img){const h=112,w=h*img.width/img.height;g.drawImage(img,lx,M+23,w,h);lx+=w+22}
+ fit('GARRABET',s=>'italic 800 '+s+'px '+F,W-M-IN-lx,[48,96]);g.fillStyle=CREAM;g.fillText('GARRA',lx,M+110);const gw=g.measureText('GARRA').width;g.fillStyle=GOLD;g.fillText('BET',lx+gw,M+110);
+ g.textAlign='left';
+ // nombre + estado
+ const y0=M+HEAD,who=(GBS().me||'').toUpperCase();
+ fit(who,s=>'800 '+s+'px '+F,560,[44,84]);g.fillStyle=INK;g.fillText(who,M+IN,y0+78);
+ const n=rows,sub=(n>1?'COMBINADA ×'+n:'SENCILLA');
+ g.font='600 38px '+F;g.fillStyle='#555';g.fillText(sub,M+IN,y0+126);
+ const st=t.status,lab={win:'GANADA',lose:'PERDIDA',void:'ANULADA'}[st]||'PENDIENTE',bg={win:'#bfe8c6',lose:'#f1c6c6',void:'#ddd'}[st]||'#f7dd8a';
+ g.font='800 44px '+F;const cw=g.measureText(lab).width+48;rect(W-M-IN-cw,y0+22,cw,70,bg,INK,5);g.fillStyle=INK;g.textAlign='center';g.fillText(lab,W-M-IN-cw/2,y0+72);g.textAlign='left';
+ // selecciones
+ let y=y0+TOP;rect(M+IN,y-14,W-2*M-2*IN,4,INK);
+ t.sels.forEach(x=>{const {big,sm}=gbSelParts(x),oddTxt='x'+Number(x.odd).toFixed(2);
+  const col=x.status==='win'?'#1f7a33':x.status==='lose'?RED:GOLD;
+  g.beginPath();g.arc(M+IN+14,y+38,14,0,7);g.fillStyle=col;g.fill();
+  g.textAlign='right';g.font='italic 800 62px '+F;g.fillStyle=RED;g.fillText(oddTxt,W-M-IN,y+58);const ow=g.measureText(oddTxt).width;g.textAlign='left';
+  const mx=W-2*M-2*IN-44-ow-24;fit(big,s=>'800 '+s+'px '+F,mx,[34,64]);g.fillStyle=INK;g.fillText(big,M+IN+44,y+58);
+  fit(sm,s=>'600 '+s+'px '+F,mx,[24,36]);g.fillStyle='#555';g.fillText(sm,M+IN+44,y+100);
+  rect(M+IN,y+ROW-14,W-2*M-2*IN,4,INK);y+=ROW});
+ // cajas apostado / cuota / premio
+ y+=14;const bx=M+IN,bw=(W-2*M-2*IN)/3,pay=st==='win'?t.payout:t.stake*t.odd;
+ rect(bx,y,bw*3,BOX,null,INK,5);rect(bx+bw,y,4,BOX,INK);rect(bx+2*bw,y,4,BOX,INK);
+ const cell=(i,l,v,col)=>{g.textAlign='center';g.font='800 30px '+F;g.fillStyle='#555';g.fillText(l,bx+bw*i+bw/2,y+46);fit(v,s=>'italic 800 '+s+'px '+F,bw-30,[34,72]);g.fillStyle=col;g.fillText(v,bx+bw*i+bw/2,y+112)};
+ cell(0,'APOSTADO',gbPv(t.stake)+' PAVOS',INK);cell(1,'CUOTA','X'+Number(t.odd).toFixed(2),RED);cell(2,st==='win'?'PREMIO COBRADO':st==='void'?'DEVUELTO':'PREMIO POSIBLE',gbPv(st==='void'?t.stake:pay)+' PAVOS',INK);
+ g.textAlign='left';return c}
+let gbBlob=null,gbBlobName='boleto-garrabet.png';
+async function gbShowImg(t){
+ const c=await gbTicketCanvas(t);gbBlob=await new Promise(r=>c.toBlob(r,'image/png'));if(!gbBlob)return;
+ gbBlobName='garrabet-'+(GBS().me||'boleto').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+t.id+'.png';
+ const im=$('#gbShareImg');if(im.dataset.u)URL.revokeObjectURL(im.dataset.u);im.dataset.u=URL.createObjectURL(gbBlob);im.src=im.dataset.u;
+ const d=$('#gbShareDlg');if(!d.open)d.showModal()}
+$('#gbShareClose').onclick=()=>$('#gbShareDlg').close();
+$('#gbDlBtn').onclick=()=>{if(!gbBlob)return;const a=document.createElement('a');a.href=URL.createObjectURL(gbBlob);a.download=gbBlobName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+$('#gbShareBtn').onclick=async()=>{if(!gbBlob)return;const f=new File([gbBlob],gbBlobName,{type:'image/png'});
+ try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Mi apuesta en GarraBet',text:'https://fhul0bjwm2n3-production-bydzcjlv.europe-west1.suga.run/#garrabet'});return}}catch(e){if(e&&e.name==='AbortError')return}
+ $('#gbDlBtn').click()};
+// ---- Plantilla oficial: jugadores colocados sobre el césped (vertical) + editor en Admin ----
+let squadDirty=false;
+function renderSquad(){
+ const sq=S.squad||[];
+ $('#pitch').innerHTML=sq.map((p,k)=>`<div class="pl${p.c?' cap':''}" data-pl="${k}" role="button" tabindex="0" aria-label="Ver ficha de ${esc(p.name)}" style="left:${(8.1+p.x*.834).toFixed(2)}%;top:${(4.85+p.y*.903).toFixed(2)}%"><i>${esc(p.n)}</i><span>${esc(p.name)}${p.c?' (C)':''}</span></div>`).join('');
+ $('#pitch').setAttribute('aria-label','Plantilla oficial: '+sq.map(p=>p.n+' '+p.name+(p.c?' (capitán)':'')).join(', '));
+ const ad=$('#adminSquad');if(!ad)return;
+ if(!squadDirty&&!ad.contains(document.activeElement))ad.innerHTML=sq.map(sqRow).join('')||'<p>No hay jugadores.</p>'}
+const sqRow=(p={n:'',name:'',x:50,y:50,c:false})=>`<div class="pv sqRow" data-id="${esc(p.id||'')}"><div class="sqTop"><input class="sqn" type="number" inputmode="numeric" min="0" max="99" placeholder="Nº" value="${esc(p.n)}" aria-label="Dorsal"><input class="sqm" maxlength="14" placeholder="Nombre" value="${esc(p.name)}" aria-label="Nombre"><label class="sqc"><input type="radio" name="sqcap"${p.c?' checked':''}> C</label></div><div class="sqBot"><label>↔<input class="sqx" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.x)}" aria-label="Izquierda a derecha"></label><label>↕<input class="sqy" type="number" inputmode="decimal" min="0" max="100" value="${esc(p.y)}" aria-label="Arriba a abajo"></label><button type="button" class="ghost" data-sqdel>Quitar</button></div><div class="sqExtra"><label>⚽<input class="sqg" type="number" inputmode="numeric" min="0" max="999" value="${esc(p.goals||0)}" aria-label="Goles anotados"></label><span style="font-size:15px;opacity:.8">goles anotados</span>${nrm(p.name)==='ANTONIO'?`<label>🧤<input class="sqe" type="number" inputmode="numeric" min="0" max="999" value="${esc(p.conceded||0)}" aria-label="Goles encajados"></label><span style="font-size:15px;opacity:.8">goles encajados</span>`:''}<input class="sqq" maxlength="140" placeholder="Frase para su ficha" value="${esc(p.quote||'')}" aria-label="Frase"><div class="sqPh"><img class="sqpi" alt=""${p.id&&p.hasPhoto?` src="/api/squad-photo/${esc(p.id)}?v=${esc(p.photoV||0)}"`:' hidden'}><button type="button" class="ghost" data-sqph>📷 Foto</button><button type="button" class="ghost" data-sqphdel${p.id&&p.hasPhoto?'':' hidden'}>Quitar foto</button><input class="sqf" type="file" accept="image/*" hidden></div></div></div>`;
+$('#adminSquad').addEventListener('input',()=>{squadDirty=true});
+// Foto de la ficha: se recorta a 4:3 y se reduce en el navegador antes de guardarla
+document.addEventListener('click',e=>{
+ const b=e.target.closest('button[data-sqph]');if(b){b.closest('.sqRow').querySelector('.sqf').click();return}
+ const d=e.target.closest('button[data-sqphdel]');if(d){const r=d.closest('.sqRow');r._photo='';const im=r.querySelector('.sqpi');im.hidden=true;im.removeAttribute('src');d.hidden=true;squadDirty=true}});
+document.addEventListener('change',e=>{
+ const inp=e.target.closest('.sqf');if(!inp||!inp.files[0])return;const r=inp.closest('.sqRow');const fr=new FileReader();
+ fr.onload=()=>{const img=new Image();img.onload=()=>{const W=600,H=450,c=document.createElement('canvas');c.width=W;c.height=H;const k=Math.max(W/img.width,H/img.height),w=img.width*k,h=img.height*k;const g=c.getContext('2d');g.fillStyle='#0d0b09';g.fillRect(0,0,W,H);g.drawImage(img,(W-w)/2,(H-h)/2,w,h);
+  r._photo=c.toDataURL('image/jpeg',.82);const im=r.querySelector('.sqpi');im.src=r._photo;im.hidden=false;r.querySelector('[data-sqphdel]').hidden=false;squadDirty=true};img.src=fr.result};
+ fr.readAsDataURL(inp.files[0]);inp.value=''});
+// Ficha del jugador al pulsarlo en el campo
+function openFicha(k){const p=(S.squad||[])[k];if(!p)return;
+ $('#plNum').textContent='DORSAL '+p.n;$('#plName').textContent=p.name+(p.c?' (C)':'');
+ const ph=$('#plPh');ph.style.backgroundImage='';ph.innerHTML='';
+ if(p.hasPhoto&&p.id)ph.style.backgroundImage=`url(/api/squad-photo/${p.id}?v=${p.photoV||0})`;else ph.innerHTML='<img class="nofoto" src="escudo.png" alt="Sin foto todavía">';
+ $('#plFr').textContent=p.quote?'“'+p.quote+'”':'';$('#plGl').textContent=p.goals||0;$('#plCRow').hidden=!(nrm(p.name)==='ANTONIO'&&p.conceded!=null);$('#plCo').textContent=p.conceded==null?0:p.conceded;$('#plDlg').showModal()}
+$('#pitch').addEventListener('click',e=>{const t=e.target.closest('.pl');if(t)openFicha(+t.dataset.pl)});
+$('#pitch').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('.pl');if(t){e.preventDefault();openFicha(+t.dataset.pl)}});
+$('#plX').onclick=()=>$('#plDlg').close();
+$('#plDlg').addEventListener('click',e=>{if(e.target===e.currentTarget)$('#plDlg').close()});
+$('#addSq').onclick=()=>{const ad=$('#adminSquad');if(!ad.querySelector('.sqRow'))ad.innerHTML='';ad.insertAdjacentHTML('beforeend',sqRow());squadDirty=true;const l=ad.lastElementChild;l.scrollIntoView({block:'center',behavior:'smooth'});l.querySelector('.sqn').focus({preventScroll:true})};
+document.addEventListener('click',e=>{const b=e.target.closest('button[data-sqdel]');if(!b)return;b.closest('.sqRow').remove();squadDirty=true});
+$('#saveSq').onclick=async e=>{const b=e.currentTarget;
+ try{const squad=[...document.querySelectorAll('#adminSquad .sqRow')].map(r=>({n:r.querySelector('.sqn').value,name:r.querySelector('.sqm').value,x:r.querySelector('.sqx').value,y:r.querySelector('.sqy').value,c:r.querySelector('.sqc input').checked,id:r.dataset.id||undefined,goals:r.querySelector('.sqg').value,conceded:(r.querySelector('.sqe')||{}).value,quote:r.querySelector('.sqq').value,photo:r._photo}));
+  await adm('/api/squad','PUT',{squad});squadDirty=false;$('#amsg').textContent='Plantilla guardada';flash(b);await load()}
+ catch(err){$('#amsg').textContent=err.message}};
+// ---- Instalar como app + splash ----
+let instEv=null;
+const instBox=$('#installBox'),instBtn=$('#installBtn'),instMsg=$('#installMsg');
+if(!standaloneNow()){
+ if(isIOSnow()){instBox.hidden=false;instBtn.hidden=true;instMsg.textContent='Para instalarla en iPhone: pulsa Compartir → «Añadir a pantalla de inicio».'}
+ addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;instBox.hidden=false;instBtn.hidden=false;instMsg.textContent='Ábrela como una app, con su icono en el móvil.'});
+}
+function standaloneNow(){return navigator.standalone||matchMedia('(display-mode: standalone)').matches}
+function isIOSnow(){return /iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+instBtn.onclick=async()=>{if(!instEv)return;instEv.prompt();try{await instEv.userChoice}catch{}instEv=null;instBox.hidden=true};
+addEventListener('appinstalled',()=>{instBox.hidden=true;instEv=null});
+addEventListener('load',()=>{const sp=$('#splash');if(!sp||document.documentElement.classList.contains('nosplash'))return;setTimeout(()=>{sp.classList.add('out');setTimeout(()=>sp.remove(),600)},1500)});
+$('#sendPush').onclick=async()=>{try{const r=await adm('/api/push/send','POST',{title:$('#pushTitle').value,body:$('#pushBody').value});$('#pushBody').value='';$('#amsg').textContent='Aviso enviado a '+r.sent+' dispositivo'+(r.sent==1?'':'s')}catch(e){$('#amsg').textContent=e.message}};
+</script></body></html>
