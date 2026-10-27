@@ -556,7 +556,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <div class="apane" data-ap="mas" hidden>
   <details class="ad" open><summary>🔔 Avisos solo para mí (admin)</summary><div class="adb">
    <p class="sub" style="font-size:16px">Te llega un aviso a este dispositivo cada vez que alguien hace una apuesta, una combinada o una porra (de partido o final). Nadie más los recibe.</p>
-   <div class="row"><button id="admPushBtn" type="button">🔔 Activar mis avisos</button></div><p class="sub" id="admPushMsg" style="font-size:16px"></p>
+   <div class="row"><button id="admPushBtn" type="button">🔔 Activar mis avisos</button><button id="admPushTest" type="button" class="ghost">🧪 Enviarme un aviso de prueba</button></div><p class="sub" id="admPushMsg" style="font-size:16px"></p>
   </div></details>
   <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
    <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
@@ -817,17 +817,35 @@ $('#admPushBtn').onclick=async()=>{const m=$('#admPushMsg');
   if(!pushKey){m.textContent='El servidor no tiene activados los avisos (faltan las claves VAPID).';return}
   const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
   const on=sub&&Notification.permission==='granted'&&(await adm('/api/push/admin-status','POST',{endpoint:sub.endpoint})).on;
-  if(on){await adm('/api/push/admin-unsubscribe','POST',{endpoint:sub.endpoint})}
+  if(on){await adm('/api/push/admin-unsubscribe','POST',{endpoint:sub.endpoint});try{localStorage.removeItem('admPush')}catch{}}
   else{
    if(await Notification.requestPermission()!=='granted'){m.textContent='No has dado permiso para los avisos.';return admPushUI()}
    sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
-   await adm('/api/push/admin-subscribe','POST',{sub:sub.toJSON()});
+   await adm('/api/push/admin-subscribe','POST',{sub:sub.toJSON()});try{localStorage.admPush='1'}catch{}
    try{await reg.showNotification('Avisos de admin activados 🔔',{body:'Te avisaré de cada apuesta, combinada y porra.',icon:'/icon-192.png',badge:'/badge.png',tag:'adm-ok'})}catch{}}
   await admPushUI()
  }catch(e){m.textContent='No se pudieron activar: '+e.message}};
+// Auto-reparación: si este dispositivo ya activó los avisos de admin, se vuelve a registrar solo cada vez que abres la web (por si el servidor perdió los datos o el navegador renovó la suscripción)
+async function admPushHeal(){
+ try{
+  if(!pushOK||!pw||Notification.permission!=='granted'||localStorage.admPush!=='1')return;
+  if(!pushKey)pushKey=(await api('/api/push/key')).key;
+  if(!pushKey)return;
+  const reg=await navigator.serviceWorker.ready;
+  const sub=await reg.pushManager.getSubscription()||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64(pushKey)});
+  await adm('/api/push/admin-subscribe','POST',{sub:sub.toJSON()});
+ }catch{}
+}
+$('#admPushTest').onclick=async()=>{const m=$('#admPushMsg');m.textContent='Enviando…';
+ try{await admPushHeal();const r=await adm('/api/push/admin-test','POST',{});
+  m.textContent=r.reason==='novapid'?'El servidor no tiene las claves VAPID (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY en Render): sin ellas no puede enviar avisos.'
+   :r.reason==='nodevices'?'Ningún dispositivo tuyo está activado todavía: pulsa «Activar mis avisos».'
+   :r.ok?'Aviso enviado a '+r.sent+' dispositivo(s). Si no te sale en unos segundos, mira los ajustes de notificaciones y de batería del móvil para esta web.'
+   :'El aviso no se pudo entregar (el navegador lo rechazó). Desactiva y vuelve a activar tus avisos.'
+ }catch(e){m.textContent='No se pudo enviar la prueba: '+e.message}};
 $('.atabs').addEventListener('click',e=>{if(e.target.closest('.atab[data-at=mas]'))admPushUI()});
-$('#login').addEventListener('click',()=>setTimeout(admPushUI,900));
-if(pw)setTimeout(admPushUI,1200);
+$('#login').addEventListener('click',()=>setTimeout(async()=>{await admPushHeal();admPushUI()},900));
+if(pw)setTimeout(async()=>{await admPushHeal();admPushUI()},1200);
 
 // ---- Garro de Oro: quién gana según lo bebido (se proclama desde Admin y sale en el Inicio) ----
 function ezLeaders(){const rk=S.ez.map(e=>({e,p:ezPts(e)})).sort((a,b)=>b.p-a.p||a.e.name.localeCompare(b.e.name));const max=rk.length?rk[0].p:0;return{rk,max,top:max>0?rk.filter(x=>x.p===max):[]}}
