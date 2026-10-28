@@ -607,7 +607,7 @@ app.post('/api/import', admin, async (req, res) => {
 // ---- GARRABET: mercados Over/Under + 1X2 + resultado exacto, boletos sencillos y combinados, con nombre por dispositivo ----
 const gbRange = (from, n) => Array.from({ length: n }, (_, i) => (from + i + 0.5).toFixed(1));
 const GB_LINES = { scored: gbRange(0, 8), conceded: gbRange(0, 8), total: gbRange(1, 11) }; // 0.5–7.5 / 0.5–7.5 / 1.5–11.5
-const GB_MAX_SELS = 8, GB_MAX_TICKETS = 60, GB_EX_MAX = 9, GB_EX_GRID = 5, GB_EX_MARGIN = 1.12, GB_EX_CAP = 150, GB_EX_FAR_CAP = 500;
+const GB_MAX_SELS = 8, GB_MAX_TICKETS = 60, GB_EX_MAX = 9, GB_EX_GRID = 5, GB_EX_MARGIN = 1.12;
 const GB_START = 100, GB_MIN_STAKE = 1; // pavos con los que empieza cada jugador y apuesta mínima
 const gbMoney = n => Math.round(n * 100) / 100;
 // Goleadores (marca en cualquier momento): cuotas por defecto, de la más baja a la más alta. El admin las puede cambiar por jornada
@@ -659,7 +659,7 @@ function gbExact(res) {
   const [h0, a0] = best;
   for (let h = Math.max(0.05, h0 - 0.1); h <= h0 + 0.1; h += 0.01) { const H = pmf(h); for (let a = Math.max(0.05, a0 - 0.1); a <= a0 + 0.1; a += 0.01) { const e = err(H, pmf(a)); if (e < best[2]) best = [h, a, e]; } }
   const H = pmf(best[0]), A = pmf(best[1]), out = {};
-  for (let i = 0; i <= GB_EX_MAX; i++) for (let j = 0; j <= GB_EX_MAX; j++) out[i + '-' + j] = Math.round(Math.min(i > GB_EX_GRID || j > GB_EX_GRID ? GB_EX_FAR_CAP : GB_EX_CAP, Math.max(1.01, 1 / (H[i] * A[j] * GB_EX_MARGIN))) * 100) / 100; // fuera de la parrilla 0-5 = «otro resultado» (cuota más alta)
+  for (let i = 0; i <= GB_EX_MAX; i++) for (let j = 0; j <= GB_EX_MAX; j++) { const q = 1 / (H[i] * A[j] * GB_EX_MARGIN); out[i + '-' + j] = Math.round((Number.isFinite(q) ? Math.max(1.01, q) : 1e12) * 100) / 100; } // sin tope máximo: cuota = 1 / probabilidad (el 1e12 solo evita un infinito si la probabilidad se redondea a 0)
   if (gbExCache.size > 200) gbExCache.clear();
   gbExCache.set(k, out);
   return out;
