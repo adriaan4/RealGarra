@@ -92,6 +92,24 @@ table.cal{width:100%;border-collapse:collapse;min-width:560px}
 .cal tr.next td{background:#2a1d0c}
 .cal tr.next td:first-child{border-left:4px solid var(--red)}
 .cal .tbc{opacity:.55}
+table.clt{width:100%;border-collapse:collapse;min-width:560px}
+.clt th{font:800 18px "Barlow Condensed",sans-serif;color:var(--gold);text-align:left;padding:8px 10px;border-bottom:3px solid var(--gold);white-space:nowrap}
+.clt td{padding:9px 10px;border-bottom:1px solid var(--line)}
+.clt td:first-child{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}
+.clt td.cp{font-weight:700;color:var(--gold)}
+.clt tr.next td{background:#2a1d0c}
+.clt tr.next td:first-child{border-left:4px solid var(--red)}
+@media(max-width:640px){
+ table.clt{min-width:0;font-size:15px}
+ .clt th{font-size:15px;padding:6px 2px;text-align:center}
+ .clt th:nth-child(2){text-align:left;padding-left:4px}
+ .clt td{padding:9px 2px;text-align:center}
+ .clt td:first-child{font-size:19px;width:26px;padding-left:4px}
+ .clt tr.next td:first-child{border-left-width:3px}
+ .clt td.cn{text-align:left;padding-left:4px;line-height:1.15;font-weight:600}
+ .clt td.cn img.mini{height:18px;width:18px;margin-right:4px}
+}
+@media(max-width:400px){.clt .cgf,.clt .cgc{display:none}table.clt{font-size:14px}}
 .calA{display:grid;grid-template-columns:110px 1fr 130px auto;gap:8px;align-items:center;margin-top:8px}
 @media(max-width:600px){.calA{grid-template-columns:1fr 1fr}}
 
@@ -451,7 +469,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 
 <section id="clasificacion" hidden><h1>Clasificación</h1>
  <p id="clSub">Grupo 4708 · MLA Sport.</p>
- <div class="tw"><table class="cal"><thead><tr><th>Pos</th><th>Equipo</th><th>PTS</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody id="clBody"></tbody></table></div>
+ <div class="tw"><table class="clt"><thead><tr><th>Pos</th><th>Equipo</th><th>PTS</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th class="cgf">GF</th><th class="cgc">GC</th><th>DG</th></tr></thead><tbody id="clBody"></tbody></table></div>
 </section>
 
 <section id="cronicas" hidden><h1>Crónicas</h1>
@@ -749,7 +767,7 @@ const dmy=d=>d.split('-').reverse().join('/');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function renderClasif(){
  const c=S.clasif;if(!c)return;
- $('#clBody').innerHTML=c.teams.map((t,i)=>`<tr${t.garra?' class="next"':''}><td class="cj">${i+1}</td><td class="cm">${crestImg(t.name)}<b>${esc(t.name)}</b></td><td><b>${t.Pts}</b></td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td>${t.GF}</td><td>${t.GC}</td><td>${t.DG>0?'+':''}${t.DG}</td></tr>`).join('')||'<tr><td colspan="10">Todavía no hay clasificación.</td></tr>';
+ $('#clBody').innerHTML=c.teams.map((t,i)=>`<tr${t.garra?' class="next"':''}><td class="cj">${i+1}</td><td class="cn">${crestImg(t.name)}<b>${esc(t.name)}</b></td><td class="cp">${t.Pts}</td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td class="cgf">${t.GF}</td><td class="cgc">${t.GC}</td><td>${t.DG>0?'+':''}${t.DG}</td></tr>`).join('')||'<tr><td colspan="10">Todavía no hay clasificación.</td></tr>';
  $('#clSub').textContent=c.src==='mla'?'Grupo 4708 · MLA Sport'+(c.at?' · actualizada '+new Date(c.at).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'.':'Calculada con los resultados de la liga.';
 }
 function renderCal(){
