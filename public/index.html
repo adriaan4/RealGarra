@@ -383,7 +383,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#calendario">Calendario</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -447,6 +447,11 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 <section id="calendario" hidden><h1>Calendario</h1>
  <p>Todos los partidos de la temporada. La hora y el campo se irán confirmando.</p>
  <div class="tw"><table class="cal"><thead><tr><th>Jornada</th><th>Fecha</th><th>Horario</th><th>Partido</th><th>Resultado</th><th>Campo</th></tr></thead><tbody id="calBody"></tbody></table></div>
+</section>
+
+<section id="clasificacion" hidden><h1>Clasificación</h1>
+ <p id="clSub">Grupo 4708 · MLA Sport.</p>
+ <div class="tw"><table class="cal"><thead><tr><th>Pos</th><th>Equipo</th><th>PTS</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th></tr></thead><tbody id="clBody"></tbody></table></div>
 </section>
 
 <section id="cronicas" hidden><h1>Crónicas</h1>
@@ -634,7 +639,7 @@ function render(){
  try{renderMvp()}catch(e){console.error(e)}
  try{renderEz()}catch(e){console.error(e)}
  try{renderGarro()}catch(e){console.error(e)}
- try{renderCal()}catch(e){console.error(e)}try{renderCron()}catch(e){console.error(e)}try{renderGBRank()}catch(e){console.error(e)}
+ try{renderCal()}catch(e){console.error(e)}try{renderClasif()}catch(e){console.error(e)}try{renderCron()}catch(e){console.error(e)}try{renderGBRank()}catch(e){console.error(e)}
  try{renderGB()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
  try{renderSquad()}catch(e){console.error(e)}
@@ -742,6 +747,11 @@ function renderGBRank(){const el=$('#gbRank');if(!el)return;const r=GBS().rankin
 // ---- Calendario ----
 const dmy=d=>d.split('-').reverse().join('/');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function renderClasif(){
+ const c=S.clasif;if(!c)return;
+ $('#clBody').innerHTML=c.teams.map((t,i)=>`<tr${t.garra?' class="next"':''}><td class="cj">${i+1}</td><td class="cm">${crestImg(t.name)}<b>${esc(t.name)}</b></td><td><b>${t.Pts}</b></td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td>${t.GF}</td><td>${t.GC}</td><td>${t.DG>0?'+':''}${t.DG}</td></tr>`).join('')||'<tr><td colspan="10">Todavía no hay clasificación.</td></tr>';
+ $('#clSub').textContent=c.src==='mla'?'Grupo 4708 · MLA Sport'+(c.at?' · actualizada '+new Date(c.at).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'.':'Calculada con los resultados de la liga.';
+}
 function renderCal(){
  const cal=S.calendar||[],nx=cal.find(m=>m.date>=today());
  $('#calBody').innerHTML=cal.map(m=>`<tr${nx&&nx.j===m.j?' class="next"':''}><td class="cj">J${m.j}</td><td class="cd">${dmy(m.date)}</td><td class="ch${m.time?'':' tbc'}">${m.time?esc(m.time):'Por confirmar'}</td><td class="cm">Real Garra vs ${crestImg(m.rival)}<b>${esc(m.rival)}</b></td><td class="cr">${m.result?esc(m.result):'-'}${m.cron?' <a href="#cronicas" title="Ver la crónica" aria-label="Ver la crónica">📰</a>':''}</td><td class="cf${m.field?'':' tbc'}">${m.field?esc(m.field):'Por confirmar'}</td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay calendario.</td></tr>';

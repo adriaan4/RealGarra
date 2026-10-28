@@ -259,6 +259,7 @@ app.get('/api/state', (req, res) => {
     ezPts: EZ_PTS,
     garro: db.garro || null,
     garrabet: gbPublic(d),
+    clasif: clasifPublic(),
     squad: db.squad.map(({ photo, ...r }) => ({ ...r, hasPhoto: !!photo })), // las fotos se piden aparte (/api/squad-photo/:id)
     crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
     ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
@@ -971,6 +972,18 @@ function mlaApply(data) { // aplica lo leído en MLA a la base de datos; devuelv
   const st = JSON.stringify(data.standings);
   if (data.standings.length >= 2 && (!db.mla || JSON.stringify(db.mla.standings) !== st)) { db.mla = { group: MLA_GROUP, at: new Date().toISOString(), standings: data.standings }; changes.push('Clasificación oficial de MLA actualizada'); }
   return { changes, skipped };
+}
+function clasifPublic() { // clasificación para la web: la oficial de MLA si ya se sincronizó (en su orden); si no, la calculada con los resultados
+  let teams, src = 'calc', at = null;
+  if (db.mla && Array.isArray(db.mla.standings) && db.mla.standings.length >= 2) {
+    src = 'mla'; at = db.mla.at;
+    teams = db.mla.standings.map(t => ({ name: t.name, PJ: t.PJ, G: t.G, E: t.E, P: t.P, GF: t.GF, GC: t.GC, DG: t.DG, Pts: t.Pts }));
+  } else {
+    lgEnsure();
+    teams = lgStats().teams.map(t => ({ name: t.name, PJ: t.PJ, G: t.G, E: t.E, P: t.P, GF: t.GF, GC: t.GC, DG: t.GF - t.GC, Pts: t.Pts }))
+      .sort((a, b) => b.Pts - a.Pts || b.DG - a.DG || b.GF - a.GF || a.name.localeCompare(b.name));
+  }
+  return { src, at, teams: teams.map(t => ({ ...t, garra: mlaIsGarra(t.name) })) };
 }
 async function mlaSync(why) {
   if (mlaState.running) return { ok: false, error: 'Ya hay una sincronización en curso' };
