@@ -856,7 +856,7 @@ function renderCal(){
 document.addEventListener('click',async e=>{const b=e.target.closest('button[data-cals]');if(!b)return;
  try{const box=b.closest('[data-calbox]'),g=k=>box.querySelector('[data-c='+k+']').value;
   await adm('/api/calendar/'+b.dataset.cals,'PUT',{time:g('time'),field:g('field'),result:g('result')});
-  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';flash(b);await load()}
+  $('#amsg').textContent='Jornada '+b.dataset.cals+' guardada';flash(b);await load();prLoad(true)}
  catch(err){$('#amsg').textContent=err.message}});
 function tick(){clearInterval(timer);const el=$('#count');const t=S.next.date?new Date(S.next.date)-Date.now():-1;
  if(t<=0){el.innerHTML='<span class="big pend">Siguiente partido por confirmar</span>';return}
@@ -1056,7 +1056,7 @@ $('#rivalIn').addEventListener('input',updateCrestPreview);
 const GBM=[['scored','Goles anotados – Real Garra'],['conceded','Goles encajados – Real Garra'],['total','Goles totales']];
 const gbChipTxt=st=>st==='win'?'GANADA':st==='lose'?'PERDIDA':st==='void'?'ANULADA':'Pendiente';
 const gbM=n=>(Math.round(Number(n)*100)/100).toString().replace('.',','),gbL=l=>String(l).replace('.',','),gbO=n=>Number(n).toFixed(2).replace('.',','),gbN=v=>v==null?'':String(v).replace('.',',');
-const GBS=()=>S.garrabet||{},gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
+const GBS=()=>S.garrabet||{},gbAct=()=>GBS().active||0,gbOpen=j=>j===gbAct(),gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
 const gbRival=j=>((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
 function gbWin(m,l,sd,r){if(m==='dc')return sd==='1X'?r.gf>=r.gc:sd==='X2'?r.gf<=r.gc:r.gf!==r.gc;if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;if(m==='exact')return l===r.gf+'-'+r.gc;if(m==='btts')return sd==='y'?(r.gf>0&&r.gc>0):!(r.gf>0&&r.gc>0);const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
 const gbNote=x=>{if(x.market!=='scorer'&&x.market!=='yellow')return '';const o=x.market==='scorer'?['ha marcado','no ha marcado']:x.line==='NINGUNO'?['no hubo amarillas','hubo amarillas']:['ha visto amarilla','no ha visto amarilla'];return x.status==='win'?o[0]:x.status==='lose'?o[1]:''};
@@ -1085,7 +1085,7 @@ const gbTot=a=>Math.round(a.reduce((p,x)=>gbNM(a,x)?p:p*x.odd,1)*100)/100;
 function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?(l==='NINGUNO'?y.length===0:y.includes(l)):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
 function gbBtn(j,m,l,sd,label,odd,c0){
  const r0=gbRes(j),pl=m==='scorer'||m==='yellow',w0=pl&&odd?gbWinJ(j,m,l,sd,r0):null,r=r0||(w0!==null?1:null),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=pl?w0:gbWinJ(j,m,l,sd,r0);if(w!==null)c.push(w?'win':'lose')}
- return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
+ return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r&&gbOpen(j)?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
 function gbMarket(j,k,t){
  const od=gbOdds(j),L=(GBS().lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
  if(!ok.length)return `<div class="gbm"><h3>${t}</h3><p class="gbnone">Sin cuotas todavía.</p></div>`;
@@ -1122,17 +1122,17 @@ function gbTicketHtml(t,del){
   ${t.stake?`<p class="sub" style="margin:4px 0 0">${t.status==='win'?'Cobras <b>'+gbM(t.payout)+'</b> pavos':t.status==='void'?'Apuesta anulada: te devolvemos '+gbM(t.stake)+' pavos':t.status==='lose'?'Pierdes '+gbM(t.stake)+' pavos':'Si ganas: <b>'+gbM(t.stake*t.odd)+'</b> pavos'}</p>`:''}<ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul>${del||''}</div>`}
 function renderGB(){
  const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;
- const nx=cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
+ const nx=cal.find(m=>m.j===gbAct())||cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
  if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill();gbFilters()}
  // nombre
  const nb=$('#gbName');if(!(document.activeElement&&document.activeElement.id==='gbNameIn')){const me=GBS().me;
   nb.innerHTML=me?`<p class="sub">Apostando como <b>${esc(me)}</b> · 💰 Saldo: <b id="gbBal">${gbM(GBS().balance)}</b> pavos</p>`:`<div class="row"><input id="gbNameIn" maxlength="20" placeholder="Tu nombre para apostar" autocomplete="off"><button id="gbNameBtn" type="button">Guardar nombre</button></div><p class="sub" style="font-size:15px">Se queda fijo en este dispositivo.</p>`}
  // boleto: se actualizan cuotas y se quitan selecciones de partidos cerrados o sin cuota
- gbSlip=gbSlip.map(x=>({...x,odd:gbOddNow(x)})).filter(x=>x.odd&&!gbRes(x.j));
+ gbSlip=gbSlip.map(x=>({...x,odd:gbOddNow(x)})).filter(x=>x.odd&&!gbRes(x.j)&&gbOpen(x.j));
  if(!(gbDrag||($('#gbMarkets').contains(document.activeElement)&&(document.activeElement.type==='range'||(document.activeElement.dataset&&document.activeElement.dataset.gbo))))){
   const j=+sel.value;if(!j){$('#gbMarkets').innerHTML='<p>Todavía no hay calendario.</p>'}
   else{const r=gbRes(j),has=gbOdds(j);
-   $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:'')+(has?gbMarketRes(j)+gbMarketDc(j)+gbMarketBtts(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join('')+gbMarketScorer(j)+gbMarketYellow(j)+gbMarketExact(j):'<p>Este partido todavía no tiene cuotas.</p>')}}
+   $('#gbMarkets').innerHTML=(r?`<p class="sub">Partido cerrado · resultado final Real Garra ${r.gf}-${r.gc}</p>`:!gbOpen(j)?`<p class="sub">🔒 Todavía no se puede apostar en esta jornada: se abre cuando termine la J${gbAct()||'—'}${gbAct()?' (vs '+esc(gbRival(gbAct()))+')':''}.</p>`:'')+(has?gbMarketRes(j)+gbMarketDc(j)+gbMarketBtts(j)+GBM.map(([k,t])=>gbMarket(j,k,t)).join('')+gbMarketScorer(j)+gbMarketYellow(j)+gbMarketExact(j):'<p>Este partido todavía no tiene cuotas.</p>')}}
  if(!(document.activeElement&&document.activeElement.id==='gbStake'))$('#gbSlip').innerHTML=gbSlip.length?`<div class="gbslip"><h3>Tu boleto · ${gbSlip.length>1?'Combinada ×'+gbSlip.length:'Sencilla'}</h3>${gbSlip.map((x,i)=>`<div class="gbsl"><span>J${x.j} · ${esc(gbSelTxt(x))} @ <b>${gbO(x.odd)}</b>${gbNM(gbSlip,x)?' <small>(no multiplica)</small>':''}</span><button type="button" class="ghost" data-gbrm="${i}" aria-label="Quitar">✕</button></div>`).join('')}<div class="gbtot"><span>Cuota total</span><b>${gbO(gbTot(gbSlip))}</b></div><div class="row" style="margin:6px 0"><label for="gbStake">Pavos a apostar</label><input id="gbStake" inputmode="decimal" autocomplete="off" placeholder="10" value="${esc(gbStake)}" style="width:110px"><button type="button" class="ghost" id="gbAll">Todo</button></div><div class="gbtot"><span>Ganarías</span><b id="gbWin">${gbM(gbStakeN()*gbTot(gbSlip))}</b></div><button type="button" id="gbPlace" style="width:100%">Apostar</button></div>`:'';
  const mine=(GBS().mine||[]).slice().sort((a,b)=>b.id-a.id);
  $('#gbMine').innerHTML=mine.map(t=>gbTicketHtml(t,`<div class="row" style="margin:6px 0 0"><button type="button" data-gbshare="${t.id}">📤 Compartir imagen</button>${(t.forced||t.sels.some(x=>gbRes(x.j)))?'':`<button type="button" class="ghost" data-gbdel="${t.id}">Quitar apuesta</button>`}</div>`)).join('')||'<p class="gbnone">Todavía no has apostado.</p>'}
@@ -1456,9 +1456,10 @@ function prRenderRank(){
  const el=$('#prRank');if(!el)return;const r=PRS.ranking||[];
  el.innerHTML=r.length?'<ol class="gbr">'+r.map((u,i)=>`<li${u.me?' class="me"':''}><span class="pos">${medals[i]||i+1}</span><span class="nm">${esc(u.name)}${u.me?' (tú)':''}<small>🎯 ${u.exact} exactos · ✔ ${u.sign} de ganador/empate · ${u.played} jugados${u.final?' · 🏆 final '+pts(u.final):''}</small></span><span class="pv2">${pts(u.total)}<small>puntos</small></span></li>`).join('')+'</ol>':'<p class="sub">Todavía no hay puntos. Haz tu porra del próximo partido.</p>'}
 const cls=p=>p==null?'':p>=5?' p5':p>=3?' p3':' p0';
+const prMk=p=>p==null?'⏳':p>=(PRS&&PRS.exact||5)?'✅':p>0?'✔️':'❌',prWord=p=>p==null?'pendiente':p>=(PRS&&PRS.exact||5)?'Exacto':p>0?'Acertó (ganador/empate)':'Fallo';
 function prRenderHist(){
  const el=$('#prHist');if(!el)return;const h=PRS.history||[];
- el.innerHTML=h.length?h.map(x=>`<div class="pv"><div class="prtop"><h3>J${x.j} · Real Garra vs ${esc(x.rival)}</h3><span class="gbchip">${x.result.gf}-${x.result.gc}</span></div><small style="opacity:.8">${dmy(x.date)}</small>${x.preds.length?`<div class="prchips">${x.preds.map(p=>`<span class="prchip${cls(p.pts)}${p.me?' me':''}">${esc(p.name)} <b>${p.gf}-${p.gc}</b> · ${pts(p.pts)} pts</span>`).join('')}</div>`:'<p class="sub" style="font-size:16px">Nadie hizo porra de este partido.</p>'}</div>`).join(''):'<p class="sub">Cuando el admin ponga el resultado de un partido, aparecerá aquí con los puntos de cada uno.</p>'}
+ el.innerHTML=h.length?h.map(x=>`<div class="pv"><div class="prtop"><h3>J${x.j} · Real Garra vs ${esc(x.rival)}</h3><span class="gbchip">${x.result.gf}-${x.result.gc}</span></div><small style="opacity:.8">${dmy(x.date)}</small>${x.preds.length?`<div class="prchips">${x.preds.map(p=>`<span class="prchip${cls(p.pts)}${p.me?' me':''}">${prMk(p.pts)} ${esc(p.name)} <b>${p.gf}-${p.gc}</b> · ${pts(p.pts)} pts</span>`).join('')}</div>`:'<p class="sub" style="font-size:16px">Nadie hizo porra de este partido.</p>'}</div>`).join(''):'<p class="sub">Cuando el admin ponga el resultado de un partido, aparecerá aquí con los puntos de cada uno.</p>'}
 
 // ---- 2. Porra final de temporada ----
 const NUMK=['position','conceded'];
@@ -1485,7 +1486,7 @@ function prRenderMine(){
  const u=(PRS.ranking||[]).find(x=>x.me)||{match:0,final:0,total:0,exact:0,played:0},L=PRS.labels,F=PRS.final.mine,mm=PRS.mineAll||[];
  el.innerHTML=`<div class="prtiles"><span><b>${pts(u.total)}</b><small>puntos totales</small></span><span><b>${pts(u.match)}</b><small>de partidos</small></span><span><b>${pts(u.final)}</b><small>de la final</small></span><span><b>${u.played}</b><small>partidos jugados</small></span><span><b>${u.exact}</b><small>exactos</small></span></div>
   <h2>⚽ Mis partidos</h2>
-  ${mm.length?mm.map(x=>`<div class="pv prmine"><div><b>J${x.j} · vs ${esc(x.rival)}</b><small>${dmy(x.date)} · Mi porra: <b style="display:inline;font-size:inherit">${x.gf}-${x.gc}</b> · Resultado real: ${x.result?`<b style="display:inline;font-size:inherit">${x.result.gf}-${x.result.gc}</b>`:'⏳ pendiente'}</small></div><span class="gbchip${x.pts==null?'':x.pts>=5?' win':x.pts>=3?'':' lose'}"${x.pts>=3&&x.pts<5?' style="background:#8a6a12"':''}>${x.pts==null?'⏳':pts(x.pts)+' pts'}</span></div>`).join(''):'<p class="sub">Todavía no has hecho ninguna porra de partido.</p>'}
+  ${mm.length?mm.map(x=>`<div class="pv prmine"><div><b>J${x.j} · vs ${esc(x.rival)}</b><small>${dmy(x.date)} · Mi porra: <b style="display:inline;font-size:inherit">${x.gf}-${x.gc}</b> · Resultado real: ${x.result?`<b style="display:inline;font-size:inherit">${x.result.gf}-${x.result.gc}</b>`:'⏳ pendiente'}</small></div><span class="gbchip${x.pts==null?'':x.pts>=5?' win':x.pts>=3?'':' lose'}"${x.pts>=3&&x.pts<5?' style="background:#8a6a12"':''}>${x.pts==null?'⏳ pendiente':prMk(x.pts)+' '+prWord(x.pts)+' · '+pts(x.pts)+' pts'}</span></div>`).join(''):'<p class="sub">Todavía no has hecho ninguna porra de partido.</p>'}
   <h2 style="margin-top:24px">🏆 Mi porra final</h2>
   ${F?`<div class="pv">${PRS.keys.map(k=>{const r=resTxt(k,PRS.final.result);return `<div class="prmine" style="margin:4px 0"><div><b style="font-size:18px">${esc(L[k])}</b><small>${F.values[k]==null?'—':esc(F.values[k])}${r?' · real: '+esc(r):''}</small></div>${F.pts[k]==null?'<span class="gbchip">⏳</span>':`<span class="gbchip ${F.pts[k]>0?'win':'lose'}">${pts(F.pts[k])} pts</span>`}</div>`}).join('')}${F.total!=null?`<div class="prtop" style="margin-top:8px"><b>Total porra final</b><span class="gbchip win">${pts(F.total)} pts</span></div>`:''}</div>`
   :`<p class="sub">Aún no has hecho tu porra final.${PRS.final.open?' Hazla en la pestaña «Porra final».':''}</p>`}`}
