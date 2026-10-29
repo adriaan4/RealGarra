@@ -399,9 +399,61 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .atab[data-at=mas]{grid-column:span 3}
 .lgW{overflow-x:auto;margin:6px 0}.lgT{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}.lgT th,.lgT td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--line)}.lgT th:first-child,.lgT td:first-child{text-align:left}.lgT tr.me td{color:var(--gold)}.lgF{letter-spacing:2px;font-weight:700}
 </style>
+<style id="pnCss">
+.pnPick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin:10px 0}
+.pnPl{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;background:var(--card);color:var(--ink);border:2px solid var(--line);border-radius:12px;font:700 17px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;text-align:center;min-height:44px}
+.pnPl img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0d0b09}
+.pnPl:hover,.pnPl:focus-visible{border-color:var(--gold);background:#2a1d0c}
+.pnHud{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;max-width:760px;margin:12px auto 0}
+.pnWho{display:flex;align-items:center;gap:10px;min-width:0}
+.pnWho img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#0d0b09;flex:none}
+.pnWho b{display:block;font:800 24px/1 "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase;overflow-wrap:anywhere}
+.pnWho small{opacity:.8}
+.pnDots{display:flex;gap:7px}
+.pnDots i{width:32px;height:32px;border-radius:50%;border:2px solid var(--line);background:#120e0b;display:grid;place-items:center;font-style:normal;font-size:16px;line-height:1}
+.pnDots i.g{border-color:var(--gold);background:#2a1d0c}.pnDots i.s{border-color:var(--red)}.pnDots i.m{opacity:.7}
+.pnScore{font:800 34px/1 "Barlow Condensed",sans-serif;color:var(--ink)}.pnScore b{color:var(--gold);font-size:44px}
+#pnScene{position:relative;width:100%;max-width:760px;margin:10px auto 6px;aspect-ratio:16/11;border:3px solid var(--gold);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,0) 45%),#1d5f27 url(cesped.jpg) center/cover;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair;outline:none}
+#pnScene:focus-visible{box-shadow:0 0 0 3px var(--gold)}
+#pnScene img{pointer-events:none;-webkit-user-drag:none}
+#pnGoal{position:absolute;left:14%;top:8%;width:72%;height:50%;border:6px solid #f4f4f4;border-bottom:0;border-radius:6px 6px 0 0;box-shadow:0 0 14px rgba(0,0,0,.55);background:repeating-linear-gradient(0deg,rgba(255,255,255,.2) 0 1px,transparent 1px 14px),repeating-linear-gradient(90deg,rgba(255,255,255,.2) 0 1px,transparent 1px 14px),rgba(0,0,0,.28)}
+#pnGoal.flash{animation:pnFlash .7s}
+@keyframes pnFlash{0%{box-shadow:0 0 0 rgba(226,171,44,0)}30%{box-shadow:0 0 34px 8px rgba(226,171,44,.9),inset 0 0 40px rgba(226,171,44,.55)}100%{box-shadow:0 0 14px rgba(0,0,0,.55)}}
+.pnSp{position:absolute;left:50%;top:88%;width:3.4%;height:1.6%;background:#fff;border-radius:50%;opacity:.85;transform:translate(-50%,-50%)}
+.pnK{position:absolute;left:50%;top:38%;width:22%;transform:translate(-50%,-50%);transition:left .4s cubic-bezier(.2,.8,.3,1),top .4s cubic-bezier(.2,.8,.3,1),transform .4s cubic-bezier(.2,.8,.3,1);z-index:2;pointer-events:none}
+.pnK.idle{animation:pnSway 1.7s ease-in-out infinite}
+@keyframes pnSway{0%,100%{transform:translate(-50%,-50%) translateX(-9%)}50%{transform:translate(-50%,-50%) translateX(9%)}}
+.pnK .a{position:absolute;left:-42%;width:184%;top:36%;height:11%;background:#c79a1e;border:2px solid #0d0b09;border-radius:99px;display:flex;justify-content:space-between;align-items:center;z-index:0}
+.pnK .a span{font-size:clamp(14px,4.6vw,36px);line-height:1;margin:0 -5%}
+.pnK .h{position:relative;z-index:2;width:60%;aspect-ratio:1;margin:0 auto;border-radius:50%;border:3px solid var(--gold);overflow:hidden;background:#0d0b09}
+.pnK .h img{width:100%;height:100%;object-fit:cover;display:block}
+.pnK .b{position:relative;z-index:1;width:84%;aspect-ratio:1/.85;margin:-9% auto 0;background:linear-gradient(#e8c240,#c79a1e);border:2px solid #0d0b09;border-radius:28% 28% 14% 14%}
+.pnS{position:absolute;left:30%;top:80%;width:13%;transform:translate(-50%,-50%);z-index:2;pointer-events:none}
+.pnS img{width:100%;aspect-ratio:1;border-radius:50%;object-fit:cover;border:3px solid var(--gold);background:#0d0b09;display:block;box-shadow:0 6px 10px rgba(0,0,0,.5)}
+.pnS.kick{animation:pnKick .35s}
+@keyframes pnKick{50%{transform:translate(-30%,-50%) scale(1.08)}}
+.pnB{position:absolute;left:50%;top:86%;width:7%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;background:radial-gradient(circle at 50% 50%,#151515 0 17%,transparent 18%),radial-gradient(circle at 32% 28%,#fff,#e4e4e4 55%,#8f8f8f);box-shadow:0 5px 7px rgba(0,0,0,.55);transition:left .55s cubic-bezier(.15,.7,.3,1),top .55s cubic-bezier(.15,.7,.3,1),transform .55s cubic-bezier(.15,.7,.3,1)}
+.pnAim{position:absolute;display:none;width:9%;aspect-ratio:1;border:3px solid var(--gold);border-radius:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+.pnAim::before,.pnAim::after{content:"";position:absolute;background:var(--gold);left:50%;top:50%;transform:translate(-50%,-50%)}
+.pnAim::before{width:60%;height:2px}.pnAim::after{width:2px;height:60%}
+.pnAim.out{border-color:#ff6b6b}.pnAim.out::before,.pnAim.out::after{background:#ff6b6b}
+.pnMsg{position:absolute;left:50%;top:64%;transform:translate(-50%,-50%) scale(.6);font:800 clamp(30px,9vw,66px)/1 "Barlow Condensed",Impact,sans-serif;letter-spacing:1px;color:var(--gold);text-shadow:0 3px 0 #0d0b09,0 0 18px rgba(0,0,0,.8);opacity:0;pointer-events:none;z-index:5;white-space:nowrap;text-transform:uppercase;transition:opacity .2s,transform .25s}
+.pnMsg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.pnMsg.save{color:#fff;background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:2px 16px}
+.pnMsg.miss{color:#d8d8d8}
+.pnTabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
+.pnTab{background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:99px;font:700 18px "Barlow Condensed",sans-serif;padding:6px 14px;min-height:40px}
+.pnTab.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
+.pnTiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px;margin:10px 0}
+.pnTiles div{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--gold);border-radius:10px;padding:8px 4px;text-align:center}
+.pnTiles b{display:block;font:800 32px/1.05 "Barlow Condensed",sans-serif;color:var(--gold)}.pnTiles small{opacity:.8;font-size:14px}
+#pnEnd h3{margin:0 0 4px;font:800 30px "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase}
+@media(prefers-reduced-motion:reduce){.pnK.idle{animation:none}.pnB,.pnK{transition-duration:.05s}}
+@media(max-width:520px){.pnDots i{width:28px;height:28px}.pnWho b{font-size:21px}}
+</style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#penaltis">🥅 Penaltis</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -460,6 +512,31 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  </div>
  <div class="prpane" data-pp="final" hidden><div id="prFinal"></div></div>
  <div class="prpane" data-pp="mis" hidden><div id="prMine"></div></div>
+</section>
+
+<section id="penaltis" hidden><h1>🥅 PENALTIS GARRA</h1>
+ <p class="sub">Antonio defiende la portería. Elige quién tira, apunta dentro de la portería y dispara: tandas de 5 penaltis y ranking permanente.</p>
+ <div id="pnName"></div>
+ <div id="pnPick"></div>
+ <div id="pnGame" hidden>
+  <div class="pnHud"><div class="pnWho" id="pnWho"></div><div class="pnDots" id="pnDots"></div><div class="pnScore" id="pnScore"></div></div>
+  <div id="pnScene" tabindex="0" role="application" aria-label="Portería de Antonio. Haz clic o toca donde quieras disparar. Con teclado: flechas para apuntar y Enter para disparar">
+   <div id="pnGoal"></div>
+   <div class="pnSp"></div>
+   <div class="pnK idle" id="pnKeeper"><div class="a"><span>🧤</span><span>🧤</span></div><div class="h"><img id="pnKImg" alt="Antonio" src="escudo.png"></div><div class="b"></div></div>
+   <div class="pnS" id="pnShooter"><img id="pnSImg" alt="" src="escudo.png"></div>
+   <i class="pnAim" id="pnAim"></i>
+   <div class="pnB" id="pnBall"></div>
+   <div class="pnMsg" id="pnMsg" aria-live="assertive"></div>
+  </div>
+  <p class="sub" id="pnHelp" style="font-size:16px"></p>
+  <div id="pnEnd" class="prcard" hidden></div>
+  <div class="row"><button id="pnAgain" type="button" hidden>🔁 Otra tanda</button><button id="pnChange" type="button" class="ghost">👤 Cambiar jugador</button></div>
+ </div>
+ <h2 style="margin-top:26px">🏆 Ranking de penaltis</h2>
+ <div id="pnMine"></div>
+ <div class="pnTabs" id="pnTabs"></div>
+ <div id="pnRank"></div>
 </section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
@@ -1436,6 +1513,123 @@ document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const id=e.tar
 addEventListener('hashchange',()=>{if(location.hash==='#porra')prLoad(true)});
 if(location.hash==='#porra')prLoad(true);
 setInterval(()=>{if(location.hash==='#porra'&&!document.hidden)prLoad()},30000);
+
+// ================= 🥅 PENALTIS GARRA (minijuego) =================
+// El servidor decide cada tiro (gol, parada o fuera) y guarda goles, % y racha; aquí solo se apunta, se dispara y se anima.
+// Usa el mismo nombre que GarraBet y la Porra (no hay cuentas nuevas).
+const PN_GL=14,PN_GW=72,PN_GT=8,PN_GH=50; // portería dentro de la escena (% del ancho y del alto): igual que en el CSS
+let PN=null,pnSig='',pnMode='pick',pnSel=null,pnTok='',pnG=0,pnRes=[],pnBusy=false,pnAiming=false,pnAim={x:.5,y:.45};
+let pnSort=(()=>{try{return sessionStorage.pnSort||'goals'}catch{return'goals'}})();
+const pnImg=p=>p&&p.hasPhoto&&p.id?'/api/squad-photo/'+p.id+'?v='+(p.photoV||0):'escudo.png'; // sin foto: escudo de Garra
+const pnFall="this.onerror=null;this.src='escudo.png'";
+const pnWait=ms=>new Promise(z=>setTimeout(z,ms));
+const pnSquad=()=>(S&&Array.isArray(S.squad)?S.squad:[]);
+async function pnLoad(force){
+ try{const d=await api('/api/penaltis?d='+encodeURIComponent(dev)),sig=JSON.stringify(d);
+  if(!force&&PN&&sig===pnSig)return;pnSig=sig;PN=d;pnRender()}catch(e){}}
+function pnRender(){for(const f of [pnRenderName,pnRenderPick,pnRenderMine,pnRenderRank])try{f()}catch(e){console.error(e)}}
+function pnRenderName(){const el=$('#pnName');if(!el||isIn(el))return;
+ el.innerHTML=PN.me?`<p class="sub">Jugando como <b>${esc(PN.me)}</b> · el mismo nombre que en GarraBet y en la porra</p>`
+  :`<div class="pv" style="border:2px solid var(--gold)"><b>👋 Primero, pon tu nombre para jugar</b><p class="sub" style="font-size:16px">Es el mismo nombre que en GarraBet y en la porra: lo pones una vez y te sale en todos los rankings. Si ya lo tienes en este móvil te saldrá solo. Se queda fijo en este dispositivo.</p><div class="row"><input id="pnNameIn" maxlength="20" placeholder="Tu nombre" value="${esc(PN.suggest||'')}" autocomplete="off" style="flex:1;min-width:180px"><button id="pnNameBtn" type="button">Guardar nombre</button></div></div>`}
+function pnRenderPick(){const el=$('#pnPick');if(!el)return;
+ if(pnMode!=='pick'){el.hidden=true;return}
+ el.hidden=false;const sq=pnSquad();
+ el.innerHTML=`<h2 style="margin:16px 0 2px">¿Quién tira?</h2><p class="sub" style="font-size:16px">Elige a cualquier jugador de la plantilla: empieza una tanda de ${PN.shots} penaltis contra ${esc(PN.keeper?PN.keeper.name:'Antonio')}.</p>`
+  +(sq.length?`<div class="pnPick">${sq.map(p=>`<button type="button" class="pnPl" data-pnpl="${p.id}"><img src="${pnImg(p)}" alt="" loading="lazy" onerror="${pnFall}"><span>${p.n!==''&&p.n!=null?'#'+esc(p.n)+' ':''}${esc(p.name)}</span></button>`).join('')}</div>`:'<p class="sub">Todavía no hay plantilla cargada.</p>')}
+function pnRenderGame(){
+ const g=$('#pnGame');g.hidden=pnMode==='pick';
+ if(pnMode==='pick'){pnRenderPick();return}
+ $('#pnPick').hidden=true;
+ const k=PN&&PN.keeper,shots=PN?PN.shots:5,end=pnMode==='end';
+ $('#pnWho').innerHTML=`<img src="${pnImg(pnSel)}" alt="" onerror="${pnFall}"><span><b>${esc(pnSel?pnSel.name:'')}</b><small>tira contra ${esc(k?k.name:'Antonio')}</small></span>`;
+ $('#pnDots').innerHTML=Array.from({length:shots},(_,i)=>{const r=pnRes[i];return `<i class="${r==='goal'?'g':r==='save'?'s':r?'m':''}">${r==='goal'?'⚽':r==='save'?'🧤':r?'✖':''}</i>`}).join('');
+ $('#pnScore').innerHTML=`<b>${pnG}</b> / ${shots}`;
+ $('#pnKImg').src=pnImg(k);$('#pnKImg').onerror=()=>{$('#pnKImg').onerror=null;$('#pnKImg').src='escudo.png'};
+ $('#pnSImg').src=pnImg(pnSel);$('#pnSImg').onerror=()=>{$('#pnSImg').onerror=null;$('#pnSImg').src='escudo.png'};
+ $('#pnAgain').hidden=!end;$('#pnEnd').hidden=!end;
+ if(end)$('#pnEnd').innerHTML=`<h3>${pnG===shots?'🔥 ¡Tanda perfecta!':pnG>=Math.ceil(shots*.6)?'👏 ¡Buena tanda!':pnG?'💪 Se puede mejorar':'😬 Antonio te ha ganado'}</h3><p style="margin:0">${esc(pnSel?pnSel.name:'')} ha metido <b>${pnG}</b> de ${shots}. Tu mejor racha: <b>${PN&&PN.mine?PN.mine.best:0}</b> · acierto total: <b>${PN&&PN.mine?PN.mine.pct:0}%</b></p>`;
+ $('#pnHelp').textContent=end?'':(matchMedia('(pointer:coarse)').matches?'🎯 Mantén el dedo en la portería, arrastra para apuntar (la mira sale un poco encima del dedo) y suelta para disparar. Muy pegado al poste puede salir fuera.':'🎯 Haz clic donde quieras disparar (con el teclado: flechas y Enter). Las esquinas son difíciles de parar, pero muy pegado al poste puede salir fuera.')}
+function pnResetScene(){
+ const k=$('#pnKeeper'),b=$('#pnBall');
+ k.style.left='';k.style.top='';k.style.transform='';k.classList.add('idle');
+ b.style.left='';b.style.top='';b.style.transform='';
+ $('#pnMsg').className='pnMsg';$('#pnAim').style.display='none';pnAim={x:.5,y:.45}}
+async function pnStart(pid){
+ if(!PN||!PN.me){toast('Pon tu nombre arriba para jugar');const i=$('#pnNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
+ if(pnBusy)return;pnBusy=true;
+ try{const r=await api('/api/penaltis/start','POST',{device:dev,playerId:pid});
+  pnSel=pnSquad().find(p=>p.id===pid)||null;pnTok=r.token;pnG=0;pnRes=[];pnMode='play';
+  pnResetScene();pnRenderGame();$('#pnGame').scrollIntoView({block:'start',behavior:'smooth'})}
+ catch(e){toast(e.message)}finally{pnBusy=false}}
+function pnShowAim(){const a=$('#pnAim');a.style.left=(PN_GL+PN_GW*pnAim.x)+'%';a.style.top=(PN_GT+PN_GH*pnAim.y)+'%';a.classList.toggle('out',pnAim.x<0||pnAim.x>1||pnAim.y<0||pnAim.y>1);a.style.display='block'}
+function pnMoveAim(e){ // false si el puntero está en la zona del balón (abajo): ahí no se apunta
+ const r=$('#pnScene').getBoundingClientRect(),cy=e.clientY-(e.pointerType==='touch'?44:0);
+ if((e.clientY-r.top)/r.height*100>72)return false;
+ pnAim={x:Math.max(-.3,Math.min(1.3,((e.clientX-r.left)/r.width*100-PN_GL)/PN_GW)),y:Math.max(-.3,Math.min(1.1,((cy-r.top)/r.height*100-PN_GT)/PN_GH))};
+ pnShowAim();return true}
+async function pnAnimate(a,r){
+ const k=$('#pnKeeper'),b=$('#pnBall'),m=$('#pnMsg'),gl=$('#pnGoal'),sh=$('#pnShooter'),dm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ $('#pnAim').style.display='none';
+ sh.classList.remove('kick');void sh.offsetWidth;sh.classList.add('kick');
+ k.classList.remove('idle');
+ b.style.left=(PN_GL+PN_GW*a.x)+'%';b.style.top=(PN_GT+PN_GH*a.y)+'%';b.style.transform='translate(-50%,-50%) scale(.55) rotate(540deg)';
+ const dx=r.dive.x,dy=r.dive.y;
+ k.style.left=(PN_GL+PN_GW*dx)+'%';k.style.top=(PN_GT+PN_GH*dy)+'%';k.style.transform='translate(-50%,-50%) rotate('+(dx<.34?-55:dx>.66?55:0)+'deg)';
+ await pnWait(dm?120:650);
+ const t=r.result==='goal'?['¡GOOOL!','goal']:r.result==='save'?['¡Paradón de Antonio!','save']:[r.why==='poste'?'¡Al poste!':'¡Fuera!','miss'];
+ m.textContent=t[0];m.className='pnMsg on '+t[1];
+ if(r.result==='goal'){gl.classList.remove('flash');void gl.offsetWidth;gl.classList.add('flash')}
+ await pnWait(dm?350:1100);m.className='pnMsg'}
+async function pnShoot(){
+ if(pnBusy||!pnTok||pnMode!=='play')return;
+ pnBusy=true;const a={x:pnAim.x,y:pnAim.y};
+ try{
+  const r=await api('/api/penaltis/shot','POST',{device:dev,token:pnTok,x:Math.round(a.x*1000)/1000,y:Math.round(a.y*1000)/1000});
+  await pnAnimate(a,r);
+  pnG=r.goals;pnRes.push(r.result);
+  if(PN){PN.mine=r.mine;PN.ranking=r.ranking}
+  if(r.done){pnMode='end';pnTok=''}else pnResetScene();
+  pnRenderGame();pnRenderMine();pnRenderRank()}
+ catch(e){toast(e.message);if(/caducado|no es tuya|nombre/i.test(e.message)){pnTok='';pnMode='pick';pnResetScene();pnRenderGame();pnLoad(true)}}
+ finally{pnBusy=false}}
+const pnPct=u=>(Math.round(u.pct*10)/10).toString().replace('.',',');
+function pnRenderMine(){const el=$('#pnMine');if(!el)return;const m=PN&&PN.mine;
+ el.innerHTML=m&&m.shots?`<div class="pnTiles"><div><b>${m.goals}</b><small>⚽ goles de ${m.shots}</small></div><div><b>${pnPct(m)}%</b><small>🎯 acierto</small></div><div><b>${m.best}</b><small>🔥 mejor racha</small></div><div><b>${m.bestTanda}/${PN.shots}</b><small>🏅 mejor tanda</small></div></div>`:''}
+const pnSorters={goals:(a,b)=>b.goals-a.goals||b.pct-a.pct||b.best-a.best||a.shots-b.shots||a.name.localeCompare(b.name),
+ pct:(a,b)=>(b.shots>=PN_MIN)-(a.shots>=PN_MIN)||b.pct-a.pct||b.goals-a.goals||a.name.localeCompare(b.name),
+ best:(a,b)=>b.best-a.best||b.goals-a.goals||b.pct-a.pct||a.name.localeCompare(b.name)};
+const PN_MIN=5; // el ranking por % solo cuenta a quien ha tirado al menos una tanda
+function pnRenderRank(){const tb=$('#pnTabs'),el=$('#pnRank');if(!el)return;
+ tb.innerHTML=[['goals','⚽ Goles'],['pct','🎯 % acierto'],['best','🔥 Mejor racha']].map(([k,t])=>`<button type="button" class="pnTab${pnSort===k?' on':''}" data-pnsort="${k}">${t}</button>`).join('');
+ const r=((PN&&PN.ranking)||[]).slice().sort(pnSorters[pnSort]||pnSorters.goals),med=['🥇','🥈','🥉'];
+ el.innerHTML=r.length?'<ol class="gbr">'+r.map((u,i)=>{
+  const main=pnSort==='pct'?[pnPct(u)+'%','acierto']:pnSort==='best'?[u.best,'racha']:[u.goals,'goles'];
+  const more=[pnSort!=='goals'?'⚽ '+u.goals+' goles':'',pnSort!=='pct'?'🎯 '+pnPct(u)+'%':'',pnSort!=='best'?'🔥 racha '+u.best:'',u.shots+' tiros'].filter(Boolean).join(' · ');
+  return `<li${u.me?' class="me"':''}><span class="pos">${pnSort==='pct'&&u.shots<PN_MIN?'·':(med[i]||i+1)}</span><span class="nm">${esc(u.name)}${u.me?' (tú)':''}<small>${more}${pnSort==='pct'&&u.shots<PN_MIN?' · aún sin tanda completa':''}</small></span><span class="pv2">${main[0]}<small>${main[1]}</small></span></li>`}).join('')+'</ol>'
+  :'<p class="sub">Todavía nadie ha tirado penaltis. ¡Sé el primero!</p>'}
+(()=>{const sc=$('#pnScene');if(!sc)return;
+ sc.addEventListener('pointerdown',e=>{if(pnMode!=='play'||pnBusy)return;sc.focus({preventScroll:true});try{sc.setPointerCapture(e.pointerId)}catch{}pnAiming=true;pnMoveAim(e);e.preventDefault()});
+ sc.addEventListener('pointermove',e=>{if(pnMode!=='play'||pnBusy)return;if(pnAiming||e.pointerType==='mouse')pnMoveAim(e)});
+ sc.addEventListener('pointerup',e=>{if(!pnAiming)return;pnAiming=false;if(pnMode!=='play'||pnBusy)return;if(pnMoveAim(e)===false){$('#pnAim').style.display='none';return}pnShoot()});
+ sc.addEventListener('pointercancel',()=>{pnAiming=false;$('#pnAim').style.display='none'});
+ sc.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!pnAiming&&!pnBusy)$('#pnAim').style.display='none'});
+ sc.addEventListener('keydown',e=>{if(pnMode!=='play'||pnBusy)return;const st=.04;let h=true;
+  if(e.key==='ArrowLeft')pnAim.x-=st;else if(e.key==='ArrowRight')pnAim.x+=st;else if(e.key==='ArrowUp')pnAim.y-=st;else if(e.key==='ArrowDown')pnAim.y+=st;
+  else if(e.key==='Enter'||e.key===' '){e.preventDefault();pnShowAim();pnShoot();return}else h=false;
+  if(h){e.preventDefault();pnAim.x=Math.max(-.2,Math.min(1.2,pnAim.x));pnAim.y=Math.max(-.2,Math.min(1,pnAim.y));pnShowAim()}});
+ sc.addEventListener('focus',()=>{if(pnMode==='play'&&!pnBusy)pnShowAim()});
+})();
+document.addEventListener('click',async e=>{
+ const nb=e.target.closest('#pnNameBtn');
+ if(nb){try{await api('/api/garrabet/name','POST',{device:dev,name:$('#pnNameIn').value});toast('Nombre guardado');lastJ='';await load();await pnLoad(true)}catch(err){toast(err.message)}return}
+ const pl=e.target.closest('button[data-pnpl]');if(pl){pnStart(+pl.dataset.pnpl);return}
+ if(e.target.closest('#pnAgain')){if(pnSel)pnStart(pnSel.id);return}
+ if(e.target.closest('#pnChange')){pnMode='pick';pnTok='';pnResetScene();pnRenderGame();pnRenderPick();return}
+ const st=e.target.closest('button[data-pnsort]');if(st){pnSort=st.dataset.pnsort;try{sessionStorage.pnSort=pnSort}catch{}pnRenderRank()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='pnNameIn'){e.preventDefault();$('#pnNameBtn').click()}});
+addEventListener('hashchange',()=>{if(location.hash==='#penaltis')pnLoad(true)});
+if(location.hash==='#penaltis')pnLoad(true);
+setInterval(()=>{if(location.hash==='#penaltis'&&!document.hidden&&!pnBusy)pnLoad()},30000);
 
 // ================= ADMIN =================
 let AD=null,adJ=0;
