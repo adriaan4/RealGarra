@@ -1570,7 +1570,7 @@ function pnMoveAim(e){ // false si el puntero está en la zona del balón (abajo
  pnAim={x:Math.max(-.3,Math.min(1.3,((e.clientX-r.left)/r.width*100-PN_GL)/PN_GW)),y:Math.max(-.3,Math.min(1.1,((cy-r.top)/r.height*100-PN_GT)/PN_GH))};
  pnShowAim();return true}
 // Sonidos: ¡SIUUU! al meter gol y FAAAH al fallar (parada o fuera). Se activan con el primer toque/clic (los móviles no dejan sonar antes)
-const PN_SND={goal:'sonidos/siuuu.mp3',fail:'sonidos/fah.mp3'};
+const PN_SND={goal:'/sonidos/siuuu.mp3',fail:'/sonidos/fah.mp3'};
 let pnAC=null;const pnBuf={},pnLoading={};
 let pnMute=(()=>{try{return localStorage.pnMute==='1'}catch{return false}})();
 function pnAudioInit(){
