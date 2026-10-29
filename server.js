@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const webpush = require('web-push');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -1575,6 +1576,91 @@ app.post('/api/porra-admin/final/:id/points', admin, async (req, res) => {
   if (v === null) delete f.adj; else f.adj = v;
   await save();
   res.json({ ok: true });
+});
+
+// ---- PENALTIS GARRA (minijuego): Antonio siempre de portero y cada jugador de la plantilla puede tirar una tanda de 5 ----
+// Usa EXACTAMENTE los mismos nombres que GarraBet y la Porra (db.garrabet.users, un nombre por dispositivo): no hay cuentas nuevas.
+// El resultado de cada tiro lo decide el SERVIDOR (dónde se lanza el portero y si es gol), así que nadie puede inventarse goles manipulando la web.
+// Las estadísticas se guardan en db.penaltis.stats[idDeLaPersona] (mismo almacenamiento que todo lo demás: Upstash o disco) y el ranking es permanente.
+const PEN_SHOTS = 5;              // penaltis por tanda
+const PEN_TTL = 20 * 60 * 1000;   // una tanda sin terminar caduca a los 20 minutos
+function PEN() { // siempre devuelve la estructura completa (también tras importar copias antiguas)
+  const p = db.penaltis && typeof db.penaltis === 'object' ? db.penaltis : (db.penaltis = {});
+  if (!p.stats || typeof p.stats !== 'object' || Array.isArray(p.stats)) p.stats = {};
+  return p;
+}
+const penStat = uid => {
+  const P = PEN(), s = P.stats[uid] || (P.stats[uid] = {});
+  for (const k of ['shots', 'goals', 'saves', 'miss', 'best', 'cur', 'tandas', 'bestTanda']) if (!Number.isInteger(s[k]) || s[k] < 0) s[k] = 0;
+  return s;
+};
+const penKeeper = () => (db.squad || []).find(p => norm(p.name) === 'ANTONIO') || null;
+const penPct = s => (s.shots ? Math.round(s.goals * 1000 / s.shots) / 10 : 0);
+const penMine = uid => { const s = penStat(uid); return { shots: s.shots, goals: s.goals, saves: s.saves, miss: s.miss, pct: penPct(s), best: s.best, tandas: s.tandas, bestTanda: s.bestTanda }; };
+function penRanking(meId) { // goles, % de acierto y mejor racha de cada persona (el nombre sale siempre de la lista de GarraBet/Porra, así que un cambio de nombre se refleja solo)
+  const P = PEN(), rows = [];
+  for (const u of db.garrabet.users) {
+    const s = P.stats[u.id];
+    if (!s || !(s.shots > 0)) continue;
+    rows.push({ name: u.name, ...penMine(u.id), me: u.id === meId });
+  }
+  return rows.sort((a, b) => b.goals - a.goals || b.pct - a.pct || b.best - a.best || a.shots - b.shots || a.name.localeCompare(b.name));
+}
+const penSessions = new Map(); // token -> { uid, pid, n, goals, last, exp }  (las tandas en curso solo viven en memoria; lo que cuenta se guarda tiro a tiro)
+const penRnd = () => crypto.randomInt(0, 1000000) / 1000000;
+function penPick(w) { let r = penRnd() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < w.length; i++) { r -= w[i]; if (r < 0) return i; } return w.length - 1; }
+// x,y = dónde apunta el tirador dentro de la portería (0..1 de izquierda a derecha y de arriba abajo; fuera de 0..1 = fuera del marco)
+function penResolve(x, y) {
+  const COLS = [0.17, 0.5, 0.83], ROWS = [0.27, 0.72];
+  // El portero se lanza sin ver el tiro: más a los lados que al centro y más abajo que arriba
+  const dive = { x: COLS[penPick([0.4, 0.2, 0.4])], y: ROWS[penPick([0.4, 0.6])] };
+  if (x < 0 || x > 1 || y < 0 || y > 1) return { result: 'miss', why: 'fuera', dive };
+  if (Math.min(x, 1 - x, y) < 0.05 && penRnd() < 0.3) return { result: 'miss', why: 'poste', dive }; // muy pegado al poste o al larguero: puede salir rozando
+  const dx = (x - dive.x) / 0.24, dy = (y - dive.y) / 0.42; // alcance de sus manos
+  return { result: dx * dx + dy * dy <= 1 ? 'save' : 'goal', dive };
+}
+app.get('/api/penaltis', (req, res) => {
+  const d = String(req.query.d || '').slice(0, 80), me = d.length >= 8 ? gbUser(d) : null, k = penKeeper();
+  const ez = !me && d.length >= 8 ? (db.ez.find(e => e.device === d) || {}).name : '';
+  res.json({
+    me: me ? me.name : null, suggest: ez ? String(ez).slice(0, 20) : '', shots: PEN_SHOTS,
+    keeper: k ? { id: k.id, name: k.name, hasPhoto: !!k.photo, photoV: k.photoV || 0 } : null,
+    mine: me ? penMine(me.id) : null, ranking: penRanking(me && me.id)
+  });
+});
+// Empieza una tanda: hay que tener nombre (el mismo de GarraBet y la Porra) y elegir a un jugador de la plantilla
+app.post('/api/penaltis/start', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device);
+  if (!user) return bad(res, 'Pon tu nombre para jugar');
+  const pl = (db.squad || []).find(p => p.id === +req.body.playerId);
+  if (!pl) return bad(res, 'Elige un jugador de la plantilla');
+  const now = Date.now();
+  for (const [t, s] of penSessions) if (s.exp < now || s.uid === user.id) penSessions.delete(t); // una sola tanda abierta por persona
+  if (penSessions.size > 2000) return bad(res, 'Hay demasiada gente jugando, prueba en un minuto');
+  const token = crypto.randomBytes(16).toString('hex');
+  penSessions.set(token, { uid: user.id, pid: pl.id, n: 0, goals: 0, last: 0, exp: now + PEN_TTL });
+  res.json({ ok: true, token, shots: PEN_SHOTS });
+});
+// Un tiro de la tanda: el servidor decide si es gol, parada o fuera y guarda las estadísticas al momento
+app.post('/api/penaltis/shot', async (req, res) => {
+  const device = String(req.body.device || '').slice(0, 80), user = device.length >= 8 && gbUser(device), token = String(req.body.token || '');
+  const s = penSessions.get(token);
+  if (!user) return bad(res, 'Pon tu nombre para jugar');
+  if (!s || Date.now() > s.exp) { penSessions.delete(token); return bad(res, 'La tanda ha caducado. Empieza otra'); }
+  if (s.uid !== user.id) return bad(res, 'Esa tanda no es tuya'); // no se toca la tanda de la otra persona
+  const x = Number(req.body.x), y = Number(req.body.y);
+  if (typeof req.body.x === 'boolean' || typeof req.body.y === 'boolean' || !Number.isFinite(x) || !Number.isFinite(y) || x < -0.6 || x > 1.6 || y < -0.6 || y > 1.6) return bad(res, 'Tiro no válido');
+  if (Date.now() - s.last < 400) return bad(res, 'Un momento, el balón todavía está rodando');
+  s.last = Date.now();
+  const r = penResolve(x, y), st = penStat(user.id);
+  s.n++; st.shots++;
+  if (r.result === 'goal') { s.goals++; st.goals++; st.cur++; if (st.cur > st.best) st.best = st.cur; }
+  else { st.cur = 0; if (r.result === 'save') st.saves++; else st.miss++; }
+  const done = s.n >= PEN_SHOTS;
+  if (done) { st.tandas++; if (s.goals > st.bestTanda) st.bestTanda = s.goals; penSessions.delete(token); }
+  st.last = new Date().toISOString();
+  await save();
+  res.json({ ok: true, result: r.result, why: r.why || '', dive: r.dive, n: s.n, goals: s.goals, done, streak: st.cur, mine: penMine(user.id), ranking: penRanking(user.id) });
 });
 
 // ---- Mantener despierto (Render free duerme la web tras ~15 min sin visitas) ----
