@@ -762,7 +762,7 @@ function gbPublic(d) {
     for (const t of db.garrabet.tickets) if (t.device === u.device) { const st = gbTicketOut(t).status; if (st === 'win') won++; else if (st === 'lose') lost++; else if (st === 'pending') pending++; }
     return { name: u.name, balance: gbBalance(u), won, lost, pending, me: !!d && u.device === d };
   }).sort((a, b) => b.balance - a.balance || b.won - a.won || a.name.localeCompare(b.name));
-  return { ranking, odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), yellowNoneDef: GB_YC_NONE_DEF, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
+  return { active: (prActive() || {}).j || 0, ranking, odds: db.garrabet.odds, exact, dc, scorerOdds, scorers, scorerDef: gbScorerDefault(), yellowOdds, yellows, yellowDef: gbYellowDefault(), yellowNoneDef: GB_YC_NONE_DEF, results, lines: GB_LINES, me: me ? me.name : null, balance: me ? gbBalance(me) : null, minStake: GB_MIN_STAKE, mine: d ? db.garrabet.tickets.filter(t => t.device === d).map(gbTicketOut) : [] };
 }
 app.put('/api/garrabet/:j', admin, async (req, res) => { // el admin guarda todas las cuotas de un partido (sin tocar código)
   const j = +req.params.j;
@@ -1113,6 +1113,8 @@ app.post('/api/garrabet/ticket', async (req, res) => {
     const j = +r.j, market = String(r.market || ''), side = String(r.side || ''), line = market === 'res' ? '' : String(r.line || '');
     const m = db.calendar.find(x => x.j === j);
     if (!m) return bad(res, 'Partido no válido');
+    const act = prActive(); // solo se apuesta en la jornada que toca: la primera sin resultado (o la que el admin fije como activa en la Porra)
+    if (!gbResult(m) && (!act || m.j !== act.j)) return bad(res, act ? 'Ahora solo se puede apostar en la J' + act.j + ' (vs ' + act.rival + '). La J' + j + ' se abre cuando termine esa' : 'No hay ninguna jornada abierta para apostar');
     if (gbResult(m) || (market === 'scorer' && Array.isArray(m.scorers)) || (market === 'yellow' && Array.isArray(m.yellows))) return bad(res, 'La jornada ' + j + ' ya está cerrada para esa apuesta');
     const odd = gbSelOdd(j, market, line, side);
     if (!odd) return bad(res, 'Una de las selecciones ya no tiene cuota');
