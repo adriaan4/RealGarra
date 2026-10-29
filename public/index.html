@@ -531,7 +531,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   </div>
   <p class="sub" id="pnHelp" style="font-size:16px"></p>
   <div id="pnEnd" class="prcard" hidden></div>
-  <div class="row"><button id="pnAgain" type="button" hidden>🔁 Otra tanda</button><button id="pnChange" type="button" class="ghost">👤 Cambiar jugador</button></div>
+  <div class="row"><button id="pnAgain" type="button" hidden>🔁 Otra tanda</button><button id="pnChange" type="button" class="ghost">👤 Cambiar jugador</button><button id="pnMute" type="button" class="ghost">🔊 Sonido</button></div>
  </div>
  <h2 style="margin-top:26px">🏆 Ranking de penaltis</h2>
  <div id="pnMine"></div>
@@ -1547,7 +1547,7 @@ function pnRenderGame(){
  $('#pnScore').innerHTML=`<b>${pnG}</b> / ${shots}`;
  $('#pnKImg').src=pnImg(k);$('#pnKImg').onerror=()=>{$('#pnKImg').onerror=null;$('#pnKImg').src='escudo.png'};
  $('#pnSImg').src=pnImg(pnSel);$('#pnSImg').onerror=()=>{$('#pnSImg').onerror=null;$('#pnSImg').src='escudo.png'};
- $('#pnAgain').hidden=!end;$('#pnEnd').hidden=!end;
+ $('#pnAgain').hidden=!end;$('#pnEnd').hidden=!end;$('#pnMute').textContent=pnMute?'🔇 Sin sonido':'🔊 Sonido';
  if(end)$('#pnEnd').innerHTML=`<h3>${pnG===shots?'🔥 ¡Tanda perfecta!':pnG>=Math.ceil(shots*.6)?'👏 ¡Buena tanda!':pnG?'💪 Se puede mejorar':'😬 Antonio te ha ganado'}</h3><p style="margin:0">${esc(pnSel?pnSel.name:'')} ha metido <b>${pnG}</b> de ${shots}. Tu mejor racha: <b>${PN&&PN.mine?PN.mine.best:0}</b> · acierto total: <b>${PN&&PN.mine?PN.mine.pct:0}%</b></p>`;
  $('#pnHelp').textContent=end?'':(matchMedia('(pointer:coarse)').matches?'🎯 Mantén el dedo en la portería, arrastra para apuntar (la mira sale un poco encima del dedo) y suelta para disparar. Muy pegado al poste puede salir fuera.':'🎯 Haz clic donde quieras disparar (con el teclado: flechas y Enter). Las esquinas son difíciles de parar, pero muy pegado al poste puede salir fuera.')}
 function pnResetScene(){
@@ -1557,6 +1557,7 @@ function pnResetScene(){
  $('#pnMsg').className='pnMsg';$('#pnAim').style.display='none';pnAim={x:.5,y:.45}}
 async function pnStart(pid){
  if(!PN||!PN.me){toast('Pon tu nombre arriba para jugar');const i=$('#pnNameIn');if(i){i.scrollIntoView({block:'center',behavior:'smooth'});i.focus({preventScroll:true})}return}
+ pnAudioInit();
  if(pnBusy)return;pnBusy=true;
  try{const r=await api('/api/penaltis/start','POST',{device:dev,playerId:pid});
   pnSel=pnSquad().find(p=>p.id===pid)||null;pnTok=r.token;pnG=0;pnRes=[];pnMode='play';
@@ -1568,6 +1569,18 @@ function pnMoveAim(e){ // false si el puntero está en la zona del balón (abajo
  if((e.clientY-r.top)/r.height*100>72)return false;
  pnAim={x:Math.max(-.3,Math.min(1.3,((e.clientX-r.left)/r.width*100-PN_GL)/PN_GW)),y:Math.max(-.3,Math.min(1.1,((cy-r.top)/r.height*100-PN_GT)/PN_GH))};
  pnShowAim();return true}
+// Sonidos: ¡SIUUU! al meter gol y FAAAH al fallar (parada o fuera). Se activan con el primer toque/clic (los móviles no dejan sonar antes)
+const PN_SND={goal:'sonidos/siuuu.mp3',fail:'sonidos/fah.mp3'};
+let pnAC=null;const pnBuf={},pnLoading={};
+let pnMute=(()=>{try{return localStorage.pnMute==='1'}catch{return false}})();
+function pnAudioInit(){
+ try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  if(!pnAC)pnAC=new AC();if(pnAC.state==='suspended')pnAC.resume();
+  for(const k in PN_SND)if(!pnBuf[k]&&!pnLoading[k]){pnLoading[k]=1;
+   fetch(PN_SND[k]).then(r=>r.arrayBuffer()).then(b=>new Promise((ok,no)=>pnAC.decodeAudioData(b,ok,no))).then(d=>{pnBuf[k]=d}).catch(()=>{pnLoading[k]=0})}}catch(e){}}
+function pnPlay(k){if(pnMute)return;
+ try{if(pnAC&&pnBuf[k]){if(pnAC.state==='suspended')pnAC.resume();const s=pnAC.createBufferSource();s.buffer=pnBuf[k];s.connect(pnAC.destination);s.start(0);return}
+  const a=new Audio(PN_SND[k]);const p=a.play();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
 async function pnAnimate(a,r){
  const k=$('#pnKeeper'),b=$('#pnBall'),m=$('#pnMsg'),gl=$('#pnGoal'),sh=$('#pnShooter'),dm=matchMedia('(prefers-reduced-motion: reduce)').matches;
  $('#pnAim').style.display='none';
@@ -1578,7 +1591,7 @@ async function pnAnimate(a,r){
  k.style.left=(PN_GL+PN_GW*dx)+'%';k.style.top=(PN_GT+PN_GH*dy)+'%';k.style.transform='translate(-50%,-50%) rotate('+(dx<.34?-55:dx>.66?55:0)+'deg)';
  await pnWait(dm?120:650);
  const t=r.result==='goal'?['¡GOOOL!','goal']:r.result==='save'?['¡Paradón de Antonio!','save']:[r.why==='poste'?'¡Al poste!':'¡Fuera!','miss'];
- m.textContent=t[0];m.className='pnMsg on '+t[1];
+ m.textContent=t[0];m.className='pnMsg on '+t[1];pnPlay(r.result==='goal'?'goal':'fail');
  if(r.result==='goal'){gl.classList.remove('flash');void gl.offsetWidth;gl.classList.add('flash')}
  await pnWait(dm?350:1100);m.className='pnMsg'}
 async function pnShoot(){
@@ -1609,7 +1622,7 @@ function pnRenderRank(){const tb=$('#pnTabs'),el=$('#pnRank');if(!el)return;
   return `<li${u.me?' class="me"':''}><span class="pos">${pnSort==='pct'&&u.shots<PN_MIN?'·':(med[i]||i+1)}</span><span class="nm">${esc(u.name)}${u.me?' (tú)':''}<small>${more}${pnSort==='pct'&&u.shots<PN_MIN?' · aún sin tanda completa':''}</small></span><span class="pv2">${main[0]}<small>${main[1]}</small></span></li>`}).join('')+'</ol>'
   :'<p class="sub">Todavía nadie ha tirado penaltis. ¡Sé el primero!</p>'}
 (()=>{const sc=$('#pnScene');if(!sc)return;
- sc.addEventListener('pointerdown',e=>{if(pnMode!=='play'||pnBusy)return;sc.focus({preventScroll:true});try{sc.setPointerCapture(e.pointerId)}catch{}pnAiming=true;pnMoveAim(e);e.preventDefault()});
+ sc.addEventListener('pointerdown',e=>{pnAudioInit();if(pnMode!=='play'||pnBusy)return;sc.focus({preventScroll:true});try{sc.setPointerCapture(e.pointerId)}catch{}pnAiming=true;pnMoveAim(e);e.preventDefault()});
  sc.addEventListener('pointermove',e=>{if(pnMode!=='play'||pnBusy)return;if(pnAiming||e.pointerType==='mouse')pnMoveAim(e)});
  sc.addEventListener('pointerup',e=>{if(!pnAiming)return;pnAiming=false;if(pnMode!=='play'||pnBusy)return;if(pnMoveAim(e)===false){$('#pnAim').style.display='none';return}pnShoot()});
  sc.addEventListener('pointercancel',()=>{pnAiming=false;$('#pnAim').style.display='none'});
@@ -1625,6 +1638,7 @@ document.addEventListener('click',async e=>{
  if(nb){try{await api('/api/garrabet/name','POST',{device:dev,name:$('#pnNameIn').value});toast('Nombre guardado');lastJ='';await load();await pnLoad(true)}catch(err){toast(err.message)}return}
  const pl=e.target.closest('button[data-pnpl]');if(pl){pnStart(+pl.dataset.pnpl);return}
  if(e.target.closest('#pnAgain')){if(pnSel)pnStart(pnSel.id);return}
+ if(e.target.closest('#pnMute')){pnMute=!pnMute;try{localStorage.pnMute=pnMute?'1':'0'}catch{}$('#pnMute').textContent=pnMute?'🔇 Sin sonido':'🔊 Sonido';if(!pnMute){pnAudioInit()}return}
  if(e.target.closest('#pnChange')){pnMode='pick';pnTok='';pnResetScene();pnRenderGame();pnRenderPick();return}
  const st=e.target.closest('button[data-pnsort]');if(st){pnSort=st.dataset.pnsort;try{sessionStorage.pnSort=pnSort}catch{}pnRenderRank()}});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='pnNameIn'){e.preventDefault();$('#pnNameBtn').click()}});
