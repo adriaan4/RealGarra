@@ -99,3 +99,7 @@ Probar a mano, a cualquier hora (con la contraseña de admin):
     curl -X POST https://TU-APP/api/mla/sync -H "x-admin: TU_CONTRASEÑA"
     curl https://TU-APP/api/mla/status -H "x-admin: TU_CONTRASEÑA"
 El código está en `mla.js` (lectura) y en el bloque «MLA Sport» de `server.js`.
+
+## Calendario (desde la J2)
+- El calendario oficial está en `CAL_SEED` (server.js): J1 vs Huerta FC (25/10/2026) y de la J2 (08/11/2026) a la J22 (30/05/2027). La hora, el campo y el resultado se rellenan desde Admin.
+- Al arrancar por primera vez con este cambio se ejecuta una migración única (`migrateCalV3`) con copia previa en `data/backups/` (y en Upstash): la J1 no se toca; en las jornadas cuyo rival cambia se recalculan las cuotas, se anulan los boletos pendientes (se devuelven los pavos, el boleto sigue mostrando el rival original), se quitan las predicciones de la porra de partidos y «Próximo partido» pasa al rival nuevo (misma fecha y hora). Las jornadas que no cambian (mismo rival y fecha) conservan todo.

@@ -17,11 +17,12 @@ const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '
 
 // ---- Calendario de la liga (la hora, el campo y el resultado se rellenan desde Admin) ----
 const CAL_SEED = [
-  [1, '2026-10-25', 'Huerta FC'], [2, '2026-11-08', 'Bricomaniacos FC'], [4, '2026-11-22', 'Piso Piloto FC'], [5, '2026-11-29', 'ValdeCity'],
-  [6, '2026-12-13', 'Pachanga FC'], [7, '2026-12-20', 'THE OFFICE'], [8, '2027-01-10', 'Atlético Sheriff'], [9, '2027-01-17', 'Los Chicos Del Patio'],
-  [10, '2027-01-24', 'Gazilion'], [11, '2027-02-07', 'Potrero FC'], [12, '2027-02-14', 'Huerta FC'], [13, '2027-02-21', 'Bricomaniacos FC'],
-  [15, '2027-03-14', 'Piso Piloto FC'], [16, '2027-03-21', 'ValdeCity'], [17, '2027-04-11', 'Pachanga FC'], [18, '2027-04-18', 'THE OFFICE'],
-  [19, '2027-05-09', 'Atlético Sheriff'], [20, '2027-05-16', 'Los Chicos Del Patio'], [21, '2027-05-23', 'Gazilion'], [22, '2027-05-30', 'Potrero FC']
+  [1, '2026-10-25', 'Huerta FC'], [2, '2026-11-08', 'Los Chicos Del Patio'], [3, '2026-11-15', 'Atlético Sheriff'], [4, '2026-11-22', 'Piso Piloto FC'],
+  [5, '2026-11-29', 'ValdeCity'], [6, '2026-12-13', 'THE OFFICE'], [7, '2026-12-20', 'Pachanga FC'], [8, '2027-01-10', 'Potrero FC'],
+  [9, '2027-01-17', 'Gazilion'], [10, '2027-01-24', 'Reformas Cerrialca'], [11, '2027-02-07', 'Bricomaniacos FC'], [12, '2027-02-14', 'Huerta FC'],
+  [13, '2027-02-21', 'Los Chicos Del Patio'], [14, '2027-02-28', 'Atlético Sheriff'], [15, '2027-03-14', 'Piso Piloto FC'], [16, '2027-03-21', 'ValdeCity'],
+  [17, '2027-04-11', 'THE OFFICE'], [18, '2027-04-18', 'Pachanga FC'], [19, '2027-05-09', 'Potrero FC'], [20, '2027-05-16', 'Gazilion'],
+  [21, '2027-05-23', 'Reformas Cerrialca'], [22, '2027-05-30', 'Bricomaniacos FC']
 ].map(([j, date, rival]) => ({ j, date, rival, time: '', field: '', result: '' }));
 
 // ---- Plantilla oficial: dorsal, nombre y posición en el campo (x/y en % del césped, portería propia abajo) ----
@@ -36,7 +37,7 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
-const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, crests: [] });
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -104,6 +105,61 @@ function snapshot(tag) {
   if (REMOTE) redis('SET', 'garra:backup:' + tag, JSON.stringify({ at, data: db })).catch(() => {}); // última copia de cada tipo
 }
 
+// ---- Migración de una sola vez: calendario oficial de MLA desde la J2 (la J1 no se toca) ----
+// Lo que dependía del rival de una jornada que cambia se limpia para que no quede nada del partido antiguo:
+//  · cuotas: se borran las del partido antiguo y se recalculan solas (goleadores y amarillas editados se conservan)
+//  · apuestas: los boletos con selecciones de esas jornadas se ANULAN (se devuelven los pavos) y guardan el rival original
+//  · porra de partidos: se quitan las predicciones de esas jornadas (eran para otro rival) y sus cierres manuales
+//  · «Próximo partido»: si era de una de esas jornadas, pasa al rival nuevo (la fecha y la hora se mantienen)
+// Si un partido es el mismo (mismo rival y fecha) se conserva todo: hora, campo, resultado, goleadores, crónica...
+// Hay copia previa en data/backups (y en Upstash) por si hubiera que volver atrás.
+function migrateCalV3() {
+  if (db.calV3) return;
+  const old = Array.isArray(db.calendar) ? db.calendar : [], oldBy = new Map(old.map(m => [m.j, m]));
+  const changed = new Set(), was = new Map(), cal = [];
+  for (const base of CAL_SEED) {
+    const o = oldBy.get(base.j);
+    if (base.j === 1 && o) { cal.push(o); continue; }
+    if (o && norm(o.rival) === norm(base.rival) && o.date === base.date) { cal.push({ ...o, rival: base.rival }); continue; }
+    changed.add(base.j); if (o && o.rival) was.set(base.j, o.rival);
+    cal.push({ ...base });
+  }
+  for (const [j, o] of oldBy) if (!cal.some(m => m.j === j)) { changed.add(j); if (o.rival) was.set(j, o.rival); }
+  if (!changed.size) { db.calendar = cal; db.calV3 = true; return; }
+  snapshot('antes-de-calendario-desde-J2');
+  db.calendar = cal;
+  const g = db.garrabet, hadOdds = new Set();
+  for (const j of changed) {
+    const od = g.odds[j];
+    if (!od) continue;
+    if (lgHasOdds(od)) hadOdds.add(j);
+    if (od.scorer || od.yellow) { g.odds[j] = { res: {}, scored: {}, conceded: {}, total: {}, dc: {}, btts: {}, ...(od.scorer ? { scorer: od.scorer } : {}), ...(od.yellow ? { yellow: od.yellow } : {}) }; }
+    else delete g.odds[j];
+  }
+  let voided = 0;
+  for (const t of g.tickets) {
+    if (!Array.isArray(t.sels) || !t.sels.some(x => changed.has(x.j))) continue;
+    t.sels.forEach(x => { if (changed.has(x.j) && was.get(x.j)) x.rv = was.get(x.j); }); // el boleto sigue mostrando el rival con el que se apostó
+    if (t.forced !== 'void') { t.forced = 'void'; voided++; }
+    t.voidWhy = 'calendario';
+  }
+  const P = PR(), nPreds = P.preds.length;
+  P.preds = P.preds.filter(p => !changed.has(p.j));
+  for (const j of changed) delete P.locks[j];
+  if (changed.has(P.cfg.forceJ)) P.cfg.forceJ = null;
+  const nx = db.next;
+  if (nx && nx.date && Number.isFinite(new Date(nx.date).getTime())) {
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(nx.date)), nm = db.calendar.find(m => m.date === day);
+    if (nm && changed.has(nm.j) && norm(nx.rival) !== norm(nm.rival)) {
+      if (db.round && !db.round.votes.length && (!db.round.rival || norm(db.round.rival) === norm(nx.rival))) db.round.rival = nm.rival;
+      db.next = { ...nx, rival: nm.rival, crest: '', field: '' };
+    }
+  }
+  if (g.cfg.auto) for (const m of db.calendar) if (hadOdds.has(m.j) && !gbResult(m)) lgApply(m, false);
+  db.calV3 = true;
+  console.log('Calendario nuevo desde la J2: ' + changed.size + ' jornadas cambiadas · boletos anulados: ' + voided + ' · predicciones de porra quitadas: ' + (nPreds - P.preds.length));
+}
+
 async function init() {
   let loaded = REMOTE ? await loadRemote() : null;
   if (REMOTE && !loaded) { // primera vez con Redis: sube lo que haya en local (o vacío)
@@ -130,11 +186,11 @@ async function init() {
   if (!db.calV2) {
     if (Array.isArray(db.calendar) && db.calendar.length) snapshot('antes-de-cambiar-calendario');
     db.calendar = CAL_SEED.map(m => ({ ...m }));
-    db.calV1 = db.calV2 = true;
+    db.calV1 = db.calV2 = db.calV3 = true; // ya sale del calendario nuevo
   }
   // Migración de una sola vez: carga el calendario si todavía no existe (no toca nada más)
   if (!db.calV1) {
-    if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m }));
+    if (!Array.isArray(db.calendar) || !db.calendar.length) { db.calendar = CAL_SEED.map(m => ({ ...m })); db.calV3 = true; }
     db.calV1 = true;
   }
   if (!db.garrabet || typeof db.garrabet !== 'object') db.garrabet = { odds: {}, users: [], tickets: [] };
@@ -142,6 +198,7 @@ async function init() {
   if (!Array.isArray(db.garrabet.users)) db.garrabet.users = [];
   if (!Array.isArray(db.garrabet.tickets)) db.garrabet.tickets = [];
   lgEnsure(); // ajustes y liga de las cuotas automáticas
+  migrateCalV3(); // calendario oficial de MLA desde la J2
   if (db.next && typeof db.next.field !== 'string') db.next.field = '';
   if (!Array.isArray(db.squad) || !db.squad.length) db.squad = SQUAD_SEED.map(p => ({ ...p })); // plantilla por defecto si todavía no existe
   for (const p of db.squad) if (!p.id) p.id = db.nextId++; // cada jugador de la plantilla tiene id (para su ficha y su foto)
@@ -599,8 +656,10 @@ app.post('/api/import', admin, async (req, res) => {
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
   db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs };
-  if (!Array.isArray(db.calendar) || !db.calendar.length) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
+  const seeded = !Array.isArray(db.calendar) || !db.calendar.length;
+  if (seeded) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
+  if (seeded) db.calV3 = true; else { lgEnsure(); migrateCalV3(); } // una copia hecha antes del calendario nuevo se pasa a él
   await save();
   res.json({ ok: true });
 });
@@ -709,7 +768,7 @@ function gbFeasible(sels) {
   return false;
 }
 function gbSelLabel(x) { // mismo texto que ve el usuario en el boleto
-  const m = db.calendar.find(c => c.j === x.j), rv = (m && m.rival) || 'Rival', fm = n => String(n).replace('.', ',');
+  const m = db.calendar.find(c => c.j === x.j), rv = x.rv || (m && m.rival) || 'Rival', fm = n => String(n).replace('.', ',');
   if (x.market === 'res') return { 1: 'Gana Real Garra', X: 'Empate', 2: 'Gana ' + rv }[x.side];
   if (x.market === 'dc') return { '1X': 'Doble oportunidad · Real Garra o empate', 12: 'Doble oportunidad · Real Garra o ' + rv, X2: 'Doble oportunidad · Empate o ' + rv }[x.side];
   if (x.market === 'btts') return 'Ambos equipos marcan · ' + (x.side === 'y' ? 'Sí' : 'No');

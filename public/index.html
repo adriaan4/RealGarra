@@ -1057,15 +1057,15 @@ const GBM=[['scored','Goles anotados – Real Garra'],['conceded','Goles encajad
 const gbChipTxt=st=>st==='win'?'GANADA':st==='lose'?'PERDIDA':st==='void'?'ANULADA':'Pendiente';
 const gbM=n=>(Math.round(Number(n)*100)/100).toString().replace('.',','),gbL=l=>String(l).replace('.',','),gbO=n=>Number(n).toFixed(2).replace('.',','),gbN=v=>v==null?'':String(v).replace('.',',');
 const GBS=()=>S.garrabet||{},gbAct=()=>GBS().active||0,gbOpen=j=>j===gbAct(),gbRes=j=>(GBS().results||{})[j],gbOdds=j=>(GBS().odds||{})[j],gbEx=j=>(GBS().exact||{})[j];
-const gbRival=j=>((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
+const gbRival=(j,s)=>(s&&s.rv)||((S.calendar||[]).find(m=>m.j===j)||{}).rival||'Rival';
 function gbWin(m,l,sd,r){if(m==='dc')return sd==='1X'?r.gf>=r.gc:sd==='X2'?r.gf<=r.gc:r.gf!==r.gc;if(m==='res')return sd==='1'?r.gf>r.gc:sd==='2'?r.gf<r.gc:r.gf===r.gc;if(m==='exact')return l===r.gf+'-'+r.gc;if(m==='btts')return sd==='y'?(r.gf>0&&r.gc>0):!(r.gf>0&&r.gc>0);const t=m==='scored'?r.gf:m==='conceded'?r.gc:r.gf+r.gc;return sd==='o'?t>Number(l):t<Number(l)}
 const gbNote=x=>{if(x.market!=='scorer'&&x.market!=='yellow')return '';const o=x.market==='scorer'?['ha marcado','no ha marcado']:x.line==='NINGUNO'?['no hubo amarillas','hubo amarillas']:['ha visto amarilla','no ha visto amarilla'];return x.status==='win'?o[0]:x.status==='lose'?o[1]:''};
 function gbSelTxt(s){
- if(s.market==='dc')return ({'1X':'Doble oportunidad · Real Garra o empate','12':'Doble oportunidad · Real Garra o '+gbRival(s.j),'X2':'Doble oportunidad · Empate o '+gbRival(s.j)})[s.side];
+ if(s.market==='dc')return ({'1X':'Doble oportunidad · Real Garra o empate','12':'Doble oportunidad · Real Garra o '+gbRival(s.j,s),'X2':'Doble oportunidad · Empate o '+gbRival(s.j,s)})[s.side];
  if(s.market==='scorer')return 'Marca '+s.line;
  if(s.market==='yellow')return s.line==='NINGUNO'?'Ninguna amarilla':'Amarilla a '+s.line;
  if(s.market==='btts')return 'Ambos equipos marcan · '+(s.side==='y'?'Sí':'No');
- if(s.market==='res')return ({1:'Gana Real Garra',X:'Empate',2:'Gana '+gbRival(s.j)})[s.side];
+ if(s.market==='res')return ({1:'Gana Real Garra',X:'Empate',2:'Gana '+gbRival(s.j,s)})[s.side];
  if(s.market==='exact')return 'Resultado exacto '+s.line.replace('-',' - ');
  return ((GBM.find(x=>x[0]===s.market)||[])[1]||s.market).replace(' – Real Garra','')+(s.market==='total'?'':' Garra')+' · '+(s.side==='o'?'Más de ':'Menos de ')+gbL(s.line)}
 function gbOddNow(s){const od=gbOdds(s.j);if(!od)return null;
@@ -1291,7 +1291,7 @@ $('#garrabet').addEventListener('click',async e=>{
 
 // ---- GarraBet: imagen compartible del boleto (canvas, mismo formato que las casas de apuestas) ----
 const gbPv=n=>{n=Math.round(Number(n||0)*100)/100;const [i,d]=n.toFixed(2).split('.');return i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+(d==='00'?'':','+d)};
-function gbSelParts(x){const t=gbSelTxt(x),k=t.indexOf(' · '),rv=gbRival(x.j),m=x.market;
+function gbSelParts(x){const t=gbSelTxt(x),k=t.indexOf(' · '),rv=gbRival(x.j,x),m=x.market;
  let big=t,sm='';
  if(k>0){sm=t.slice(0,k);big=t.slice(k+3)}
  else if(m==='res')sm='Resultado del partido';
