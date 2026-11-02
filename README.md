@@ -103,3 +103,19 @@ El código está en `mla.js` (lectura) y en el bloque «MLA Sport» de `server.j
 ## Calendario (desde la J2)
 - El calendario oficial está en `CAL_SEED` (server.js): J1 vs Huerta FC (25/10/2026) y de la J2 (08/11/2026) a la J22 (30/05/2027). La hora, el campo y el resultado se rellenan desde Admin.
 - Al arrancar por primera vez con este cambio se ejecuta una migración única (`migrateCalV3`) con copia previa en `data/backups/` (y en Upstash): la J1 no se toca; en las jornadas cuyo rival cambia se recalculan las cuotas, se anulan los boletos pendientes (se devuelven los pavos, el boleto sigue mostrando el rival original), se quitan las predicciones de la porra de partidos y «Próximo partido» pasa al rival nuevo (misma fecha y hora). Las jornadas que no cambian (mismo rival y fecha) conservan todo.
+
+## 🎧 Playlist de los garros (Spotify)
+Una única playlist compartida para los previos. Cualquiera con nombre (el mismo de GarraBet/porra) busca canciones y las añade desde la pestaña **🎧 Playlist** sin entrar en Spotify; se ve la carátula y quién añadió cada una. Código: `spotify.js` (backend) y el bloque «PLAYLIST (Spotify)» de `public/index.html`.
+
+**Variables de entorno** (solo en el servidor, nunca en el código ni en la web):
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+- `SPOTIFY_REDIRECT_URI`: debe ser **idéntica** a la «Redirect URI» de la app en Spotify for Developers y acabar en la ruta del callback que atiende la web, p. ej. `https://TU-WEB/api/spotify/callback` (la ruta se toma de esta variable).
+- Opcionales: `SPOTIFY_PLAYLIST_ID` (por defecto `7CycHt1RVObZ5901z2N0Vi`) y `SPOTIFY_MARKET`.
+
+**Conectar (una sola vez):** Admin → Más → 🎧 Spotify → «Conectar cuenta de Spotify» → inicia sesión con la cuenta **propietaria (o colaboradora)** de la playlist y acepta. Si la cuenta no es la correcta, no se guarda nada y te lo dice. «Probar conexión» comprueba cuenta, playlist y permiso de escritura.
+
+**Seguridad:** el acceso lo hace solo el servidor. Access y refresh token se guardan **cifrados (AES-256-GCM, clave derivada del `SPOTIFY_CLIENT_SECRET`)**, no salen en `/api/state`, ni en «Descargar datos», y al restaurar una copia se conserva la conexión actual. El `state` del OAuth va firmado, caduca a los 10 min y es de un solo uso. El access token se renueva solo (1 min antes de caducar y ante cualquier 401); si Spotify revoca la autorización, la web lo indica y el admin solo tiene que volver a conectar. Si cambias `SPOTIFY_CLIENT_SECRET`, hay que volver a conectar.
+
+**Reglas:** máx. 10 canciones por persona y hora, sin duplicados, 30 búsquedas/min por dispositivo. El admin puede quitar canciones con 🗑️ (estando logueado en Admin). Se puede pegar un enlace de Spotify en el buscador.
+
+**Requisitos de Spotify (2026):** en modo desarrollo el dueño de la app necesita Spotify **Premium** y la cuenta que conectes debe ser el dueño o estar en *User Management* (máx. 5). La API usa `/playlists/{id}/items` y la búsqueda devuelve 10 resultados por página (con «Más resultados»).

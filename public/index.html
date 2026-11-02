@@ -441,6 +441,18 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .pnMsg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .pnMsg.save{color:#fff;background:var(--red);border:3px solid var(--gold);border-radius:12px;padding:2px 16px}
 .pnMsg.miss{color:#d8d8d8}
+.spHead{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.spHead img{width:72px;height:72px;border-radius:8px;object-fit:cover}
+.spHead>div{flex:1;min-width:150px}.spHead b{display:block;font-size:22px}.spHead small{opacity:.75;font-size:16px}
+a.spOpen{display:inline-flex;align-items:center;min-height:44px;background:var(--gold);color:#0d0b09;font-weight:700;border-radius:8px;padding:0 14px;text-decoration:none}
+.spt{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:8px}
+.spt img,.spt .nocov{width:52px;height:52px;border-radius:6px;object-fit:cover;background:#2a2118;display:block}
+.spt .nocov{display:flex;align-items:center;justify-content:center;font-size:22px}
+.spt .spi{min-width:0}.spt b,.spt small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spt small{opacity:.75;font-size:15px}.spt small.by{color:var(--gold);opacity:1}
+.spt .acts{display:flex;gap:6px;align-items:center}.spt .dur{opacity:.7;font-size:15px}
+.spt button{padding:6px 12px;font-size:17px;white-space:nowrap}
+.spt button.ok{background:transparent;color:var(--ink);border-color:var(--line);cursor:default}
 .pnTabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
 .pnTab{background:transparent;color:var(--ink);border:2px solid var(--line);border-radius:99px;font:700 18px "Barlow Condensed",sans-serif;padding:6px 14px;min-height:40px}
 .pnTab.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
@@ -453,7 +465,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#penaltis">🥅 Penaltis</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#ez">GARRO DE ORO</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#penaltis">🥅 Penaltis</a><a href="#playlist">🎧 Playlist</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -537,6 +549,18 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  <div id="pnMine"></div>
  <div class="pnTabs" id="pnTabs"></div>
  <div id="pnRank"></div>
+</section>
+
+<section id="playlist" hidden><h1>🎧 PLAYLIST DE LOS GARROS</h1>
+ <p class="sub">Una única playlist para los previos de los partidos. Busca una canción, pulsa Añadir y entra directamente en la playlist de Spotify, sin salir de la web. Se ve quién ha añadido cada una.</p>
+ <div id="spName"></div>
+ <div id="spHead"></div>
+ <div id="spSearch" hidden>
+  <div class="row"><input id="spQ" type="search" maxlength="100" placeholder="Canción, artista o enlace de Spotify" autocomplete="off" enterkeyhint="search" style="flex:1;min-width:200px"><button id="spGo" type="button">🔍 Buscar</button></div>
+  <div id="spRes"></div>
+ </div>
+ <h2 style="margin-top:26px">🎶 En la playlist</h2>
+ <div id="spList"></div>
 </section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
@@ -683,6 +707,11 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <details class="ad" open><summary>🔔 Avisos solo para mí (admin)</summary><div class="adb">
    <p class="sub" style="font-size:16px">Te llega un aviso a este dispositivo cada vez que alguien hace una apuesta, una combinada o una porra (de partido o final). Nadie más los recibe.</p>
    <div class="row"><button id="admPushBtn" type="button">🔔 Activar mis avisos</button><button id="admPushTest" type="button" class="ghost">🧪 Enviarme un aviso de prueba</button></div><p class="sub" id="admPushMsg" style="font-size:16px"></p>
+  </div></details>
+  <details class="ad" id="admSpD"><summary>🎧 Spotify · playlist de los garros</summary><div class="adb">
+   <p class="sub" style="font-size:16px" id="admSpInfo">Cargando…</p>
+   <div class="row"><button id="admSpConnect" type="button">🔗 Conectar cuenta de Spotify</button><button id="admSpTest" type="button" class="ghost">🧪 Probar conexión</button><button id="admSpOff" type="button" class="ghost">⛔ Desconectar</button></div>
+   <p class="sub" id="admSpMsg" style="font-size:16px"></p>
   </div></details>
   <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
    <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
@@ -1645,6 +1674,80 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.i
 addEventListener('hashchange',()=>{if(location.hash==='#penaltis')pnLoad(true)});
 if(location.hash==='#penaltis')pnLoad(true);
 setInterval(()=>{if(location.hash==='#penaltis'&&!document.hidden&&!pnBusy)pnLoad()},30000);
+
+// ================= PLAYLIST (Spotify) =================
+let SP=null,spSig='',spRes=[],spOff=0,spMore=false,spSearching=false;const spPending=new Set();
+const spDur=ms=>{const s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const spTot=ms=>{const m=Math.round(ms/60000);return m>=60?Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' min':m+' min'};
+const spAgo=iso=>{const t=Date.parse(iso);if(!t)return'';const m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<1)return'ahora mismo';if(m<60)return'hace '+m+' min';const h=Math.round(m/60);if(h<24)return'hace '+h+' h';const d=Math.round(h/24);return'hace '+d+(d===1?' día':' días')};
+const spIds=()=>new Set(((SP&&SP.tracks)||[]).map(t=>t.id));
+async function spLoad(force){
+ try{const d=await api('/api/spotify/playlist?d='+encodeURIComponent(dev)),sig=JSON.stringify(d);if(!force&&sig===spSig)return;spSig=sig;SP=d;spRender()}
+ catch(e){if(!SP){const el=$('#spHead');if(el)el.innerHTML='<p class="sub">No se pudo cargar la playlist: '+esc(e.message)+'</p>'}}}
+function spRender(){for(const f of [spRenderName,spRenderHead,spRenderRes,spRenderList])try{f()}catch(e){console.error(e)}}
+function spRenderName(){const el=$('#spName');if(!el||isIn(el))return;
+ el.innerHTML=!SP||SP.me||!SP.connected?(SP&&SP.me?`<p class="sub">Añadiendo como <b>${esc(SP.me)}</b> · el mismo nombre que en GarraBet y en la porra</p>`:'')
+  :`<div class="pv" style="border:2px solid var(--gold)"><b>👋 Primero, pon tu nombre</b><p class="sub" style="font-size:16px">Es el mismo nombre que en GarraBet y en la porra: sirve para que se vea quién ha añadido cada canción. Se queda fijo en este dispositivo.</p><div class="row"><input id="spNameIn" maxlength="20" placeholder="Tu nombre" value="${esc(SP.suggest||'')}" autocomplete="off" style="flex:1;min-width:180px"><button id="spNameBtn" type="button">Guardar nombre</button></div></div>`}
+function spRenderHead(){const el=$('#spHead'),box=$('#spSearch');if(!el||!SP)return;
+ box.hidden=!(SP.connected&&SP.me);
+ if(!SP.connected){el.innerHTML=`<div class="pv"><b>🎧 La playlist todavía no está lista</b><p class="sub" style="font-size:16px">${esc(SP.message||'')}</p></div>`;return}
+ const p=SP.playlist;
+ el.innerHTML=p?`<div class="pv spHead">${p.image?`<img src="${esc(p.image)}" alt="" loading="lazy">`:''}<div><b>${esc(p.name)}</b><small>${p.count} ${p.count===1?'canción':'canciones'}${p.count?' · '+spTot(p.totalMs):''}</small></div><a class="spOpen" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">Abrir en Spotify</a></div>`
+  :`<div class="pv"><b>⚠️ No se puede leer la playlist ahora mismo</b><p class="sub" style="font-size:16px">${esc(SP.error||'')}</p></div>`}
+const spCover=t=>t.cover?`<img src="${esc(t.cover)}" alt="" loading="lazy" width="52" height="52">`:'<div class="nocov">🎵</div>';
+function spRenderRes(msg){const el=$('#spRes');if(!el)return;const ids=spIds();
+ const rows=spRes.map(t=>`<div class="spt">${spCover(t)}<div class="spi"><b>${esc(t.title)}${t.explicit?' 🅴':''}</b><small>${esc(t.artists)}${t.album?' · '+esc(t.album):''}</small></div><div class="acts"><span class="dur">${spDur(t.ms)}</span>${ids.has(t.id)?'<button type="button" class="ok" disabled>✅ Ya está</button>':`<button type="button" data-spadd="${esc(t.uri)}"${spPending.has(t.uri)?' disabled':''}>➕ Añadir</button>`}</div></div>`).join('');
+ el.innerHTML=rows+(spMore?'<div class="row"><button type="button" id="spMoreBtn" class="ghost">Más resultados</button></div>':'')+(msg?`<p class="sub">${esc(msg)}</p>`:'')}
+function spRenderList(){const el=$('#spList');if(!el)return;
+ if(!SP||!SP.connected){el.innerHTML='';return}
+ const tr=SP.tracks||[];
+ el.innerHTML=tr.length?tr.map((t,i)=>`<div class="spt">${spCover(t)}<div class="spi"><b>${i+1}. ${esc(t.title)}${t.explicit?' 🅴':''}</b><small>${esc(t.artists)}${t.album?' · '+esc(t.album):''}</small><small class="by">${t.by?'➕ '+esc(t.by)+' · '+spAgo(t.at):'➕ añadida desde Spotify'+(t.at?' · '+spAgo(t.at):'')}</small></div><div class="acts"><span class="dur">${spDur(t.ms)}</span>${pw?`<button type="button" class="ghost" data-sprm="${esc(t.uri)}" title="Quitar de la playlist (admin)">🗑️</button>`:''}</div></div>`).join('')
+  :'<p class="sub">Todavía no hay canciones. ¡Añade la primera!</p>'}
+async function spSearch(more){
+ const q=$('#spQ').value.trim();if(q.length<2){toast('Escribe al menos 2 letras');return}if(spSearching)return;
+ spSearching=true;$('#spGo').disabled=true;
+ try{const off=more?spOff+10:0,d=await api('/api/spotify/search?d='+encodeURIComponent(dev)+'&q='+encodeURIComponent(q)+'&offset='+off);
+  spOff=off;spMore=!!d.more;spRes=more?spRes.concat(d.tracks):d.tracks;spRenderRes(spRes.length?'':'Sin resultados para «'+q+'»')}
+ catch(e){toast(e.message)}finally{spSearching=false;$('#spGo').disabled=false}}
+async function spAdd(uri,btn){
+ if(spPending.has(uri))return;spPending.add(uri);btn.disabled=true;btn.textContent='Añadiendo…';
+ try{const r=await api('/api/spotify/add','POST',{device:dev,uri});toast('✅ Añadida: '+r.track.title);await spLoad(true)}
+ catch(e){toast(e.message);if(/ya está/.test(e.message))await spLoad(true)}
+ finally{spPending.delete(uri);spRenderRes()}}
+document.addEventListener('click',async e=>{
+ const nb=e.target.closest('#spNameBtn');
+ if(nb){try{await api('/api/garrabet/name','POST',{device:dev,name:$('#spNameIn').value});toast('Nombre guardado');await spLoad(true);lastJ='';load()}catch(err){toast(err.message)}return}
+ if(e.target.closest('#spGo')){spSearch(false);return}
+ if(e.target.closest('#spMoreBtn')){spSearch(true);return}
+ const ad=e.target.closest('button[data-spadd]');if(ad){spAdd(ad.dataset.spadd,ad);return}
+ const rm=e.target.closest('button[data-sprm]');
+ if(rm){if(!confirm('¿Quitar esta canción de la playlist de Spotify?'))return;try{await adm('/api/spotify/admin/track','DELETE',{uri:rm.dataset.sprm});toast('Canción quitada');await spLoad(true)}catch(err){toast(err.message)}}});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target)return;if(e.target.id==='spQ'){e.preventDefault();$('#spGo').click()}else if(e.target.id==='spNameIn'){e.preventDefault();$('#spNameBtn').click()}});
+addEventListener('hashchange',()=>{if(location.hash==='#playlist')spLoad(true)});
+if(location.hash==='#playlist')spLoad(true);
+setInterval(()=>{if(location.hash==='#playlist'&&!document.hidden&&!spSearching)spLoad()},30000);
+// --- Admin: conectar la cuenta propietaria (OAuth) ---
+async function admSpLoad(){if(!pw||!$('#admSpInfo'))return;try{admSpRender(await adm('/api/spotify/admin'))}catch(e){$('#admSpInfo').textContent=e.message}}
+function admSpRender(d){const el=$('#admSpInfo');
+ const miss=!d.configured?`⚠️ Faltan variables de entorno en el servidor: <b>${esc(d.missing.join(', '))}</b>.`:'';
+ const warn=d.redirectWarning?`<br>⚠️ ${esc(d.redirectWarning)}`:'';
+ const st=d.connected?`✅ Conectada como <b>${esc(d.account.name)}</b>${d.since?' · desde '+new Date(d.since).toLocaleDateString('es-ES'):''}. Canciones añadidas desde la web: <b>${d.adds}</b>.`:(d.configured?'⛔ Sin conectar: pulsa «Conectar» e inicia sesión con la cuenta propietaria de la playlist.':'');
+ const er=d.error?`<br>⚠️ ${esc(d.error.msg)}`:'';
+ el.innerHTML=miss+warn+(miss?'<br>':'')+st+er+`<br><small>Redirect URI que debe estar en Spotify for Developers: <b>${esc(d.redirectUri||'(sin definir)')}</b></small>`;
+ $('#admSpConnect').textContent=d.connected?'🔗 Reconectar / cambiar cuenta':'🔗 Conectar cuenta de Spotify';$('#admSpConnect').disabled=!d.configured;$('#admSpTest').disabled=!d.connected;$('#admSpOff').disabled=!d.connected}
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('#admSpConnect,#admSpTest,#admSpOff');if(!b)return;const msg=$('#admSpMsg');msg.textContent='';
+ try{
+  if(b.id==='admSpConnect'){b.disabled=true;const d=await adm('/api/spotify/admin/connect','POST');location.href=d.url;return}
+  if(b.id==='admSpTest'){b.disabled=true;msg.textContent='Probando…';const d=await adm('/api/spotify/admin/test','POST');
+   msg.textContent=(d.canEdit?'✅ ':'⚠️ ')+'Cuenta '+d.account+' · playlist «'+d.playlist+'» ('+d.tracks+' canciones)'+(d.canEdit?' · puede añadir canciones':' · esta cuenta NO es propietaria ni colaboradora: no podrá añadir')+' · el acceso se renueva solo (caduca en '+Math.round(d.expiresIn/60)+' min)'}
+  if(b.id==='admSpOff'){if(!confirm('¿Desconectar Spotify? Nadie podrá añadir canciones hasta que lo vuelvas a conectar. (Para revocar el permiso del todo, quita la app en spotify.com/account/apps)'))return;await adm('/api/spotify/admin/disconnect','POST');msg.textContent='Desconectado'}
+ }catch(err){msg.textContent='⚠️ '+err.message}
+ finally{admSpLoad()}});
+$('#admSpD').addEventListener('toggle',e=>{if(e.target.open)admSpLoad()});
+$('.atabs').addEventListener('click',e=>{if(e.target.closest('.atab[data-at="mas"]'))admSpLoad()});
+$('#login').addEventListener('click',()=>setTimeout(()=>{if(sessionStorage.adTab==='mas')admSpLoad()},900));
+if(pw&&sessionStorage.adTab==='mas')admSpLoad();
 
 // ================= ADMIN =================
 let AD=null,adJ=0;
