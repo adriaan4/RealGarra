@@ -1,5 +1,4 @@
 const express = require('express');
-const SPOT = require('./spotify');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -38,7 +37,7 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
-const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [], spotify: { adds: [] } });
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -650,13 +649,13 @@ app.delete('/api/crests/:id', admin, async (req, res) => {
 });
 app.get('/api/export', admin, (_, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=garra-datos.json');
-  res.json({ ...db, subs: [], adminSubs: [], spotify: SPOT.exportSafe(db.spotify) }); // ni las suscripciones de avisos ni los tokens de Spotify se exportan
+  res.json({ ...db, subs: [], adminSubs: [] }); // las suscripciones de avisos no se exportan
 });
 app.post('/api/import', admin, async (req, res) => {
   const d = req.body;
   if (!d || !Array.isArray(d.players) || !Array.isArray(d.history)) return bad(res, 'Archivo no válido');
   snapshot('antes-de-importar');
-  db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs, spotify: SPOT.mergeImport(d.spotify, db.spotify) }; // la conexión con Spotify actual se mantiene
+  db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs };
   const seeded = !Array.isArray(db.calendar) || !db.calendar.length;
   if (seeded) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
@@ -1724,9 +1723,6 @@ app.post('/api/penaltis/shot', async (req, res) => {
   await save();
   res.json({ ok: true, result: r.result, why: r.why || '', dive: r.dive, n: s.n, goals: s.goals, done, streak: st.cur, mine: penMine(user.id), ranking: penRanking(user.id) });
 });
-
-// ---- Spotify: playlist compartida de los previos (OAuth del admin, tokens cifrados, búsqueda y añadir canciones) ----
-SPOT.mount({ app, db: () => db, save, admin, bad, gbUser });
 
 // ---- Mantener despierto (Render free duerme la web tras ~15 min sin visitas) ----
 app.get('/healthz', (_, res) => res.send('ok'));
