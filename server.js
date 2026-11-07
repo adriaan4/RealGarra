@@ -37,7 +37,7 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
-const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [] }, history: [], subs: [], adminSubs: [], reminded: '', ez: [], garro: null, garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [] });
+const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [], played: [], start: '' }, history: [], subs: [], adminSubs: [], reminded: '', garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
 const R_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, '');
@@ -171,6 +171,10 @@ async function init() {
   }
   db = loaded;
   db.round.votes.forEach(v => { if (!v.id) v.id = db.nextId++; });
+  delete db.ez; delete db.garro; // el Garro de Oro ya no existe (queda copia en data/backups y en Redis hasta el siguiente guardado)
+  if (!Array.isArray(db.round.played)) db.round.played = [];
+  if (typeof db.round.start !== 'string') db.round.start = '';
+  if (!db.round.start && db.next && db.next.date && new Date(db.next.date) > Date.now()) db.round.start = db.next.date;
   if (!Array.isArray(db.adminSubs)) db.adminSubs = []; // dispositivos del admin (avisos privados de apuestas y porras)
 
   // Migración de una sola vez: la lista de jugadores pasa a ser la de la votación MVP.
@@ -310,17 +314,13 @@ app.get('/api/state', (req, res) => {
     players: db.players,
     next: db.next,
     calendar: db.calendar.map(({ cron, ...m }) => cron ? { ...m, cron: { title: cron.title || '', text: cron.text || '', hasPhoto: !!cron.photo, v: cron.v || 0, at: cron.at || 0 } } : m), // las fotos de las crónicas se piden aparte (/api/cronica-photo/:j)
-    round: { rival: db.round.rival, votes: db.round.votes.map(pub) },
+    round: { rival: db.round.rival, votes: db.round.votes.map(pub), played: roundPlayed(), ...(roundWindow() || { start: '', opens: '', closes: '', phase: 'open' }) },
     history: db.history.map(h => ({ ...h, votes: (h.votes || []).map(pub) })),
     mine: mine ? { playerId: mine.playerId } : null,
-    ez: db.ez.map(({ device, ...e }) => e),
-    ezPts: EZ_PTS,
-    garro: db.garro || null,
     garrabet: gbPublic(d),
     clasif: clasifPublic(),
     squad: db.squad.map(({ photo, ...r }) => ({ ...r, hasPhoto: !!photo })), // las fotos se piden aparte (/api/squad-photo/:id)
-    crests: db.crests.map(({ id, name, v }) => ({ id, name, v })), // las imágenes se piden aparte (/api/crest/:id)
-    ezMine: d ? (db.ez.find(e => e.device === d) || {}).id || null : null
+    crests: db.crests.map(({ id, name, v }) => ({ id, name, v })) // las imágenes se piden aparte (/api/crest/:id)
   });
 });
 
@@ -329,6 +329,10 @@ app.post('/api/vote', async (req, res) => {
   const pl = db.players.find(p => p.id === +req.body.playerId);
   if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
   if (!pl) return bad(res, 'Elige un jugador');
+  const w = roundWindow();
+  if (w && w.phase === 'wait') return bad(res, 'La votación se abre ' + fmtDate(w.opens) + ' (1 hora después de empezar el partido)');
+  if (w && w.phase === 'closed') return bad(res, 'La votación ya está cerrada');
+  if (roundPlayed().length && !roundPlayed().includes(pl.id)) return bad(res, 'Ese jugador no ha jugado este partido');
   if (db.round.votes.some(v => v.device === device)) return bad(res, 'Ya has votado en esta votación');
   db.round.votes.push({ id: db.nextId++, playerId: pl.id, playerName: pl.name, device });
   await save();
@@ -336,28 +340,48 @@ app.post('/api/vote', async (req, res) => {
 });
 
 
-// ---- GARRA VS EZ: quién ha bebido más (puntos por unidad) ----
-const EZ_PTS = { cigarros: 0.5, cubatas: 3, chupitos: 2, cervezas: 1, porros: 3 };
-const ezCounts = b => {
-  const o = {};
-  for (const k of Object.keys(EZ_PTS)) { const n = Math.floor(Number(b && b[k])); o[k] = Number.isFinite(n) ? Math.min(Math.max(n, 0), 999) : 0; }
-  return o;
+// ---- Votación MVP: se abre 1 h después del inicio del partido y se cierra sola (y se da el MVP) al día siguiente a las 20:00, hora de Madrid ----
+const MVP_OPEN_MS = 36e5, MVP_CLOSE_HOUR = 20;
+const tzOffsetMin = t => { // minutos que va Madrid por delante de UTC en el instante t
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(t / 1000) * 1000) / 6e4;
 };
-const EZ_START = new Date('2026-10-25T18:00:00+01:00'); // hasta esta hora (fin de la cuenta atrás) la gente no puede apuntar nada; el admin sí
-// Cada dispositivo tiene su propia ficha: la crea y la puede cambiar cuando quiera (el nombre queda fijo)
-app.post('/api/ez', async (req, res) => {
-  if (Date.now() < EZ_START.getTime()) return bad(res, 'Todavía no ha empezado: hasta que termine la cuenta atrás no se puede apuntar nada');
-  const device = String(req.body.device || '').slice(0, 80);
-  if (device.length < 8) return bad(res, 'No se pudo identificar tu dispositivo');
-  const mine = db.ez.find(e => e.device === device);
-  const name = mine ? mine.name : String(req.body.name || '').trim().toUpperCase().slice(0, 30);
-  if (!name) return bad(res, 'Pon tu nombre');
-  if (!mine && db.ez.some(e => norm(e.name) === norm(name))) return bad(res, 'Ese nombre ya está en la clasificación. Si eres tú desde otro móvil, pídele al admin que lo cambie');
-  const c = ezCounts(req.body.counts);
-  if (mine) Object.assign(mine, c); else db.ez.push({ id: db.nextId++, name, device, ...c });
+const tzWall = (y, m, d, h) => { // instante UTC de la hora h:00 de Madrid en ese día (d puede pasarse del mes: se ajusta solo)
+  const w = Date.UTC(y, m - 1, d, h);
+  return w - tzOffsetMin(w - tzOffsetMin(w) * 6e4) * 6e4;
+};
+const roundPlayed = () => (Array.isArray(db.round.played) ? db.round.played : []);
+function roundWindow() {
+  const s = db.round && db.round.start, t = s ? new Date(s).getTime() : NaN;
+  if (!Number.isFinite(t)) return null;
+  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(t)).split('-').map(Number);
+  const opens = t + MVP_OPEN_MS, closes = tzWall(y, m, d + 1, MVP_CLOSE_HOUR), now = Date.now();
+  return { start: new Date(t).toISOString(), opens: new Date(opens).toISOString(), closes: new Date(closes).toISOString(), phase: now < opens ? 'wait' : now >= closes ? 'closed' : 'open' };
+}
+async function closeRound() { // devuelve la entrada del historial, o null si no hay votos
+  const c = {};
+  db.round.votes.forEach(v => (c[v.playerId] = (c[v.playerId] || 0) + 1));
+  const max = Math.max(0, ...Object.values(c));
+  if (!max) return null;
+  const mvps = Object.keys(c).filter(id => c[id] === max).map(id => ({ id: +id, name: db.round.votes.find(v => v.playerId == id).playerName, votes: max }));
+  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps, totalVotes: db.round.votes.length, votes: db.round.votes };
+  db.history.unshift(entry);
+  const nx = db.next && db.next.date && new Date(db.next.date) > Date.now() ? db.next : null; // si el siguiente partido ya está puesto, la nueva votación se prepara sola
+  db.round = { rival: nx ? nx.rival || '' : '', votes: [], played: [], start: nx ? nx.date : '' };
   await save();
-  res.json({ ok: true });
-});
+  snapshot('cierre-votacion');
+  notify('🏆 ¡Ya hay MVP!', entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' se reparten el MVP' : ' es el MVP') + ' contra ' + entry.rival + ' 👏', '/#mvp', 'mvp');
+  return entry;
+}
+setInterval(async () => { // al llegar el día siguiente a las 20:00 se cierra sola y se proclama el MVP
+  try {
+    if (!db) return;
+    const w = roundWindow();
+    if (!w || w.phase !== 'closed' || !db.round.votes.length) return;
+    const e = await closeRound();
+    if (e) console.log('MVP proclamado automáticamente: ' + e.mvps.map(m => m.name).join(' y ') + ' (Garra vs ' + e.rival + ')');
+  } catch (err) { console.error('Cierre automático del MVP: ' + err.message); }
+}, 30000);
 
 // ---- Avisos push: suscripción de dispositivos ----
 app.get('/api/push/key', (_, res) => res.json({ enabled: PUSH, key: PUSH ? VAPID_PUB : '' }));
@@ -437,6 +461,7 @@ app.delete('/api/players/:id', admin, async (req, res) => {
   const id = +req.params.id;
   db.players = db.players.filter(p => p.id !== id);
   db.round.votes = db.round.votes.filter(v => v.playerId !== id); // el historial de MVPs no se toca
+  db.round.played = roundPlayed().filter(x => x !== id);
   await save();
   res.json({ ok: true });
 });
@@ -487,6 +512,7 @@ app.put('/api/match', admin, async (req, res) => {
   const prev = db.next || {};
   db.next = { date: req.body.date || '', rival: String(req.body.rival || '').trim(), crest, field: String(req.body.field || '').trim().slice(0, 80) };
   if (!db.round.rival && !db.round.votes.length) db.round.rival = db.next.rival;
+  if (db.next.date && (!db.round.start || (db.round.start === prev.date && new Date(prev.date) > Date.now()))) db.round.start = db.next.date; // la votación MVP cuenta desde el inicio de este partido
   const t = db.next.date ? new Date(db.next.date) - Date.now() : -1;
   const changed = prev.date !== db.next.date || prev.rival !== db.next.rival;
   if (t > 0 && t <= 24 * 36e5) db.reminded = db.next.date; // si ya falta menos de un día, no mandar además el recordatorio
@@ -544,7 +570,20 @@ app.delete('/api/cronica/:j', admin, async (req, res) => {
   await save();
   res.json({ ok: true });
 });
-app.put('/api/round', admin, async (req, res) => { db.round.rival = String(req.body.rival || '').trim(); await save(); res.json({ ok: true }); });
+app.put('/api/round', admin, async (req, res) => {
+  db.round.rival = String(req.body.rival || '').trim();
+  if (Array.isArray(req.body.played)) { // quién juega: solo ellos salen para votar (lista vacía = todos)
+    const ids = new Set(db.players.map(p => p.id));
+    db.round.played = [...new Set(req.body.played.map(Number))].filter(id => ids.has(id));
+    if (db.round.played.length) db.round.votes = db.round.votes.filter(v => db.round.played.includes(v.playerId));
+  }
+  if (typeof req.body.start === 'string') { // inicio del partido votado: de ahí salen la apertura (+1 h) y el cierre (día siguiente 20:00)
+    const t = new Date(req.body.start).getTime();
+    db.round.start = req.body.start && Number.isFinite(t) ? new Date(t).toISOString() : '';
+  }
+  await save();
+  res.json({ ok: true });
+});
 app.delete('/api/votes/:id', admin, async (req, res) => {
   const id = +req.params.id;
   db.round.votes = db.round.votes.filter(v => v.id !== id); // quita el voto: ese dispositivo podrá votar otra vez
@@ -552,67 +591,15 @@ app.delete('/api/votes/:id', admin, async (req, res) => {
   res.json({ ok: true });
 });
 app.post('/api/round/close', admin, async (req, res) => {
-  const c = {};
-  db.round.votes.forEach(v => (c[v.playerId] = (c[v.playerId] || 0) + 1));
-  const max = Math.max(0, ...Object.values(c));
-  if (!max) return bad(res, 'Todavía no hay votos');
-  const mvps = Object.keys(c).filter(id => c[id] === max).map(id => ({ id: +id, name: db.round.votes.find(v => v.playerId == id).playerName, votes: max }));
-  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps, totalVotes: db.round.votes.length, votes: db.round.votes };
-  db.history.unshift(entry);
-  db.round = { rival: '', votes: [] };
-  await save();
-  snapshot('cierre-votacion');
+  const entry = await closeRound();
+  if (!entry) return bad(res, 'Todavía no hay votos');
   res.json({ ...entry, votes: entry.votes.map(pub) });
-  notify('🏆 ¡Ya hay MVP!', entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' se reparten el MVP' : ' es el MVP') + ' contra ' + entry.rival + ' 👏', '/#mvp', 'mvp');
 });
 app.delete('/api/history/:id', admin, async (req, res) => {
   const id = +req.params.id;
   if (!db.history.some(h => h.id === id)) return bad(res, 'MVP no encontrado');
   snapshot('antes-de-borrar-mvp');
   db.history = db.history.filter(h => h.id !== id);
-  await save();
-  res.json({ ok: true });
-});
-app.put('/api/ez/:id', admin, async (req, res) => {
-  const e = db.ez.find(x => x.id === +req.params.id);
-  if (!e) return bad(res, 'Persona no encontrada');
-  if (typeof req.body.name === 'string' && req.body.name.trim()) {
-    const name = req.body.name.trim().toUpperCase().slice(0, 30);
-    if (db.ez.some(x => x !== e && norm(x.name) === norm(name))) return bad(res, 'Ese nombre ya existe');
-    e.name = name;
-  }
-  Object.assign(e, ezCounts(req.body.counts));
-  await save();
-  res.json({ ok: true });
-});
-app.delete('/api/ez/:id', admin, async (req, res) => {
-  db.ez = db.ez.filter(x => x.id !== +req.params.id);
-  await save();
-  res.json({ ok: true });
-});
-app.post('/api/ez/reset', admin, async (req, res) => {
-  snapshot('antes-de-vaciar-ez');
-  db.ez = [];
-  await save();
-  res.json({ ok: true });
-});
-
-// ---- GARRO DE ORO: el que más puntos suma en la clasificación (se proclama desde Admin y sale en el inicio) ----
-const ezScore = e => { const c = ezCounts(e); return Object.keys(EZ_PTS).reduce((t, k) => t + c[k] * EZ_PTS[k], 0); };
-app.post('/api/garro/close', admin, async (req, res) => {
-  const rk = db.ez.map(e => ({ e, p: ezScore(e) }));
-  const max = Math.max(0, ...rk.map(x => x.p));
-  if (!max) return bad(res, 'Todavía nadie tiene puntos en la clasificación');
-  snapshot('antes-de-garro-de-oro');
-  db.garro = { at: new Date().toISOString(), pts: max, winners: rk.filter(x => x.p === max).map(x => ({ name: x.e.name, counts: ezCounts(x.e) })) };
-  await save();
-  res.json(db.garro);
-  const names = db.garro.winners.map(w => w.name).join(' y ');
-  notify('🍺🏆 ¡Tenemos GARRO DE ORO!', names + (db.garro.winners.length > 1 ? ' se lo reparten' : ' se lleva el trofeo') + ' con ' + max + ' puntos. ¡Salud! 🥂', '/#inicio', 'garro');
-});
-app.delete('/api/garro', admin, async (req, res) => {
-  snapshot('antes-de-quitar-garro');
-  db.garro = null;
   await save();
   res.json({ ok: true });
 });
@@ -1682,9 +1669,8 @@ function penResolve(x, y) {
 }
 app.get('/api/penaltis', (req, res) => {
   const d = String(req.query.d || '').slice(0, 80), me = d.length >= 8 ? gbUser(d) : null, k = penKeeper();
-  const ez = !me && d.length >= 8 ? (db.ez.find(e => e.device === d) || {}).name : '';
   res.json({
-    me: me ? me.name : null, suggest: ez ? String(ez).slice(0, 20) : '', shots: PEN_SHOTS,
+    me: me ? me.name : null, suggest: '', shots: PEN_SHOTS,
     keeper: k ? { id: k.id, name: k.name, hasPhoto: !!k.photo, photoV: k.photoV || 0 } : null,
     mine: me ? penMine(me.id) : null, ranking: penRanking(me && me.id)
   });

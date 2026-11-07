@@ -23,6 +23,8 @@ Consumo: solo escribe cuando alguien vota/edita, muy por debajo de los 500.000 c
 En Admin → Próximo partido → «Seleccionar escudo» eliges el equipo de la liga. Si aún no tiene escudo, te pide la foto y la guarda una sola vez (se reduce sola en el móvil) dentro de los datos (Upstash o `data/data.json`). Después sale solo en el Inicio y en el calendario. «Subir otro escudo» vale solo para ese partido.
 
 ## Votación MVP
+- **Horario de la votación:** se abre **1 hora después del inicio del partido** y el MVP se da solo **al día siguiente a las 20:00** (hora de Madrid). El inicio sale de la fecha del «Próximo partido» (o se puede cambiar en Admin → Votación MVP). Antes de abrir y después de cerrar no se puede votar.
+- **Quién juega:** en Admin → Votación MVP se marcan los jugadores del partido; solo esos salen para votar y sus nombres aparecen arriba en la pestaña MVP. Si no se marca a nadie, salen todos.
 - Sin campo de nombre: se pulsa el botón del jugador y el voto entra en la lista. Cada dispositivo vota una sola vez y, al votar, desaparecen los botones.
 - Para que un dispositivo pueda votar de nuevo, quita ese voto desde Admin.
 - Los jugadores de la lista se gestionan desde Admin (añadir fichajes / borrar). También puedes borrar MVPs anteriores.
