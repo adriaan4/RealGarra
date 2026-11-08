@@ -378,6 +378,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .prsq{display:flex;flex-wrap:wrap;gap:6px 12px}
 .prsq label{display:inline-flex;align-items:center;gap:4px;font-size:16px;opacity:1}
 .prsq input{width:18px;height:18px;min-height:0;padding:0}
+.atab[data-at=insta]{grid-column:span 2}
 .atab[data-at=mas]{grid-column:span 3}
 .lgW{overflow-x:auto;margin:6px 0}.lgT{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}.lgT th,.lgT td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--line)}.lgT th:first-child,.lgT td:first-child{text-align:left}.lgT tr.me td{color:var(--gold)}.lgF{letter-spacing:2px;font-weight:700}
 </style>
@@ -557,6 +558,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <button type="button" class="atab" data-at="porra" role="tab">🦁 Porra</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
    <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/Nombres</button>
+   <button type="button" class="atab" data-at="insta" role="tab">📸 Instagram</button>
    <button type="button" class="atab" data-at="mas" role="tab">⚙️ Más</button>
   </div>
   <div class="apane" data-ap="partido">
@@ -656,6 +658,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <div id="admUsersList"><p>Cargando…</p></div>
   </div></details>
   </div>
+  <div class="apane" data-ap="insta" hidden><div id="igRoot"></div></div>
   <div class="apane" data-ap="mas" hidden>
   <details class="ad" open><summary>🔔 Avisos solo para mí (admin)</summary><div class="adb">
    <p class="sub" style="font-size:16px">Te llega un aviso a este dispositivo cada vez que alguien hace una apuesta, una combinada o una porra (de partido o final). Nadie más los recibe.</p>
@@ -1657,4 +1660,5 @@ if(pw&&sessionStorage.adTab==='porra')prAdmLoad();
 setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn($('#prAHist')))prAdmLoad()},15000);
 })();
 </script>
+<script src="insta.js" defer></script>
 </body></html>
