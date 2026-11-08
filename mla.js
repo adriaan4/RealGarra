@@ -146,4 +146,43 @@ async function readGroup(urls) {
 // Texto copiado a mano de la web de MLA (una celda por línea o separadas por tabulaciones)
 const parseText = t => ({ standings: standingsFromTokens(String(t || '').replace(/[\u2212\u2013\u2014]/g, '-').split(/[\n\t\r]+/).map(clean).filter(Boolean)) });
 
-module.exports = { parseText, parseHtml, readGroup, fetchPage, toRows, parseStandings, parseMatches };
+// ---- Página guardada desde el navegador (Admin → subir archivo) ----
+// Soporta .html normal y .mhtml (lo que genera "Guardar página como…"): un .mhtml es varias partes MIME
+// pegadas (el HTML, las imágenes, los CSS…); aquí solo se saca la parte text/html, decodificando
+// quoted-printable o base64 según toque. Como el navegador la guarda DESPUÉS de ejecutar su JavaScript,
+// trae la clasificación ya pintada aunque la web la cargue por JS (por eso sirve donde fetchPage no sirve).
+function qpDecode(s) { // quoted-printable -> texto (bytes reconstruidos para que los acentos salgan bien)
+  s = s.replace(/=\r?\n/g, ''); // salto de línea "blando"
+  const bytes = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '=' && /^[0-9A-Fa-f]{2}$/.test(s.substr(i + 1, 2))) { bytes.push(parseInt(s.substr(i + 1, 2), 16)); i += 2; }
+    else bytes.push(s.charCodeAt(i) & 0xff);
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+function extractHtmlFromUpload(raw) {
+  raw = String(raw || '');
+  const isMhtml = /^(mime-version:|from:|subject:)/im.test(raw.slice(0, 500)) || /content-type:\s*multipart\/related/i.test(raw.slice(0, 2000));
+  if (!isMhtml) return raw; // ya es un .html normal
+  const bm = /boundary=["']?([^"'\r\n;]+)/i.exec(raw);
+  if (!bm) throw new Error('Archivo .mhtml sin separador de partes reconocible');
+  const boundary = '--' + bm[1];
+  for (const part of raw.split(boundary)) {
+    if (!/content-type:\s*text\/html/i.test(part.slice(0, 500))) continue;
+    const hi = part.search(/\r?\n\r?\n/);
+    if (hi < 0) continue;
+    const headers = part.slice(0, hi), body = part.slice(hi).replace(/^\r?\n\r?\n/, '');
+    const enc = /content-transfer-encoding:\s*([^\r\n]+)/i.exec(headers);
+    const e = enc ? enc[1].trim().toLowerCase() : '7bit';
+    return e === 'quoted-printable' ? qpDecode(body) : e === 'base64' ? Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8') : body;
+  }
+  throw new Error('No encuentro la parte HTML dentro del archivo .mhtml');
+}
+function parseUpload(raw) {
+  const html = extractHtmlFromUpload(raw);
+  if (html.length < 200) throw new Error('El archivo está vacío o no se ha podido leer');
+  return parseHtml(html);
+}
+
+module.exports = { parseText, parseHtml, parseUpload, readGroup, fetchPage, toRows, parseStandings, parseMatches };

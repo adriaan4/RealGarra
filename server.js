@@ -1079,6 +1079,17 @@ app.post('/api/mla/paste', admin, async (req, res) => { // clasificación copiad
   if (changes.length) await save();
   res.json({ ok: true, teams: st.length, changes });
 });
+// Subir la página de MLA guardada desde el navegador (.html o .mhtml): como se guarda DESPUÉS de que cargue su JavaScript,
+// trae la clasificación ya pintada aunque mlasport.com la cargue por JS y bloquee la lectura automática del servidor.
+app.post('/api/mla/upload', admin, express.text({ type: '*/*', limit: '20mb' }), async (req, res) => {
+  let data;
+  try { data = MLA.parseUpload(req.body); } catch (e) { return bad(res, String(e.message || e)); }
+  if (!data.standings.length && !data.matches.length) return bad(res, 'No he reconocido clasificación ni resultados en ese archivo');
+  const { changes } = mlaApply(data);
+  if (changes.length) await save();
+  mlaState.lastOk = new Date().toISOString(); mlaState.error = '';
+  res.json({ ok: true, teams: data.standings.length, changes });
+});
 // Marcador de un clic: se pulsa en la página de MLA (en TU navegador) y envía la clasificación a la web. El «token» sale de la contraseña de admin, solo sirve para esto y solo lo ve el admin.
 const mlaToken = () => crypto.createHmac('sha256', String(PASS)).update('mla-import-v1').digest('hex').slice(0, 32);
 app.get('/api/mla/bookmarklet', admin, (_, res) => res.json({ token: mlaToken() }));

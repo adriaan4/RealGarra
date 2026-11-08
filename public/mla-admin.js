@@ -32,6 +32,24 @@
     } catch (e) { info('Error: ' + e.message); }
   };
 
+  q('#mlaFileBtn').onclick = () => q('#mlaFile').click();
+  q('#mlaFile').onchange = async () => {
+    const file = q('#mlaFile').files[0];
+    q('#mlaFile').value = ''; // para poder volver a elegir el mismo archivo si hace falta
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { info('Ese archivo pesa demasiado (máximo 20 MB).'); return; }
+    info('Leyendo ' + file.name + '…');
+    try {
+      const text = await file.text();
+      const r = await fetch('/api/mla/upload', { method: 'POST', headers: { 'Content-Type': 'text/plain', 'x-admin': pw }, body: text });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Error');
+      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } }
+      await status();
+      info(q('#mlaInfo').textContent + ' · Guardados ' + d.teams + ' equipos desde ' + file.name + (d.changes.length ? '.' : ' (ya estaba igual).'));
+    } catch (e) { info('Error al leer el archivo: ' + e.message); }
+  };
+
   // ---- marcador de un clic ----
   // Esta función se convierte en el marcador (se ejecuta en la página de MLA, en tu navegador). Sin comentarios y con «;» en todo, porque se pasa a una sola línea.
   function marcador(origin, token) {
