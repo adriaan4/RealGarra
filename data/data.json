@@ -55,5 +55,143 @@
     "votes": []
   },
   "history": [],
-  "teamV2": true
+  "teamV2": true,
+  "mla": {
+    "group": "4708",
+    "at": "2026-11-08T18:46:26.988941Z",
+    "standings": [
+      {
+        "name": "Pachanga FC",
+        "Pts": 6,
+        "PJ": 2,
+        "G": 2,
+        "E": 0,
+        "P": 0,
+        "GF": 7,
+        "GC": 1,
+        "DG": 6
+      },
+      {
+        "name": "Atlético Sheriff",
+        "Pts": 4,
+        "PJ": 2,
+        "G": 1,
+        "E": 1,
+        "P": 0,
+        "GF": 13,
+        "GC": 3,
+        "DG": 10
+      },
+      {
+        "name": "THE OFFICE",
+        "Pts": 4,
+        "PJ": 2,
+        "G": 1,
+        "E": 1,
+        "P": 0,
+        "GF": 7,
+        "GC": 5,
+        "DG": 2
+      },
+      {
+        "name": "Bricomaniacos FC",
+        "Pts": 3,
+        "PJ": 1,
+        "G": 1,
+        "E": 0,
+        "P": 0,
+        "GF": 2,
+        "GC": 1,
+        "DG": 1
+      },
+      {
+        "name": "Huerta FC",
+        "Pts": 2,
+        "PJ": 2,
+        "G": 0,
+        "E": 2,
+        "P": 0,
+        "GF": 4,
+        "GC": 4,
+        "DG": 0
+      },
+      {
+        "name": "Reformas Cerrialca",
+        "Pts": 1,
+        "PJ": 1,
+        "G": 0,
+        "E": 1,
+        "P": 0,
+        "GF": 3,
+        "GC": 3,
+        "DG": 0
+      },
+      {
+        "name": "Los Chicos Del Patio",
+        "Pts": 1,
+        "PJ": 1,
+        "G": 0,
+        "E": 1,
+        "P": 0,
+        "GF": 2,
+        "GC": 2,
+        "DG": 0
+      },
+      {
+        "name": "Real Garra Balompie",
+        "Pts": 1,
+        "PJ": 1,
+        "G": 0,
+        "E": 1,
+        "P": 0,
+        "GF": 1,
+        "GC": 1,
+        "DG": 0
+      },
+      {
+        "name": "Piso Piloto FC",
+        "Pts": 1,
+        "PJ": 2,
+        "G": 0,
+        "E": 1,
+        "P": 1,
+        "GF": 4,
+        "GC": 5,
+        "DG": -1
+      },
+      {
+        "name": "ValdeCity",
+        "Pts": 0,
+        "PJ": 0,
+        "G": 0,
+        "E": 0,
+        "P": 0,
+        "GF": 0,
+        "GC": 0,
+        "DG": 0
+      },
+      {
+        "name": "Gazilion",
+        "Pts": 0,
+        "PJ": 2,
+        "G": 0,
+        "E": 0,
+        "P": 2,
+        "GF": 2,
+        "GC": 6,
+        "DG": -4
+      },
+      {
+        "name": "Potrero FC",
+        "Pts": 0,
+        "PJ": 2,
+        "G": 0,
+        "E": 0,
+        "P": 2,
+        "GF": 2,
+        "GC": 16,
+        "DG": -14
+      }
+    ]
+  }
 }
