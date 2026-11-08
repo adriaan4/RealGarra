@@ -979,6 +979,7 @@ app.delete('/api/garrabet-admin/league-result/:id', admin, async (req, res) => {
 const MLA = require('./mla');
 const MLA_GROUP = process.env.MLA_GROUP || '4708';
 const MLA_URLS = (process.env.MLA_URLS || 'https://www.mlasport.com/clasificacion-grupo/4708').split(',').map(s => s.trim()).filter(Boolean); // páginas de clasificación y/o resultados del grupo
+const MLA_FALLBACK = (process.env.MLA_FALLBACK_URLS || 'https://www.mlasport.com/grupo/4708').split(',').map(x => x.trim()).filter(Boolean); // si la principal falla, se prueba esta
 const mlaState = { running: false, lastTry: '', lastOk: '', error: MLA_URLS.length ? '' : 'Falta la variable MLA_URLS', lastChange: null };
 const mlaIsGarra = n => /\bREAL GARRA\b|^GARRA$/.test(norm(n));
 function mlaApply(data) { // aplica lo leído en MLA a la base de datos; devuelve la lista de cambios (vacía = nada cambió)
@@ -1037,7 +1038,8 @@ async function mlaSync(why) {
   if (!MLA_URLS.length) { mlaState.error = 'Falta la variable MLA_URLS'; return { ok: false, error: mlaState.error }; }
   mlaState.running = true; mlaState.lastTry = new Date().toISOString();
   try {
-    const data = await MLA.readGroup(MLA_URLS); // si falla, salta al catch sin haber tocado nada
+    let data; // si fallan la página principal y la de respaldo, salta al catch sin haber tocado nada
+    try { data = await MLA.readGroup(MLA_URLS); } catch (e1) { if (!MLA_FALLBACK.length) throw e1; try { data = await MLA.readGroup(MLA_FALLBACK); } catch (e2) { throw e1; } }
     const { changes, skipped } = mlaApply(data);
     const resultsChanged = changes.some(c => !c.startsWith('Clasificación oficial'));
     let odds = null;
@@ -1058,14 +1060,24 @@ function mlaWindow(now = new Date()) { // domingo 15:00–22:59 en Madrid -> cla
   const h = +p.hour;
   return p.weekday === 'Sun' && h >= 15 && h <= 22 ? p.year + '-' + p.month + '-' + p.day + 'T' + p.hour : null;
 }
-let mlaSlot = '', mlaRetry = 0, mlaNextRetry = 0;
-setInterval(async () => { // una consulta por hora; si falla, 2 reintentos más (cada 10 min) dentro de esa misma hora
-  const slot = mlaWindow();
-  if (!slot || mlaState.running) return;
-  if (slot !== mlaSlot) { mlaSlot = slot; mlaRetry = 0; mlaNextRetry = 0; const r = await mlaSync('domingo ' + slot); if (!r.ok) { mlaRetry = 1; mlaNextRetry = Date.now() + 10 * 60000; } else mlaRetry = 99; }
-  else if (mlaRetry < 3 && Date.now() >= mlaNextRetry) { const r = await mlaSync('reintento ' + slot); if (r.ok) mlaRetry = 99; else { mlaRetry++; mlaNextRetry = Date.now() + 10 * 60000; } }
-}, 60 * 1000);
+const MLA_EVERY = Math.max(5, +process.env.MLA_EVERY_MIN || 30) * 60000; // cada 30 minutos (MLA_EVERY_MIN para cambiarlo)
+let mlaSlot = -1, mlaRetry = 0, mlaNextRetry = 0;
+async function mlaTick() { // una lectura por tramo de 30 min (en punto y y media); si falla, 2 reintentos más (cada 5 min) dentro del mismo tramo
+  if (mlaState.running) return;
+  const slot = Math.floor(Date.now() / MLA_EVERY);
+  if (slot !== mlaSlot) { mlaSlot = slot; mlaRetry = 0; mlaNextRetry = 0; const r = await mlaSync('cada ' + MLA_EVERY / 60000 + ' min'); if (!r.ok) { mlaRetry = 1; mlaNextRetry = Date.now() + 5 * 60000; } else mlaRetry = 99; }
+  else if (mlaRetry < 3 && Date.now() >= mlaNextRetry) { const r = await mlaSync('reintento'); if (r.ok) mlaRetry = 99; else { mlaRetry++; mlaNextRetry = Date.now() + 5 * 60000; } }
+}
+setInterval(mlaTick, 60 * 1000);
+setTimeout(mlaTick, 15000); // y una lectura nada más arrancar el servidor
 app.get('/api/mla/status', admin, (_, res) => res.json({ group: MLA_GROUP, urls: MLA_URLS.length, ...mlaState, standings: (db.mla && db.mla.standings) || [] }));
+app.post('/api/mla/paste', admin, async (req, res) => { // clasificación copiada a mano de la web de MLA (respaldo si la lectura automática está bloqueada)
+  const st = MLA.parseText(String(req.body.text || '').slice(0, 20000)).standings;
+  if (st.length < 2) return bad(res, 'No he reconocido ninguna clasificación en el texto pegado (copia desde «Pos» hasta la última fila)');
+  const { changes } = mlaApply({ standings: st, matches: [] });
+  if (changes.length) await save();
+  res.json({ ok: true, teams: st.length, changes });
+});
 app.post('/api/mla/sync', admin, async (_, res) => res.json(await mlaSync('manual'))); // para probarlo a mano desde Admin/consola, a cualquier hora
 // Importar cuotas de varias jornadas de golpe desde un JSON (goles anotados / encajados / totales; también 1X2, doble oportunidad y ambos marcan).
 // Solo se cambia lo que viene en el JSON: el resto de cuotas de esa jornada (goleadores, amarillas, lo que no se nombre) se queda como está. Si algo falla, no se cambia nada.

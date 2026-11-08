@@ -143,4 +143,7 @@ async function readGroup(urls) {
   return { standings: st, matches: mt };
 }
 
-module.exports = { parseHtml, readGroup, fetchPage, toRows, parseStandings, parseMatches };
+// Texto copiado a mano de la web de MLA (una celda por línea o separadas por tabulaciones)
+const parseText = t => ({ standings: standingsFromTokens(String(t || '').replace(/[\u2212\u2013\u2014]/g, '-').split(/[\n\t\r]+/).map(clean).filter(Boolean)) });
+
+module.exports = { parseText, parseHtml, readGroup, fetchPage, toRows, parseStandings, parseMatches };

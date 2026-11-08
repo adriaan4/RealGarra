@@ -667,6 +667,13 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <details class="ad"><summary>🔔 Enviar aviso a todos</summary><div class="adb">
    <div class="row"><input id="pushTitle" placeholder="Título (opcional)"><input id="pushBody" placeholder="Texto del aviso"><button id="sendPush">Enviar aviso</button></div>
   </div></details>
+  <details class="ad"><summary>📊 Clasificación MLA</summary><div class="adb">
+   <p class="sub" id="mlaInfo" style="font-size:16px"></p>
+   <div class="row"><button id="mlaNow" type="button">🔄 Actualizar ahora</button></div>
+   <p class="sub" style="font-size:16px">Si MLA bloquea la lectura automática, abre la clasificación en tu navegador, copia la tabla (desde «Pos» hasta la última fila) y pégala aquí:</p>
+   <textarea id="mlaPaste" rows="5" placeholder="Pega aquí la clasificación" style="width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)"></textarea>
+   <div class="row"><button id="mlaSave" type="button" class="ghost">Guardar clasificación pegada</button></div>
+  </div></details>
   <details class="ad"><summary>💾 Copia de seguridad</summary><div class="adb">
    <div class="row"><button id="exportBtn">Descargar datos (JSON)</button><label class="row">Restaurar: <input id="importFile" type="file" accept=".json"></label></div>
   </div></details>
@@ -1661,4 +1668,5 @@ setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn(
 })();
 </script>
 <script src="insta.js" defer></script>
+<script src="mla-admin.js" defer></script>
 </body></html>

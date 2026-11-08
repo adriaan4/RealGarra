@@ -85,6 +85,12 @@ Admin → GarraBet → «🤖 Cuotas automáticas».
 - Los boletos ya hechos conservan la cuota con la que se apostaron.
 - Ajustes del modelo (peso de la media, nº de partidos de forma…) al principio del bloque «Cuotas automáticas» de `server.js`.
 
+## Actualización automática cada 30 minutos (grupo 4708)
+El servidor lee la clasificación de MLA **cada 30 minutos** (en punto y y media, todos los días) y una vez al arrancar. Si falla, reintenta 2 veces más (cada 5 min); si sigue fallando se conservan los últimos datos. Si no hay cambios, no escribe nada. La web consulta su estado cada 30 s, así que los cambios salen solos. El Real Garra Balompie sale resaltado en la tabla.
+- Se prueba primero `MLA_URLS` y, si falla, `MLA_FALLBACK_URLS` (por defecto `https://www.mlasport.com/grupo/4708`). `MLA_EVERY_MIN` cambia el intervalo.
+- Admin → Más → **📊 Clasificación MLA**: estado de la última lectura, «Actualizar ahora» y un recuadro para **pegar la clasificación a mano** si MLA bloquea la lectura automática.
+- Solo usa Node (ya instalado en el servidor): no hace falta instalar nada más ni usar PHP.
+
 ## Sincronización con MLA Sport (grupo 4708)
 Cada **domingo de 15:00 a 22:00 (hora de Madrid)** el servidor consulta MLA una vez por hora (15:00, 16:00 … 22:00) y sincroniza solo:
 - **Resultados**: los del Garra se guardan en el Calendario (siempre «Garra primero») y los de otros equipos en los resultados de la liga. Se casan por jornada (o por fecha) y nunca se añade un partido que ya existe: si MLA cambia un marcador, se corrige el mismo.
