@@ -1065,6 +1065,7 @@ let mlaSlot = -1, mlaRetry = 0, mlaNextRetry = 0;
 async function mlaTick() { // una lectura por tramo de 30 min (en punto y y media); si falla, 2 reintentos más (cada 5 min) dentro del mismo tramo
   if (mlaState.running) return;
   const slot = Math.floor(Date.now() / MLA_EVERY);
+  if (slot !== mlaSlot && /HTTP 403/.test(mlaState.error) && Date.now() - Date.parse(mlaState.lastTry || 0) < 6 * 3600000) { mlaSlot = slot; return; } // MLA bloquea (403): no se insiste, se vuelve a probar cada 6 horas
   if (slot !== mlaSlot) { mlaSlot = slot; mlaRetry = 0; mlaNextRetry = 0; const r = await mlaSync('cada ' + MLA_EVERY / 60000 + ' min'); if (!r.ok) { mlaRetry = 1; mlaNextRetry = Date.now() + 5 * 60000; } else mlaRetry = 99; }
   else if (mlaRetry < 3 && Date.now() >= mlaNextRetry) { const r = await mlaSync('reintento'); if (r.ok) mlaRetry = 99; else { mlaRetry++; mlaNextRetry = Date.now() + 5 * 60000; } }
 }
@@ -1077,6 +1078,20 @@ app.post('/api/mla/paste', admin, async (req, res) => { // clasificación copiad
   const { changes } = mlaApply({ standings: st, matches: [] });
   if (changes.length) await save();
   res.json({ ok: true, teams: st.length, changes });
+});
+// Marcador de un clic: se pulsa en la página de MLA (en TU navegador) y envía la clasificación a la web. El «token» sale de la contraseña de admin, solo sirve para esto y solo lo ve el admin.
+const mlaToken = () => crypto.createHmac('sha256', String(PASS)).update('mla-import-v1').digest('hex').slice(0, 32);
+app.get('/api/mla/bookmarklet', admin, (_, res) => res.json({ token: mlaToken() }));
+app.post('/api/mla/import', express.urlencoded({ extended: false, limit: '300kb' }), async (req, res) => {
+  const page = (msg, good) => res.status(good ? 200 : 400).type('html').send('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clasificación</title>' + (good ? '<meta http-equiv="refresh" content="2;url=/#clasificacion">' : '') + '<body style="font:22px system-ui,sans-serif;background:#0d0b09;color:#f6eedb;text-align:center;padding:48px 20px"><h1 style="font-size:28px">' + msg + '</h1><p><a style="color:#e2ab2c" href="/#clasificacion">Ir a la clasificación</a></p></body>');
+  const a = Buffer.from(String(req.body.t || '')), b = Buffer.from(mlaToken());
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return page('❌ Marcador no válido. Genéralo de nuevo en Admin → Más → Clasificación MLA', false);
+  const st = MLA.parseText(String(req.body.text || '').slice(0, 20000)).standings;
+  if (st.length < 2) return page('❌ No he reconocido la clasificación en esa página', false);
+  const { changes } = mlaApply({ standings: st, matches: [] });
+  if (changes.length) await save();
+  mlaState.lastOk = new Date().toISOString(); mlaState.error = '';
+  page('✅ Clasificación actualizada (' + st.length + ' equipos)', true);
 });
 app.post('/api/mla/sync', admin, async (_, res) => res.json(await mlaSync('manual'))); // para probarlo a mano desde Admin/consola, a cualquier hora
 // Importar cuotas de varias jornadas de golpe desde un JSON (goles anotados / encajados / totales; también 1X2, doble oportunidad y ambos marcan).
