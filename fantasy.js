@@ -88,6 +88,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       if (!fmList(f.cfg.max).includes(u.fm)) { u.fm = bestFm(u.t, null, f.cfg.max); ch = true; }  // formación válida para N titulares (los equipos antiguos reciben la que mejor les va)
       if (u.bn && (!ids.has(u.bn) || u.t.includes(u.bn))) { if (!ids.has(u.bn)) u.b = r1(u.b + (f.pr[u.bn] || 0)); u.bn = 0; ch = true; }   // banquillo con un jugador que ya no existe (o repetido): se devuelve su precio
     }
+    for (const u of f.users) if (u.ps) { const own = new Set(all(u)); for (const k of Object.keys(u.ps)) if (!own.has(+k) || !['DEF', 'MED', 'DEL'].includes(u.ps[k])) { delete u.ps[k]; ch = true; } }
     if (rollMarket(f)) ch = true;
     return ch;
   }
@@ -183,7 +184,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const val = x => r1(x.b + all(x).reduce((s, id) => s + (f.pr[id] || 0), 0));
     const open = f.jor.find(j => j.st === 'rate');
     return {
-      me: { id: u.id, name: u.name, b: u.b, t: u.t, bn: u.bn || 0, fm: u.fm },
+      me: { id: u.id, name: u.name, b: u.b, t: u.t, bn: u.bn || 0, fm: u.fm, ps: u.ps || {} },
       cfg: { max: f.cfg.max, budget: START_CASH, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS }, fms: fmList(f.cfg.max), mkt: { end: f.mkt.at + MK_MS, ids: f.mkt.ids, now: Date.now() } },
       pl: squad().map(p => { const pos = posOf(p), a = f.av[p.id]; return { id: p.id, n: p.n, name: p.name, pos, ph: p.photo ? (p.photoV || 1) : 0, pr: f.pr[p.id], pp: f.pp[p.id] ?? f.pr[p.id], av: a && a[1] ? r1(a[0] / a[1]) : null, tn: team[p.id] || 0 }; }),
       us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, bn: x.bn || 0, fm: x.fm, pts: gen[x.id] || 0, val: val(x) })),
@@ -242,6 +243,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     if (!all(u).includes(id)) return bad(res, 'Ese jugador no está en tu plantilla');
     if (locked(f)) return bad(res, 'El mercado está cerrado (jornada en curso)');
     u.b = r1(u.b + (f.pr[id] || 0)); u.t = u.t.filter(x => x !== id); if (u.bn === id) u.bn = 0;
+    if (u.ps) delete u.ps[id];
     if (!f.mkt.ids.includes(id)) f.mkt.ids.push(id);              // el jugador vendido vuelve al mercado de hoy
     await save(); res.json({ ok: true, ...view(u) });
   });
@@ -259,6 +261,18 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     } else return bad(res, 'Ese jugador no está en tu plantilla');
     u.t = t2; u.bn = bn2; const note = '';
     await save(); res.json({ ok: true, note, ...view(u) });
+  });
+  // Cambiar a un jugador de línea (defensa / medio / delantero). El portero ni se mueve ni nadie puede ir a portería. Solo cambia dónde se coloca en el campo;
+  // los puntos se siguen calculando con su posición real. pos = '' devuelve al jugador a su posición natural.
+  app.post('/api/fantasy/pos', member, async (req, res) => {
+    const f = F(), u = req.fu, id = +req.body.pid, pos = String(req.body.pos || ''), p = byId(id);
+    if (locked(f)) return bad(res, 'El mercado está cerrado: no se puede mover a nadie mientras se puntúa la jornada');
+    if (!p || !all(u).includes(id)) return bad(res, 'Ese jugador no está en tu plantilla');
+    if (posOf(p) === 'POR') return bad(res, 'El portero no puede cambiar de posición');
+    if (pos && !['DEF', 'MED', 'DEL'].includes(pos)) return bad(res, 'Posición no válida');
+    if (!u.ps || typeof u.ps !== 'object') u.ps = {};
+    if (!pos || pos === posOf(p)) delete u.ps[id]; else u.ps[id] = pos;
+    await save(); res.json({ ok: true, ...view(u) });
   });
   app.post('/api/fantasy/formation', member, async (req, res) => {
     const f = F(), u = req.fu, fm = String(req.body.fm || '');

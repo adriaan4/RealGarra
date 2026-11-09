@@ -173,3 +173,4 @@ html{scroll-padding-bottom:96px}
 .fxRow.pk .pos{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center}
 @media(max-width:420px){.fxRow.pk{gap:8px}}
 .fxTok.oop .sh{outline:2px dashed rgba(255,255,255,.6);outline-offset:2px}
+.fxBtn.alt.on,.fxBtn.on{outline:2px solid var(--gold);opacity:.7}
