@@ -12,7 +12,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const BASE = { POR: 11, DEF: 12, MED: 14, DEL: 16 };       // precio de salida por posición (+ goles de la plantilla)
   const GOAL = { POR: 8, DEF: 6, MED: 5, DEL: 4 };          // puntos por gol (los de atrás valen más)
   const CS = { POR: 4, DEF: 3, MED: 1, DEL: 0 };            // portería a cero
-  const RULES = { play: 1, assist: 3, yellow: -1, red: -3, mvp: 4, mvp2: 1, rate: 2 }; // «rate»: puntos por cada punto de nota sobre 5
+  const RULES = { play: 1, assist: 3, yellow: -1, red: -3, mvp: 4, mvp2: 1, rate: 2, win: 3, draw: 1, loss: -2 }; // «rate»: puntos por cada punto de nota sobre 5
   const MK_MS = 24 * 3600 * 1000;           // el mercado se renueva cada 24 h
   const POS4 = ['POR', 'DEF', 'MED', 'DEL'];
 
@@ -95,14 +95,19 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const locked = f => f.cfg.mk === 2 || (f.cfg.mk === 0 && f.jor.some(j => j.st === 'rate'));
 
   // ---- Puntuación de un jugador en una jornada (las notas pesan más que cualquier otra cosa) ----
+  // Resultado del partido: sale del Calendario (Admin → Calendario), «3-1» = Real Garra 3, rival 1. Sin resultado puesto no suma ni resta nada.
+  const resOf = j => { const m = (getDb().calendar || []).find(x => x.j === j.j), r = /(\d+)\s*[-–:]\s*(\d+)/.exec((m && m.result) || ''); return r ? { gf: +r[1], gc: +r[2] } : null; };
   function playerPts(j, pid) {
     if (!j.pl.includes(pid)) return 0;
     if (j.ov && Number.isFinite(j.ov[pid])) return j.ov[pid];     // el admin puede fijar los puntos a mano
     const sq = byId(pid), pos = sq ? posOf(sq) : 'MED', s = j.s[pid] || [0, 0, 0, 0], ra = j.ra[pid];
     let p = RULES.play;
-    if (ra && ra[1]) p += (ra[0] - 5) * RULES.rate;                // nota media de los participantes
+    const rs = resOf(j);
+    if (rs) p += rs.gf > rs.gc ? RULES.win : rs.gf < rs.gc ? RULES.loss : RULES.draw;          // ganar suma, empatar suma poco y perder resta (a todos los que jugaron)
+        if (ra && ra[1]) p += (ra[0] - 5) * RULES.rate;                // nota media de los participantes
     p += s[0] * GOAL[pos] + s[1] * RULES.assist + s[2] * RULES.yellow + s[3] * RULES.red;
-    if (j.gc === 0) p += CS[pos];
+    const gcN = j.gc != null ? j.gc : (rs ? rs.gc : null);                                // goles encajados: los que puso el admin o, si no, los del resultado
+    if (gcN === 0) p += CS[pos];
     const top = Math.max(0, ...Object.values(j.mv || {}));         // votos de MVP de la web
     const v = (j.mv || {})[pid] || 0;
     if (top > 0 && v === top) p += RULES.mvp; else if (v > 0) p += RULES.mvp2;
@@ -444,5 +449,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   A('post', '/jor/:j/recalc', async (req, res) => { const f = F(), j = f.jor.find(x => x.j === +req.params.j); if (!j || j.st !== 'done') return bad(res, 'Solo jornadas cerradas'); scoreJor(j); await save(); res.json({ ok: true }); });
   A('delete', '/jor/:j', async (req, res) => { const f = F(); f.jor = f.jor.filter(x => x.j !== +req.params.j); await save(); res.json({ ok: true }); });
 
-  return { onMvp, onPlayed, ensure, posOf };
+  // Al guardar el resultado en el Calendario, si esa jornada de Fantasy ya estaba cerrada se recalculan sus puntos con el resultado nuevo
+  async function onResult(jn) { const f = F(), j = f.jor.find(x => x.j === +jn); if (!j || j.st !== 'done') return; scoreJor(j); await save(); }
+  return { onMvp, onPlayed, onResult, ensure, posOf };
 };

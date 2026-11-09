@@ -15,7 +15,7 @@
     rank: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
     rules: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/>'
   };
-  const VER = '20261109d';
+  const VER = '20261109e';
   const TABS = [['team', 'Equipo'], ['market', 'Mercado'], ['rate', 'Notas'], ['rank', 'Ranking'], ['rules', 'Reglas']];
 
   let tk = ''; try { tk = localStorage.getItem('fk') || ''; } catch { }
@@ -180,6 +180,7 @@
     <li>🪑 <b>Suplente (el 8.º jugador):</b> no puntúa mientras está en el banco, pero si un titular no juega el partido y el suplente sí, <b>entra automáticamente por él</b> (mejor por uno de su misma posición; si no hay, por cualquiera que no jugara). Si no hace falta, no suma.</li>
     <li>⭐ <b>Las notas mandan.</b> Tras cada partido todos puntúan del 1 al 10 a los que han jugado (una nota por persona y jugador). Cada punto de media por encima de 5 suma <b>${R.rate}</b> puntos (y por debajo, resta).</li>
     <li>⚽ <b>Estadísticas:</b> jugar +${R.play} · gol (portero ${R.GOAL.POR}, defensa ${R.GOAL.DEF}, medio ${R.GOAL.MED}, delantero ${R.GOAL.DEL}) · asistencia +${R.assist} · amarilla ${R.yellow} · roja ${R.red}.</li>
+    <li>🏟️ <b>Resultado del partido:</b> si el Garra gana, todos los que jugaron suman <b>+${R.win}</b>; si empata, <b>+${R.draw}</b>; si pierde, <b>${R.loss}</b>. Sale del resultado que el admin pone en el Calendario.</li>
     <li>🧤 <b>Portería a cero:</b> portero +${R.CS.POR}, defensas +${R.CS.DEF}, medios +${R.CS.MED}.</li>
     <li>🏆 <b>MVP de la web:</b> el más votado en la pestaña MVP gana +${R.mvp} y quien reciba algún voto +${R.mvp2}.</li>
     <li>📈 <b>Precios dinámicos:</b> al cerrar cada jornada el precio se mueve con la nota media: una media de 8 sube ~12 %, de 4 baja ~12 % (tope ±15 %). El 6 es neutro.</li>

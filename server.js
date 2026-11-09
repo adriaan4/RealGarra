@@ -548,6 +548,7 @@ app.put('/api/calendar/:j', admin, async (req, res) => {
   m.result = result;
   lgAutoNext(); // al meter un resultado se actualizan las estadísticas y se recalculan las cuotas del próximo partido
   await save();
+  FANTASY.onResult(m.j).catch(e => console.error('Fantasy (resultado): ' + e.message)); // si esa jornada de Fantasy ya estaba cerrada, se recalculan sus puntos
   res.json({ ok: true });
 });
 // ---- Crónicas de partido: titular (opcional), texto y la foto con el resultado que se sube a Instagram ----
