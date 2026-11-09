@@ -49,8 +49,14 @@
   const cd = () => { const t = Math.ceil(left() / 1000); return [Math.floor(t / 3600), Math.floor(t % 3600 / 60), t % 60].map(n => String(n).padStart(2, '0')).join(':'); };
   // Formaciones «D-M-F» (siempre 1 portero): mismas reglas que el servidor, para avisar antes de pulsar
   const parseFm = s => { const m = /^(?:(\d{1,2})-)?(\d{1,2})-(\d{1,2})-(\d{1,2})$/.exec(String(s || '')); return m ? { POR: m[1] ? +m[1] : 1, DEF: +m[2], MED: +m[3], DEL: +m[4] } : null; };
-  const fitsFm = (ids, fm) => { const q = parseFm(fm); if (!q) return false; const c = { POR: 0, DEF: 0, MED: 0, DEL: 0 }; ids.forEach(id => { const x = P(id); if (x) c[x.pos]++; }); return Object.keys(c).every(k => c[k] <= q[k]); };
-  const fitFm = (ids, cur = D.me.fm) => { if (fitsFm(ids, cur)) return cur; const a = parseFm(cur) || { DEF: 2, MED: 3, DEL: 1 }; let best = null, bd = 1e9; for (const k of D.cfg.fms) if (fitsFm(ids, k)) { const q = parseFm(k), d = Math.abs(q.DEF - a.DEF) + Math.abs(q.MED - a.MED) + Math.abs(q.DEL - a.DEL); if (d < bd) { best = k; bd = d; } } return best; };
+  // Reparto en el campo: cada jugador en su línea; los que sobran de una línea ocupan los huecos libres de otra (fuera de posición)
+  const layout = (ids, q) => {
+    const L = { POR: [], DEF: [], MED: [], DEL: [] }, over = [], by = { POR: [], DEF: [], MED: [], DEL: [] };
+    ids.map(P).filter(Boolean).forEach(p => by[p.pos].push(p));
+    for (const k of ['POR', 'DEF', 'MED', 'DEL']) { L[k] = by[k].slice(0, q[k]); over.push(...by[k].slice(q[k])); }
+    for (const k of ['MED', 'DEF', 'DEL', 'POR']) while (over.length && L[k].length < q[k]) L[k].push(Object.assign({}, over.shift(), { oop: 1 }));
+    return L;
+  };
   const pendingRate = () => { const j = openJ(); return j ? j.pl.filter(id => !D.mine[id]).length : 0; };
 
   // ---------- pantallas ----------
@@ -68,21 +74,24 @@
     return `<div class="fxTop"><div class="fxHi"><img src="escudo.png" alt=""><div><small>Real Garra Fantasy</small><b>${E(D.me.name)}</b></div></div>
     <div class="fxStats"><div class="fxStat"><small>Valor plantilla</small><b>${fm(tv)}<span>M</span></b></div><div class="fxStat gold"><small>Presupuesto</small><b>${fm(D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Patrimonio</small><b>${fm(tv + D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Puntos</small><b>${fp(me.pts)}</b></div><div class="fxStat"><small>Puesto</small><b>${idx + 1}<span>/ ${r.length}</span></b></div></div></div>`;
   }
-  const tok = (p, last) => `<button class="fxTok fxP-${p.pos}" data-act="pl" data-id="${p.id}" aria-label="${E(p.name)}, ${POSL[p.pos]}"><span class="sh${p.ph ? ' ph' : ''}">${p.ph ? `<img loading="lazy" decoding="async" src="${photo(p)}" alt=""><u>${p.n}</u>` : p.n}${last && last.pt && last.pt[p.id] != null ? `<span class="bd${last.pt[p.id] < 0 ? ' neg' : ''}">${fp(last.pt[p.id])}</span>` : ''}</span><b>${E(p.name)}</b><i>${M(p.pr)}</i></button>`;
+  const tok = (p, last) => `<button class="fxTok fxP-${p.pos}${p.oop ? ' oop' : ''}" data-act="pl" data-id="${p.id}" aria-label="${E(p.name)}, ${POSL[p.pos]}"><span class="sh${p.ph ? ' ph' : ''}">${p.ph ? `<img loading="lazy" decoding="async" src="${photo(p)}" alt=""><u>${p.n}</u>` : p.n}${last && last.pt && last.pt[p.id] != null ? `<span class="bd${last.pt[p.id] < 0 ? ' neg' : ''}">${fp(last.pt[p.id])}</span>` : ''}</span><b>${E(p.name)}</b><i>${M(p.pr)}</i></button>`;
   function viewTeam() {
     const mine = D.me.t.map(P).filter(Boolean), bn = D.me.bn ? P(D.me.bn) : null, last = done().slice(-1)[0], free = D.cfg.max - mine.length;
     const val = mine.reduce((s, p) => s + p.pr, 0) + (bn ? bn.pr : 0), q = parseFm(D.me.fm) || { POR: 1, DEF: 0, MED: 0, DEL: 0 };
+    const L = layout(D.me.t, q);
     const lines = ['DEL', 'MED', 'DEF', 'POR'].map(pos => {
-      const ps = mine.filter(p => p.pos === pos), emp = Math.max(0, q[pos] - ps.length), n = ps.length + emp; if (!n) return '';
+      const ps = L[pos], emp = Math.max(0, q[pos] - ps.length), n = ps.length + emp; if (!n) return '';
       return `<div class="fxLine${n >= 4 ? ' dense' : ''}">${ps.map(p => tok(p, last)).join('')}${Array.from({ length: emp }, () => `<button class="fxTok empty" data-act="slot" data-pos="${pos}" aria-label="Hueco libre de ${POSL[pos].toLowerCase()}: ir al mercado"><span class="sh">+</span><b>${POSL[pos]}</b></button>`).join('')}</div>`;
     }).join('');
-    const fms = D.cfg.fms.includes(D.me.fm) ? D.cfg.fms : [D.me.fm, ...D.cfg.fms];
-    const bars = done(), sb = last && last.sb && last.sb[D.me.id], canUp = bn && free > 0 && fitFm([...D.me.t, bn.id]);
+    const fms = D.cfg.fms, all8 = [...D.me.t, D.me.bn].filter(Boolean).map(P).filter(Boolean);
+    const bars = done(), sb = last && last.sb && last.sb[D.me.id], canUp = bn && free > 0;
     const mx = Math.max(1, ...bars.map(j => Math.abs((j.up || {})[D.me.id] || 0)));
     return `${mine.length ? '' : '<div class="fxNote">Tu equipo está vacío. Ve al <b>Mercado</b> y ficha a tus primeros jugadores: tienes ' + M(D.me.b) + '.</div>'}
-    <div class="fxH2" style="margin:14px 2px 6px">Formación<small>${D.cfg.locked ? '🔒 bloqueada mientras se puntúa' : 'toca para cambiarla'}</small></div>
-    <div class="fxChips fxFm">${fms.map(k => `<button class="fxChip${k === D.me.fm ? ' on' : ''}${k !== D.me.fm && !fitsFm(D.me.t, k) ? ' no' : ''}" data-act="fm" data-k="${k}"${D.cfg.locked ? ' disabled' : ''} aria-label="Formación ${k}">${k}</button>`).join('')}</div>
+    <div class="fxH2" style="margin:14px 2px 6px">Formación<small>${D.cfg.locked ? '🔒 bloqueada mientras se puntúa' : 'elige la que quieras'}</small></div>
+    <div class="fxChips fxFm">${fms.map(k => `<button class="fxChip${k === D.me.fm ? ' on' : ''}" data-act="fm" data-k="${k}"${D.cfg.locked ? ' disabled' : ''} aria-label="Formación ${k}">${k}</button>`).join('')}</div>
     <div class="fxPitch" aria-label="Tu equipo">${lines}</div>
+    ${all8.length > 1 ? `<div class="fxH2" style="margin:14px 2px 6px">Banquillo<small>${D.cfg.locked ? '🔒 bloqueado' : 'elige quién es tu suplente'}</small></div>
+    <div class="fxChips fxFm">${all8.map(p => `<button class="fxChip${D.me.bn === p.id ? ' on' : ''}" ${D.me.bn === p.id ? '' : `data-act="swap" data-id="${p.id}"`}${D.cfg.locked ? ' disabled' : ''} aria-label="Suplente: ${E(p.name)}">${E(p.name)}</button>`).join('')}</div>` : ''}
     <div class="fxBench bn"><small>🪑 Suplente (8.º jugador) · puntúa <b>solo si entra</b>: sustituye a un titular de su posición que no juegue</small>${bn ? tok(bn) : '<button class="fxTok empty" data-act="go" data-t="market"><span class="sh">+</span><b>Libre</b></button>'}${bn ? '<small>Toca al jugador para meterlo en el campo</small>' : ''}${canUp ? `<small class="fxWarn">⚠️ Tienes ${free} hueco${free > 1 ? 's' : ''} en el campo: sube a ${E(bn.name)} para que puntúe</small>` : ''}${sb ? `<small class="fxWarn">🔄 En la J${last.j} entró ${E(pn(sb[1]))} por ${E(pn(sb[0]))} (no jugó)</small>` : ''}</div>
     <div class="fxBench"><small>${free > 0 ? free + ' hueco' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : '') + ' en el campo (toca el +)' : 'Campo completo (' + D.cfg.max + ' titulares)'}${bn ? '' : ' · suplente libre'} · valor del equipo ${M(val)}</small>${last ? `<small>🟡 La insignia de cada jugador son sus puntos en la J${last.j}</small>` : ''}</div>
     <div class="fxH2">Mis puntos por jornada</div>
@@ -157,8 +166,8 @@
     const R = D.cfg.rules;
     return `<div class="fxH2">Cómo funciona</div><ul class="fxRules">
     <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> de presupuesto para fichar. Tu alineación son <b>${D.cfg.max} titulares + 1 suplente</b> (hasta ${D.cfg.max + 1} de la plantilla del Garra). Varios participantes pueden fichar al mismo jugador.</li>
-    <li>📋 <b>Formaciones:</b> elige cómo juegas (${D.cfg.fms.join(', ')}: defensas-medios-delanteros, siempre con 1 portero). Cada jugador ocupa un hueco de su posición; si uno no cabe en tu formación, esta se ajusta sola a la más parecida o el fichaje va al suplente. La alineación solo se toca con el mercado abierto: al cerrarse la jornada cuenta la que tengas en ese momento.</li>
-    <li>🪑 <b>Suplente (el 8.º jugador):</b> no puntúa mientras está en el banco, pero si un titular no juega el partido y el suplente sí, <b>entra automáticamente por él</b> (solo por un titular de su misma posición). Si no hace falta, no suma.</li>
+    <li>📋 <b>Formaciones:</b> elige cómo juegas (${D.cfg.fms.join(', ')}: defensas-medios-delanteros, siempre con 1 portero). Puedes cambiarla cuando quieras: cada jugador va a su línea y, si en una línea sobran, ocupan huecos libres de otra (fuera de posición; puntúan igual por lo que hagan). Tú eliges también quién es tu suplente. La alineación solo se toca con el mercado abierto: al cerrarse la jornada cuenta la que tengas en ese momento.</li>
+    <li>🪑 <b>Suplente (el 8.º jugador):</b> no puntúa mientras está en el banco, pero si un titular no juega el partido y el suplente sí, <b>entra automáticamente por él</b> (mejor por uno de su misma posición; si no hay, por cualquiera que no jugara). Si no hace falta, no suma.</li>
     <li>⭐ <b>Las notas mandan.</b> Tras cada partido todos puntúan del 1 al 10 a los que han jugado (una nota por persona y jugador). Cada punto de media por encima de 5 suma <b>${R.rate}</b> puntos (y por debajo, resta).</li>
     <li>⚽ <b>Estadísticas:</b> jugar +${R.play} · gol (portero ${R.GOAL.POR}, defensa ${R.GOAL.DEF}, medio ${R.GOAL.MED}, delantero ${R.GOAL.DEL}) · asistencia +${R.assist} · amarilla ${R.yellow} · roja ${R.red}.</li>
     <li>🧤 <b>Portería a cero:</b> portero +${R.CS.POR}, defensas +${R.CS.DEF}, medios +${R.CS.MED}.</li>
@@ -191,11 +200,10 @@
   function sheetPlayer(id) {
     const p = P(id); if (!p) return;
     const t = D.me.t, off = D.cfg.mkt.ids.includes(id), isT = t.includes(id), isB = D.me.bn === id, own = isT || isB, hist = done().filter(j => j.pl.includes(id)).reverse(), dis = D.cfg.locked || (!own && (!off || (t.length >= D.cfg.max && !!D.me.bn) || D.me.b < p.pr));
-    const noFit = '<p class="sub" style="font-size:15px">🪑 Ese cambio no cabe en ninguna formación: tiene que ser un jugador de la misma posición.</p>';
     const lineup = !own ? '' : D.cfg.locked ? '<p class="sub" style="font-size:15px">🔒 Alineación bloqueada mientras se puntúa la jornada.</p>'
-      : isT ? (fitFm(t.filter(x => x !== id).concat(D.me.bn || [])) ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">${D.me.bn ? '🔄 Cambiar por ' + E(pn(D.me.bn)) + ' (suplente)' : '🪑 Mandar al suplente'}</button>` : noFit)
-      : t.length < D.cfg.max ? (fitFm([...t, id]) ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">⬆️ Subir al campo</button>` : noFit)
-      : (() => { const ok = t.filter(x => fitFm(t.map(y => y === x ? id : y))); return ok.length ? `<div class="fxH2" style="margin:4px 0 8px">⬆️ Subir al campo: ¿a quién sustituye?</div><div class="fxSwap">${ok.map(x => `<button class="fxBtn alt sm" data-act="swap" data-id="${id}" data-out="${x}" data-close="1">${E(pn(x))}</button>`).join('')}</div>` : noFit; })();
+      : isT ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">${D.me.bn ? '🔄 Cambiar por ' + E(pn(D.me.bn)) + ' (suplente)' : '🪑 Mandar al banquillo'}</button>`
+      : t.length < D.cfg.max ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">⬆️ Subir al campo</button>`
+      : `<div class="fxH2" style="margin:4px 0 8px">⬆️ Subir al campo: ¿a quién sustituye?</div><div class="fxSwap">${t.map(x => `<button class="fxBtn alt sm" data-act="swap" data-id="${id}" data-out="${x}" data-close="1">${E(pn(x))}</button>`).join('')}</div>`;
     const g = hist.reduce((s, j) => s + (((j.s || {})[id] || [0])[0] || 0), 0);
     sheet(`${p.ph ? `<div class="fxPhBig fxP-${p.pos}"><img src="${photo(p)}" alt="${E(p.name)}"></div>` : ''}<h3 class="fxP-${p.pos}"><span style="color:var(--c)">${p.n}</span> ${E(p.name)}</h3><small style="opacity:.7">${POSL[p.pos]}</small>
     <div class="fxKv"><div><small>Precio</small><b>${M(p.pr)}</b></div><div><small>Tendencia</small><b>${trend(p)}</b></div><div><small>Nota media</small><b>${p.av != null ? fm(p.av) : '—'}</b></div></div>

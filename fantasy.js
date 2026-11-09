@@ -39,8 +39,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const cnt = ids => { const c = { POR: 0, DEF: 0, MED: 0, DEL: 0 }; for (const id of ids) { const q = byId(id); if (q) c[posOf(q)]++; } return c; };
   const parseFm = s => { const m = /^(?:(\d{1,2})-)?(\d{1,2})-(\d{1,2})-(\d{1,2})$/.exec(String(s || '')); return m ? { POR: m[1] ? +m[1] : 1, DEF: +m[2], MED: +m[3], DEL: +m[4] } : null; };
   const fmTotal = s => { const q = parseFm(s); return q ? q.POR + q.DEF + q.MED + q.DEL : 0; };
-  const fitsFm = (c, fm) => { const q = parseFm(fm); return !!q && POS4.every(k => c[k] <= q[k]); };
-  function fmList(max) {                                          // formaciones válidas para N titulares (1 portero + N-1 de campo)
+  function fmList(max) {                                          // formaciones para N titulares (1 portero + N-1 de campo)
     const n = max - 1, out = [];
     if (n < 3) { for (let d = 0; d <= n; d++) for (let m = 0; m + d <= n; m++) out.push(d + '-' + m + '-' + (n - d - m)); return out; }
     const dM = Math.min(5, Math.max(2, Math.ceil(n * 2 / 3))), fM = Math.max(1, Math.ceil(n / 2));
@@ -48,17 +47,14 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     return out;
   }
   const fmTarget = max => { const n = max - 1, d = Math.round(n / 3), m = Math.round(n / 2); return [d, m, n - d - m]; };
-  const fmDist = (a, b) => { const x = parseFm(a), y = Array.isArray(b) ? { DEF: b[0], MED: b[1], DEL: b[2] } : parseFm(b); return Math.abs(x.DEF - y.DEF) + Math.abs(x.MED - y.MED) + Math.abs(x.DEL - y.DEL); };
-  // Formación que admite esos titulares: la actual si cabe; si no, la más parecida de la lista; null si ninguna
-  function fitFm(ids, cur, max) {
-    const c = cnt(ids);
-    if (cur && fmTotal(cur) === max && fitsFm(c, cur)) return cur;
-    let best = null, bd = Infinity; const ref = parseFm(cur) ? cur : fmTarget(max);
-    for (const fm of fmList(max)) if (fitsFm(c, fm)) { const d = fmDist(fm, ref); if (d < bd) { best = fm; bd = d; } }
+  const fmDist = (a, b) => { const x = parseFm(a); return Math.abs(x.DEF - b[0]) + Math.abs(x.MED - b[1]) + Math.abs(x.DEL - b[2]); };
+  // Formación por defecto para un equipo: la que deja menos jugadores fuera de su línea (la formación es libre: se puede cambiar cuando se quiera)
+  function bestFm(ids, cur, max) {
+    const list = fmList(max); if (cur && list.includes(cur)) return cur;
+    const c = cnt(ids); let best = list[0] || '', bs = Infinity;
+    for (const fm of list) { const q = parseFm(fm), over = POS4.reduce((t, k) => t + Math.max(0, c[k] - q[k]), 0), sc = over * 10 + fmDist(fm, fmTarget(max)); if (sc < bs) { best = fm; bs = sc; } }
     return best;
   }
-  // Equipo antiguo que no cabe en ninguna formación de la lista: se le da una a medida con lo que ya tiene (los huecos libres, a medio campo)
-  const legacyFm = (ids, max) => { const c = cnt(ids), rest = Math.max(0, max - c.POR - c.DEF - c.MED - c.DEL), pr = Math.max(1, c.POR); return (pr === 1 ? '' : pr + '-') + c.DEF + '-' + (c.MED + rest) + '-' + c.DEL; };
 
   // ---- Mercado: cada 24 h sale a la venta una selección de jugadores (la misma para todos). Solo se ficha a quien esté en ella; los vendidos vuelven a la lista ----
   function pickMarket(f, prev) {
@@ -89,8 +85,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     for (const u of f.users) {
       const keep = u.t.filter(id => ids.has(id));
       if (keep.length !== u.t.length) { u.b = r1(u.b + u.t.filter(id => !ids.has(id)).reduce((s, id) => s + (f.pr[id] || 0), 0)); u.t = keep; ch = true; }
-      const fmOk = parseFm(u.fm) && fmTotal(u.fm) === f.cfg.max && fitsFm(cnt(u.t), u.fm);
-      if (!fmOk) { const nf = fitFm(u.t, u.fm, f.cfg.max) || legacyFm(u.t, f.cfg.max); if (nf !== u.fm) { u.fm = nf; ch = true; } }  // formación coherente con los titulares (equipos antiguos incluidos)
+      if (!fmList(f.cfg.max).includes(u.fm)) { u.fm = bestFm(u.t, null, f.cfg.max); ch = true; }  // formación válida para N titulares (los equipos antiguos reciben la que mejor les va)
       if (u.bn && (!ids.has(u.bn) || u.t.includes(u.bn))) { if (!ids.has(u.bn)) u.b = r1(u.b + (f.pr[u.bn] || 0)); u.bn = 0; ch = true; }   // banquillo con un jugador que ya no existe (o repetido): se devuelve su precio
     }
     if (rollMarket(f)) ch = true;
@@ -115,11 +110,12 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const avgOf = (rt, pid) => { const v = Object.values((rt || {})[pid] || {}); return v.length ? [r1(v.reduce((a, b) => a + b, 0) / v.length), v.length] : null; };
   const liveRa = j => { const o = {}; for (const pid of j.pl) { const a = avgOf(j.rt, pid); if (a) o[pid] = a; } return o; };
 
-  // Suplente automático: si un titular NO jugó y el del banquillo SÍ, el del banquillo entra por él (solo por un titular de su misma posición)
+  // Suplente automático: si un titular NO jugó y el del banquillo SÍ, el del banquillo entra por él (mejor por uno de su posición)
   function autoSub(u, j) {
     const t = u.t.slice(); if (!u.bn || !j.pl.includes(u.bn)) return { t, sb: null };
     const bp = byId(u.bn); if (!bp) return { t, sb: null };
-    const i = t.findIndex(id => { const q = byId(id); return !j.pl.includes(id) && q && posOf(q) === posOf(bp); });
+    let i = t.findIndex(id => { const q = byId(id); return !j.pl.includes(id) && q && posOf(q) === posOf(bp); });   // primero por uno de su posición
+    if (i < 0) i = t.findIndex(id => !j.pl.includes(id));                                                          // si no hay, por cualquiera que no jugó
     if (i < 0) return { t, sb: null };
     const out = t[i]; t[i] = u.bn; return { t, sb: [out, u.bn] };
   }
@@ -217,7 +213,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       if (f.users.some(x => norm(x.name) === norm(name))) return bad(res, 'Ese nombre fantasy ya está cogido');
       ensure();
       const t = randomTeam(f);                       // equipo aleatorio de salida (gratis) + 40 M de presupuesto
-      u = { id: getDb().nextId++, tk: '', name, b: START_CASH, t, fm: fitFm(t, null, f.cfg.max) || legacyFm(t, f.cfg.max) };
+      u = { id: getDb().nextId++, tk: '', name, b: START_CASH, t, fm: bestFm(t, null, f.cfg.max) };
       f.users.push(u);
     }
     u.tk = crypto.randomBytes(18).toString('base64url');
@@ -236,13 +232,9 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     if (all(u).length >= f.cfg.max + 1) return bad(res, 'Tu plantilla está completa (' + f.cfg.max + ' titulares + 1 suplente). Vende a alguien antes');
     const pr = f.pr[p.id];
     if (u.b < pr) return bad(res, 'Te faltan ' + r1(pr - u.b) + ' M para fichar a ' + p.name);
-    let where = 'b', fm = null;
-    if (u.t.length < f.cfg.max) { fm = fitFm([...u.t, p.id], u.fm, f.cfg.max); if (fm) where = 't'; }   // al campo si cabe en tu formación (si hace falta, se ajusta la formación)
-    if (where === 'b' && u.bn) return bad(res, 'No te cabe un ' + POS_NAME[posOf(p)].toLowerCase() + ' en el campo (formación ' + u.fm + ') y el suplente está ocupado. Vende a alguien o cambia la alineación');
-    u.b = r1(u.b - pr);
     let note = '';
-    if (where === 't') { u.t.push(p.id); if (fm !== u.fm) { u.fm = fm; note = 'Formación cambiada a ' + fm; } }
-    else { u.bn = p.id; note = 'No cabe en tu formación (' + u.fm + '): va al banquillo'; }
+    if (u.t.length < f.cfg.max) u.t.push(p.id); else { u.bn = p.id; note = 'Va al banquillo (el campo está completo)'; }
+    u.b = r1(u.b - pr);
     await save(); res.json({ ok: true, note, ...view(u) });
   });
   app.post('/api/fantasy/sell', member, async (req, res) => {
@@ -265,17 +257,13 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       if (u.t.length < max) { t2 = [...u.t, id]; bn2 = 0; }
       else { if (!u.t.includes(out)) return bad(res, 'Elige a qué titular sustituye'); t2 = u.t.map(x => x === out ? id : x); bn2 = out; }
     } else return bad(res, 'Ese jugador no está en tu plantilla');
-    const fm = fitFm(t2, u.fm, max);
-    if (!fm) return bad(res, 'Ese cambio no cabe en ninguna formación: elige a alguien de la misma posición');
-    u.t = t2; u.bn = bn2; const note = fm !== u.fm ? 'Formación cambiada a ' + fm : ''; u.fm = fm;
+    u.t = t2; u.bn = bn2; const note = '';
     await save(); res.json({ ok: true, note, ...view(u) });
   });
   app.post('/api/fantasy/formation', member, async (req, res) => {
     const f = F(), u = req.fu, fm = String(req.body.fm || '');
     if (locked(f)) return bad(res, 'El mercado está cerrado: no se puede cambiar la formación mientras se puntúa la jornada');
     if (!fmList(f.cfg.max).includes(fm)) return bad(res, 'Formación no válida');
-    const c = cnt(u.t), q = parseFm(fm), over = POS4.filter(k => c[k] > q[k]);
-    if (over.length) return bad(res, 'Con la ' + fm + ' te sobran ' + over.map(k => (c[k] - q[k]) + ' ' + POS_NAME[k].toLowerCase() + (c[k] - q[k] > 1 ? 's' : '')).join(' y ') + ' en el campo. Mándalos al banquillo o véndelos antes');
     u.fm = fm; await save(); res.json({ ok: true, ...view(u) });
   });
   // Notas de 1 a 10. Una sola nota por persona y jugador: lo ya votado no se puede cambiar
