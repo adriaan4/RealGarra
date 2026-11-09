@@ -3,7 +3,8 @@
 // (Upstash o data.json) y reutiliza la plantilla (db.squad): los jugadores NO se duplican, el id es el de la plantilla.
 // Pensado para ocupar muy poco: números sueltos y mapas pequeños; al cerrar una jornada se borran las notas individuales y solo queda la media.
 module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, snapshot }) {
-  const BUDGET = 100;                       // millones iniciales
+  const BUDGET = 100;                       // tope de coste del equipo aleatorio de salida (M)
+  const START_CASH = 40;                    // presupuesto inicial de cada participante (M), además de su equipo aleatorio
   const MIN_P = 3, MAX_P = 60;              // límites de precio (M)
   const r1 = n => Math.round(n * 10) / 10;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -123,7 +124,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const open = f.jor.find(j => j.st === 'rate');
     return {
       me: { id: u.id, name: u.name, b: u.b, t: u.t },
-      cfg: { max: f.cfg.max, budget: BUDGET, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS } },
+      cfg: { max: f.cfg.max, budget: START_CASH, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS } },
       pl: squad().map(p => { const pos = posOf(p), a = f.av[p.id]; return { id: p.id, n: p.n, name: p.name, pos, ph: p.photo ? (p.photoV || 1) : 0, pr: f.pr[p.id], pp: f.pp[p.id] ?? f.pr[p.id], av: a && a[1] ? r1(a[0] / a[1]) : null, tn: team[p.id] || 0 }; }),
       us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, pts: gen[x.id] || 0, val: val(x) })),
       jor: f.jor.slice().sort((a, b) => a.j - b.j).map(jorOut),
@@ -151,8 +152,8 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       if (name.length < 2) return bad(res, 'Elige tu nombre fantasy (mínimo 2 letras)');
       if (f.users.some(x => norm(x.name) === norm(name))) return bad(res, 'Ese nombre fantasy ya está cogido');
       ensure();
-      const t = randomTeam(f);                       // equipo aleatorio de salida; lo que sobra de los 100 M queda de presupuesto
-      u = { id: getDb().nextId++, tk: '', name, b: r1(BUDGET - t.reduce((s, id) => s + f.pr[id], 0)), t };
+      const t = randomTeam(f);                       // equipo aleatorio de salida (gratis) + 40 M de presupuesto
+      u = { id: getDb().nextId++, tk: '', name, b: START_CASH, t };
       f.users.push(u);
     }
     u.tk = crypto.randomBytes(18).toString('base64url');
