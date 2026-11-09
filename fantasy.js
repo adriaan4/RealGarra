@@ -28,6 +28,8 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   // posición según el sitio que ocupa en el campo de la plantilla (portería abajo)
   const posOf = p => (p.y >= 88 ? 'POR' : p.y >= 62 ? 'DEF' : p.y >= 33 ? 'MED' : 'DEL');
   const squad = () => getDb().squad || [];
+  // Plantilla de cada participante: u.t = titulares (los únicos que puntúan, hasta cfg.max) y u.bn = el jugador del banquillo (0 = vacío; no puntúa)
+  const all = u => (u.bn ? [...u.t, u.bn] : u.t.slice());
   const byId = id => squad().find(p => p.id === id);
 
   // Deja todo coherente: precios iniciales de la plantilla actual y equipos sin jugadores que ya no existen (se devuelve su precio)
@@ -38,6 +40,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     for (const u of f.users) {
       const keep = u.t.filter(id => ids.has(id));
       if (keep.length !== u.t.length) { u.b = r1(u.b + u.t.filter(id => !ids.has(id)).reduce((s, id) => s + (f.pr[id] || 0), 0)); u.t = keep; ch = true; }
+      if (u.bn && (!ids.has(u.bn) || u.t.includes(u.bn))) { if (!ids.has(u.bn)) u.b = r1(u.b + (f.pr[u.bn] || 0)); u.bn = 0; ch = true; }   // banquillo con un jugador que ya no existe (o repetido): se devuelve su precio
     }
     return ch;
   }
@@ -118,16 +121,16 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   }
   function view(u) {
     const f = F(), team = {};
-    f.users.forEach(x => x.t.forEach(id => { team[id] = (team[id] || 0) + 1; }));
+    f.users.forEach(x => all(x).forEach(id => { team[id] = (team[id] || 0) + 1; }));
     const gen = {};
     for (const j of f.jor) if (j.st === 'done') for (const [id, p] of Object.entries(j.up)) gen[id] = r1((gen[id] || 0) + p);
-    const val = x => r1(x.b + x.t.reduce((s, id) => s + (f.pr[id] || 0), 0));
+    const val = x => r1(x.b + all(x).reduce((s, id) => s + (f.pr[id] || 0), 0));
     const open = f.jor.find(j => j.st === 'rate');
     return {
-      me: { id: u.id, name: u.name, b: u.b, t: u.t },
+      me: { id: u.id, name: u.name, b: u.b, t: u.t, bn: u.bn || 0 },
       cfg: { max: f.cfg.max, budget: START_CASH, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS } },
       pl: squad().map(p => { const pos = posOf(p), a = f.av[p.id]; return { id: p.id, n: p.n, name: p.name, pos, ph: p.photo ? (p.photoV || 1) : 0, pr: f.pr[p.id], pp: f.pp[p.id] ?? f.pr[p.id], av: a && a[1] ? r1(a[0] / a[1]) : null, tn: team[p.id] || 0 }; }),
-      us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, pts: gen[x.id] || 0, val: val(x) })),
+      us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, bn: x.bn || 0, pts: gen[x.id] || 0, val: val(x) })),
       jor: f.jor.slice().sort((a, b) => a.j - b.j).map(jorOut),
       mine: open ? Object.fromEntries(open.pl.filter(pid => (open.rt[pid] || {})[u.id]).map(pid => [pid, open.rt[pid][u.id]])) : {}
     };
@@ -168,18 +171,38 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const f = F(), u = req.fu, p = byId(+req.body.pid);
     if (!p) return bad(res, 'Jugador no encontrado');
     if (locked(f)) return bad(res, 'El mercado está cerrado (jornada en curso)');
-    if (u.t.includes(p.id)) return bad(res, 'Ya tienes a ' + p.name);
-    if (u.t.length >= f.cfg.max) return bad(res, 'Tu plantilla está completa (' + f.cfg.max + ' jugadores). Vende a alguien antes');
+    if (all(u).includes(p.id)) return bad(res, 'Ya tienes a ' + p.name);
+    const free = u.t.length < f.cfg.max;             // hueco entre los titulares
+    if (!free && u.bn) return bad(res, 'Tu plantilla está completa (' + f.cfg.max + ' titulares + 1 en el banquillo). Vende a alguien antes');
     const pr = f.pr[p.id];
     if (u.b < pr) return bad(res, 'Te faltan ' + r1(pr - u.b) + ' M para fichar a ' + p.name);
-    u.b = r1(u.b - pr); u.t.push(p.id);
+    u.b = r1(u.b - pr);
+    if (free) u.t.push(p.id); else u.bn = p.id;      // primero se llena el campo; el siguiente fichaje va al banquillo
     await save(); res.json({ ok: true, ...view(u) });
   });
   app.post('/api/fantasy/sell', member, async (req, res) => {
     const f = F(), u = req.fu, id = +req.body.pid;
-    if (!u.t.includes(id)) return bad(res, 'Ese jugador no está en tu plantilla');
+    if (!all(u).includes(id)) return bad(res, 'Ese jugador no está en tu plantilla');
     if (locked(f)) return bad(res, 'El mercado está cerrado (jornada en curso)');
-    u.b = r1(u.b + (f.pr[id] || 0)); u.t = u.t.filter(x => x !== id);
+    u.b = r1(u.b + (f.pr[id] || 0)); u.t = u.t.filter(x => x !== id); if (u.bn === id) u.bn = 0;
+    await save(); res.json({ ok: true, ...view(u) });
+  });
+  // Banquillo: manda un titular al banquillo (o lo cambia por el que está allí) o sube al del banquillo al campo. Solo con el mercado abierto,
+  // porque al cerrar la jornada solo puntúan los titulares que tenías en ese momento. body: { pid, out? } (out = el titular al que sustituye el del banquillo)
+  app.post('/api/fantasy/swap', member, async (req, res) => {
+    const f = F(), u = req.fu, id = +req.body.pid, out = +req.body.out || 0;
+    if (locked(f)) return bad(res, 'El mercado está cerrado: no se puede tocar la alineación mientras se puntúa la jornada');
+    if (u.t.includes(id)) {                                     // titular → banquillo
+      const old = u.bn; u.t = u.t.filter(x => x !== id); u.bn = id;
+      if (old) u.t.push(old);                                   // el del banquillo salta al campo
+    } else if (u.bn && u.bn === id) {                           // banquillo → campo
+      if (u.t.length < f.cfg.max) u.t.push(id);
+      else {
+        if (!u.t.includes(out)) return bad(res, 'Elige a qué titular sustituye');
+        u.t = u.t.map(x => x === out ? id : x); u.bn = out;
+      }
+      if (u.t.includes(u.bn)) u.bn = 0;
+    } else return bad(res, 'Ese jugador no está en tu plantilla');
     await save(); res.json({ ok: true, ...view(u) });
   });
   // Notas de 1 a 10. Una sola nota por persona y jugador: lo ya votado no se puede cambiar
@@ -225,7 +248,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     res.json({
       cfg: { max: f.cfg.max, mk: f.cfg.mk, locked: locked(f) },
       codes: f.codes,
-      users: f.users.map(u => ({ id: u.id, name: u.name, b: u.b, n: u.t.length, off: !!u.off, pts: gen[u.id] || 0, linked: !!u.tk })),
+      users: f.users.map(u => ({ id: u.id, name: u.name, b: u.b, n: all(u).length, off: !!u.off, pts: gen[u.id] || 0, linked: !!u.tk })),
       pl: squad().map(p => ({ id: p.id, n: p.n, name: p.name, pos: posOf(p), pr: f.pr[p.id], av: f.av[p.id] && f.av[p.id][1] ? r1(f.av[p.id][0] / f.av[p.id][1]) : null })),
       jor: f.jor.slice().sort((a, b) => b.j - a.j).map(j => ({ ...j, ra: j.st === 'rate' ? liveRa(j) : j.ra, tm: undefined, np: j.pl.length }))
     });

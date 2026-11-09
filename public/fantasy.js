@@ -55,34 +55,35 @@
     <small style="opacity:.55">Si vuelves a entrar con un código de recuperación del admin, no hace falta nombre.</small></div>`;
   }
   function top() {
-    const r = ranking(), idx = r.findIndex(x => x.id === D.me.id), me = r[idx] || { pts: 0 }, tv = D.me.t.map(P).filter(Boolean).reduce((s, p) => s + p.pr, 0);
+    const r = ranking(), idx = r.findIndex(x => x.id === D.me.id), me = r[idx] || { pts: 0 }, tv = [...D.me.t, D.me.bn].filter(Boolean).map(P).filter(Boolean).reduce((s, p) => s + p.pr, 0);
     return `<div class="fxTop"><div class="fxHi"><img src="escudo.png" alt=""><div><small>Real Garra Fantasy</small><b>${E(D.me.name)}</b></div></div>
     <div class="fxStats"><div class="fxStat"><small>Valor plantilla</small><b>${fm(tv)}<span>M</span></b></div><div class="fxStat gold"><small>Presupuesto</small><b>${fm(D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Patrimonio</small><b>${fm(tv + D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Puntos</small><b>${fp(me.pts)}</b></div><div class="fxStat"><small>Puesto</small><b>${idx + 1}<span>/ ${r.length}</span></b></div></div></div>`;
   }
   const tok = (p, last) => `<button class="fxTok fxP-${p.pos}" data-act="pl" data-id="${p.id}" aria-label="${E(p.name)}, ${POSL[p.pos]}"><span class="sh${p.ph ? ' ph' : ''}">${p.ph ? `<img loading="lazy" decoding="async" src="${photo(p)}" alt=""><u>${p.n}</u>` : p.n}${last && last.pt && last.pt[p.id] != null ? `<span class="bd${last.pt[p.id] < 0 ? ' neg' : ''}">${fp(last.pt[p.id])}</span>` : ''}</span><b>${E(p.name)}</b><i>${M(p.pr)}</i></button>`;
   function viewTeam() {
-    const mine = D.me.t.map(P).filter(Boolean), last = done().slice(-1)[0], free = D.cfg.max - mine.length;
-    const val = mine.reduce((s, p) => s + p.pr, 0);
+    const mine = D.me.t.map(P).filter(Boolean), bn = D.me.bn ? P(D.me.bn) : null, last = done().slice(-1)[0], free = D.cfg.max - mine.length;
+    const val = mine.reduce((s, p) => s + p.pr, 0) + (bn ? bn.pr : 0);
     const lines = ['DEL', 'MED', 'DEF', 'POR'].map(pos => `<div class="fxLine">${mine.filter(p => p.pos === pos).map(p => tok(p, last)).join('')}</div>`).join('');
     const bars = done();
     const mx = Math.max(1, ...bars.map(j => Math.abs((j.up || {})[D.me.id] || 0)));
     return `${mine.length ? '' : '<div class="fxNote">Tu equipo está vacío. Ve al <b>Mercado</b> y ficha a tus primeros jugadores: tienes ' + M(D.me.b) + '.</div>'}
     <div class="fxPitch" aria-label="Tu equipo">${lines}</div>
-    <div class="fxBench">${free > 0 ? Array.from({ length: free }, () => `<button class="fxTok empty" data-act="go" data-t="market"><span class="sh">+</span><b>Libre</b></button>`).join('') + `<small>${free} hueco${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} · valor del equipo ${M(val)}</small>` : `<small>Plantilla completa (${D.cfg.max}) · valor del equipo ${M(val)}</small>`}${last ? `<small>🟡 La insignia de cada jugador son sus puntos en la J${last.j}</small>` : ''}</div>
+    <div class="fxBench bn"><small>🪑 Banquillo · aquí <b>no puntúa</b></small>${bn ? tok(bn) : '<button class="fxTok empty" data-act="go" data-t="market"><span class="sh">+</span><b>Libre</b></button>'}${bn ? '<small>Toca al jugador para meterlo en el campo</small>' : ''}${bn && free > 0 ? `<small class="fxWarn">⚠️ Tienes ${free} hueco${free > 1 ? 's' : ''} en el campo: sube a ${E(bn.name)} para que puntúe</small>` : ''}</div>
+    <div class="fxBench">${free > 0 ? Array.from({ length: free }, () => `<button class="fxTok empty" data-act="go" data-t="market"><span class="sh">+</span><b>Libre</b></button>`).join('') + `<small>${free} hueco${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} en el campo · valor del equipo ${M(val)}</small>` : `<small>Campo completo (${D.cfg.max} titulares)${bn ? '' : ' · banquillo libre'} · valor del equipo ${M(val)}</small>`}${last ? `<small>🟡 La insignia de cada jugador son sus puntos en la J${last.j}</small>` : ''}</div>
     <div class="fxH2">Mis puntos por jornada</div>
     ${bars.length ? `<div class="fxBars">${bars.map(j => { const v = (j.up || {})[D.me.id] || 0; return `<div><b>${fp(v)}</b><i style="height:${Math.max(4, Math.abs(v) / mx * 62)}px"></i><small>J${j.j}</small></div>`; }).join('')}</div>` : '<p class="sub" style="font-size:16px">Aún no hay jornadas puntuadas. Aquí verás tus puntos tras cada partido.</p>'}`;
   }
   function viewMarket() {
-    const owned = new Set(D.me.t), full = D.me.t.length >= D.cfg.max;
+    const owned = new Set([...D.me.t, D.me.bn].filter(Boolean)), cap = D.cfg.max + 1, full = owned.size >= cap;
     let list = D.pl.filter(p => filt === 'ALL' || p.pos === filt);
     list.sort(sort === 'pr' ? (a, b) => b.pr - a.pr : sort === 'av' ? (a, b) => (b.av ?? -1) - (a.av ?? -1) || b.pr - a.pr : (a, b) => b.tn - a.tn || b.pr - a.pr);
     const nU = Math.max(1, D.us.length);
-    return `${D.cfg.locked ? '<div class="fxNote lock">🔒 <b>Mercado cerrado</b> mientras se juega y se puntúa la jornada. Se reabre al cerrarla, con los precios nuevos.</div>' : '<div class="fxNote">💶 Tienes <b>' + M(D.me.b) + '</b> · plantilla <b>' + D.me.t.length + '/' + D.cfg.max + '</b>' + (full ? ' — <b>está llena: vende a alguien para poder fichar</b>' : '') + '. Vendes al precio actual: si un jugador sube, ganas.</div>'}
+    return `${D.cfg.locked ? '<div class="fxNote lock">🔒 <b>Mercado cerrado</b> mientras se juega y se puntúa la jornada. Se reabre al cerrarla, con los precios nuevos.</div>' : '<div class="fxNote">💶 Tienes <b>' + M(D.me.b) + '</b> · plantilla <b>' + owned.size + '/' + cap + '</b> (' + D.cfg.max + ' titulares + banquillo)' + (full ? ' — <b>está llena: vende a alguien para poder fichar</b>' : '') + '. Vendes al precio actual: si un jugador sube, ganas.</div>'}
     <div class="fxChips">${['ALL', 'POR', 'DEF', 'MED', 'DEL'].map(k => `<button class="fxChip${filt === k ? ' on' : ''}" data-act="filt" data-k="${k}">${k === 'ALL' ? 'Todos' : POSL[k] + 's'}</button>`).join('')}</div>
     <div class="fxChips">${[['pr', '💶 Precio'], ['av', '⭐ Nota'], ['tn', '👥 Más fichados']].map(([k, l]) => `<button class="fxChip${sort === k ? ' on' : ''}" data-act="sort" data-k="${k}">${l}</button>`).join('')}</div>
     ${list.map(p => { const own = owned.has(p.id), dis = D.cfg.locked || (!own && (full || D.me.b < p.pr));
       return `<div class="fxRow fxP-${p.pos}${own ? ' mine' : ''}">${av(p)}
-      <div class="fxNm" data-act="pl" data-id="${p.id}" role="button" tabindex="0"><b>${E(p.name)}</b><small><u>${POSL[p.pos]}</u> · ${p.av != null ? '⭐ ' + fm(p.av) : 'sin nota'} · 👥 ${Math.round(p.tn / nU * 100)}%</small></div>
+      <div class="fxNm" data-act="pl" data-id="${p.id}" role="button" tabindex="0"><b>${E(p.name)}</b><small><u>${POSL[p.pos]}</u> · ${p.av != null ? '⭐ ' + fm(p.av) : 'sin nota'} · 👥 ${Math.round(p.tn / nU * 100)}%${D.me.bn === p.id ? ' · 🪑 banquillo' : ''}</small></div>
       <div class="fxPr"><b>${M(p.pr)}</b>${trend(p)}</div>
       <button class="act${own ? ' sell' : ''}" data-act="${own ? 'sell' : 'buy'}" data-id="${p.id}"${dis ? ' disabled' : ''}>${own ? 'Vender' : D.cfg.locked ? 'Cerrado' : full ? 'Llena' : D.me.b < p.pr ? 'Sin saldo' : 'Fichar'}</button></div>`; }).join('')}`;
   }
@@ -119,7 +120,7 @@
   function viewRules() {
     const R = D.cfg.rules;
     return `<div class="fxH2">Cómo funciona</div><ul class="fxRules">
-    <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> de presupuesto para fichar. Puedes tener hasta <b>${D.cfg.max} jugadores</b> de la plantilla del Garra. Varios participantes pueden fichar al mismo jugador.</li>
+    <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> de presupuesto para fichar. Tu alineación son <b>${D.cfg.max} titulares + 1 jugador en el banquillo</b> (hasta ${D.cfg.max + 1} de la plantilla del Garra). <b>Solo puntúan los titulares</b>: el del banquillo no suma nada. Toca a un jugador para cambiarlo de sitio (con el mercado abierto); al cerrarse la jornada cuenta la alineación que tengas en ese momento. Varios participantes pueden fichar al mismo jugador.</li>
     <li>⭐ <b>Las notas mandan.</b> Tras cada partido todos puntúan del 1 al 10 a los que han jugado (una nota por persona y jugador). Cada punto de media por encima de 5 suma <b>${R.rate}</b> puntos (y por debajo, resta).</li>
     <li>⚽ <b>Estadísticas:</b> jugar +${R.play} · gol (portero ${R.GOAL.POR}, defensa ${R.GOAL.DEF}, medio ${R.GOAL.MED}, delantero ${R.GOAL.DEL}) · asistencia +${R.assist} · amarilla ${R.yellow} · roja ${R.red}.</li>
     <li>🧤 <b>Portería a cero:</b> portero +${R.CS.POR}, defensas +${R.CS.DEF}, medios +${R.CS.MED}.</li>
@@ -149,19 +150,24 @@
   const closeSheet = () => $('.fxOv')?.remove();
   function sheetPlayer(id) {
     const p = P(id); if (!p) return;
-    const own = D.me.t.includes(id), hist = done().filter(j => j.pl.includes(id)).reverse(), dis = D.cfg.locked || (!own && (D.me.t.length >= D.cfg.max || D.me.b < p.pr));
+    const isT = D.me.t.includes(id), isB = D.me.bn === id, own = isT || isB, hist = done().filter(j => j.pl.includes(id)).reverse(), dis = D.cfg.locked || (!own && ((D.me.t.length >= D.cfg.max && !!D.me.bn) || D.me.b < p.pr));
+    const lineup = !own ? '' : D.cfg.locked ? '<p class="sub" style="font-size:15px">🔒 Alineación bloqueada mientras se puntúa la jornada.</p>' : isT ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">${D.me.bn ? '🔄 Cambiar por ' + E((P(D.me.bn) || {}).name) + ' (banquillo)' : '🪑 Mandar al banquillo'}</button>` : D.me.t.length < D.cfg.max ? `<button class="fxBtn alt" data-act="swap" data-id="${id}" data-close="1">⬆️ Subir al campo</button>` : `<div class="fxH2" style="margin:4px 0 8px">⬆️ Subir al campo: ¿a quién sustituye?</div><div class="fxSwap">${D.me.t.map(P).filter(Boolean).map(q => `<button class="fxBtn alt sm" data-act="swap" data-id="${id}" data-out="${q.id}" data-close="1">${E(q.name)}</button>`).join('')}</div>`;
     const g = hist.reduce((s, j) => s + (((j.s || {})[id] || [0])[0] || 0), 0);
     sheet(`${p.ph ? `<div class="fxPhBig fxP-${p.pos}"><img src="${photo(p)}" alt="${E(p.name)}"></div>` : ''}<h3 class="fxP-${p.pos}"><span style="color:var(--c)">${p.n}</span> ${E(p.name)}</h3><small style="opacity:.7">${POSL[p.pos]}</small>
     <div class="fxKv"><div><small>Precio</small><b>${M(p.pr)}</b></div><div><small>Tendencia</small><b>${trend(p)}</b></div><div><small>Nota media</small><b>${p.av != null ? fm(p.av) : '—'}</b></div></div>
     ${hist.length ? `<div class="fxH2" style="margin-top:6px">Sus jornadas<small>${g} gol${g === 1 ? '' : 'es'}</small></div>` + hist.map(j => { const ra = (j.ra || {})[id]; return `<div class="fxRk" style="cursor:default;grid-template-columns:44px 1fr auto"><span class="pos">J${j.j}</span><div><small>vs ${E(j.rival)}</small>${ra ? '⭐ ' + fm(ra[0]) + ' <small style="display:inline">(' + ra[1] + ')</small>' : 'sin notas'}</div><span class="fxPts">${fp((j.pt || {})[id] || 0)}<small>pts</small></span></div>`; }).join('') : '<p class="sub" style="font-size:16px">Todavía no ha puntuado en ninguna jornada.</p>'}
+    ${isB ? '<p class="sub" style="font-size:15px;margin-top:10px">🪑 Está en tu banquillo: <b>no puntúa</b> hasta que lo subas al campo.</p>' : ''}
+    ${lineup ? '<div style="margin-top:14px">' + lineup + '</div>' : ''}
     <div style="margin-top:16px"><button class="fxBtn" data-act="${own ? 'sell' : 'buy'}" data-id="${id}" data-close="1"${dis ? ' disabled' : ''}>${own ? 'Vender por ' + M(p.pr) : 'Fichar por ' + M(p.pr)}</button></div>`);
   }
   function sheetUser(id) {
     const u = D.us.find(x => x.id === id); if (!u) return;
     const j = rsel !== 'g' ? done().find(x => x.j === rsel) : null, last = done().slice(-1)[0], jj = j || last;
     const pl = u.t.map(P).filter(Boolean).sort((a, b) => ((jj && jj.pt || {})[b.id] || 0) - ((jj && jj.pt || {})[a.id] || 0));
+    const ub = u.bn ? P(u.bn) : null;
     sheet(`<h3>${E(u.name)}</h3><small style="opacity:.7">${fp(u.pts)} pts · patrimonio ${M(u.val)}${jj ? ' · puntos de la J' + jj.j : ''}</small>
-    ${pl.map(p => `<div class="fxRow fxP-${p.pos}" style="grid-template-columns:auto 1fr auto">${av(p)}<div class="fxNm"><b>${E(p.name)}</b><small><u>${POSL[p.pos]}</u> · ${M(p.pr)}</small></div><div class="fxPr"><b>${jj && jj.pt && jj.pt[p.id] != null ? fp(jj.pt[p.id]) : '—'}</b></div></div>`).join('') || '<p class="sub">Aún no tiene jugadores.</p>'}`);
+    ${pl.map(p => `<div class="fxRow fxP-${p.pos}" style="grid-template-columns:auto 1fr auto">${av(p)}<div class="fxNm"><b>${E(p.name)}</b><small><u>${POSL[p.pos]}</u> · ${M(p.pr)}</small></div><div class="fxPr"><b>${jj && jj.pt && jj.pt[p.id] != null ? fp(jj.pt[p.id]) : '—'}</b></div></div>`).join('') || '<p class="sub">Aún no tiene jugadores.</p>'}
+    ${ub ? `<div class="fxH2" style="margin-top:10px">🪑 Banquillo<small>no puntúa</small></div><div class="fxRow fxP-${ub.pos}" style="grid-template-columns:auto 1fr auto;opacity:.6">${av(ub)}<div class="fxNm"><b>${E(ub.name)}</b><small><u>${POSL[ub.pos]}</u> · ${M(ub.pr)}</small></div><div class="fxPr"><b>—</b></div></div>` : ''}`);
   }
 
   // ---------- acciones ----------
@@ -188,6 +194,9 @@
       } else if (a === 'buy' || a === 'sell') {
         const p = P(id), r = await fapi('/api/fantasy/' + a, 'POST', { pid: id }); D = r; sig = JSON.stringify(D);
         if (b.dataset.close) closeSheet(); draw(); toast(a === 'buy' ? '✅ Fichado ' + p.name + ' por ' + M(p.pr) : '💶 Vendido ' + p.name + ' por ' + M(p.pr));
+      } else if (a === 'swap') {
+        const r = await fapi('/api/fantasy/swap', 'POST', { pid: id, out: +b.dataset.out || 0 }); D = r; sig = JSON.stringify(D);
+        if (b.dataset.close) closeSheet(); draw(); toast('🔄 Alineación actualizada');
       } else if (a === 'send') {
         const j = openJ(), r = await fapi('/api/fantasy/rate', 'POST', { j: j.j, r: pend }); pend = {}; D = r; sig = JSON.stringify(D); draw(); toast('✅ ' + r.saved + ' nota' + (r.saved > 1 ? 's' : '') + ' enviada' + (r.saved > 1 ? 's' : ''));
       }
@@ -252,7 +261,7 @@
       ${A.jor.map(j => jorAdmin(j, O, playerName, userName)).join('')}
     </div></details>
     <details class="ad" data-k="cfg"${O('cfg')}><summary>⚙️ Ajustes de Fantasy</summary><div class="adb">
-      <div class="row">Jugadores por equipo: <input id="fxaMax" type="number" min="3" max="14" value="${A.cfg.max}" style="width:72px"></div>
+      <div class="row">Titulares por equipo (+1 en el banquillo): <input id="fxaMax" type="number" min="3" max="14" value="${A.cfg.max}" style="width:72px"></div>
       <div class="row">Mercado: <select id="fxaMk"><option value="0"${A.cfg.mk === 0 ? ' selected' : ''}>Automático (cerrado mientras haya jornada abierta)</option><option value="1"${A.cfg.mk === 1 ? ' selected' : ''}>Abierto siempre</option><option value="2"${A.cfg.mk === 2 ? ' selected' : ''}>Cerrado</option></select></div>
       <p class="sub" style="font-size:14px">Ahora mismo: ${A.cfg.locked ? '🔒 cerrado' : '🟢 abierto'}</p>
       <div class="row"><button data-fa="cfg">Guardar ajustes</button></div>

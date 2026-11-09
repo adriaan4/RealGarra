@@ -151,3 +151,11 @@ html{scroll-padding-bottom:96px}
 @media(max-width:420px){.fxAv{width:52px}}
 .fxCode{flex-wrap:wrap}.fxCode.new{border-color:var(--gold);background:linear-gradient(90deg,rgba(226,171,44,.16),#120e0b 70%)}
 .fxStat:nth-child(-n+2){grid-column:span 3}.fxStat:nth-child(n+3){grid-column:span 2}.fxStat:nth-child(n+3) b{font-size:22px}
+
+/* Banquillo (8.º jugador: no puntúa) */
+.fxBench.bn{margin-top:12px;border-style:solid;border-color:rgba(226,171,44,.45);background:linear-gradient(160deg,rgba(226,171,44,.10),var(--glass))}
+.fxBench.bn .fxTok{opacity:.88}
+.fxBench .fxWarn{color:var(--gold);opacity:1;font-weight:700}
+.fxBtn.alt{background:transparent;color:inherit;border:1px solid var(--line)}
+.fxSwap{display:flex;flex-wrap:wrap;gap:8px}
+.fxSwap .fxBtn{flex:1 1 40%}
