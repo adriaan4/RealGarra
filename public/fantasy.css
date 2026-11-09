@@ -26,7 +26,7 @@
 .fxHi{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:relative;z-index:1}
 .fxHi img{height:38px}.fxHi small{display:block;opacity:.65;font-size:13px;line-height:1;text-transform:uppercase;letter-spacing:1.5px}
 .fxHi b{font:800 28px/1.05 "Barlow Condensed",sans-serif;color:var(--gold);overflow-wrap:anywhere}
-.fxStats{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px;position:relative;z-index:1}
+.fxStats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;position:relative;z-index:1}
 .fxStat{background:var(--glass);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:9px 11px;backdrop-filter:blur(4px)}
 .fxStat small{display:block;opacity:.6;font-size:12px;letter-spacing:1px;text-transform:uppercase}
 .fxStat b{font:800 26px/1.1 "Barlow Condensed",sans-serif}.fxStat b span{font-size:15px;opacity:.65;margin-left:2px}
@@ -149,3 +149,5 @@ html{scroll-padding-bottom:96px}
 .fxPhBig{width:100%;max-width:340px;margin:0 auto 10px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#0d0b09;border:3px solid var(--c,var(--gold))}
 .fxPhBig img{width:100%;height:100%;object-fit:contain;display:block}
 @media(max-width:420px){.fxAv{width:52px}}
+.fxCode{flex-wrap:wrap}.fxCode.new{border-color:var(--gold);background:linear-gradient(90deg,rgba(226,171,44,.16),#120e0b 70%)}
+.fxStat:nth-child(-n+2){grid-column:span 3}.fxStat:nth-child(n+3){grid-column:span 2}.fxStat:nth-child(n+3) b{font-size:22px}

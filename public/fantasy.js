@@ -48,16 +48,16 @@
   function gate() {
     let c = ''; try { c = new URLSearchParams(location.search).get('fc') || ''; } catch { }
     return `<div class="fxGate"><img src="escudo.png" alt=""><div class="tagl">🔒 Acceso privado</div><h1>REAL GARRA<br>FANTASY</h1>
-    <p>Ficha a la plantilla del Garra con 100 M, puntúa a tus compañeros tras cada partido y sube en la clasificación. Solo entra quien tenga un código de invitación.</p>
+    <p>Al entrar recibes un equipo aleatorio de la plantilla del Garra y 100 M para fichar: mejóralo, puntúa a tus compañeros tras cada partido y sube en la clasificación. Solo entra quien tenga un código de invitación.</p>
     <input id="fxCode" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Código de invitación" value="${E(c)}">
     <input id="fxName" placeholder="Tu nombre fantasy" maxlength="16" autocomplete="off" aria-label="Nombre fantasy (distinto de tu usuario de GarraBet)">
     <button class="fxBtn" data-act="join">Entrar</button><div class="fxMsg" id="fxMsg" role="alert"></div>
     <small style="opacity:.55">Si vuelves a entrar con un código de recuperación del admin, no hace falta nombre.</small></div>`;
   }
   function top() {
-    const r = ranking(), idx = r.findIndex(x => x.id === D.me.id), me = r[idx] || { pts: 0 };
+    const r = ranking(), idx = r.findIndex(x => x.id === D.me.id), me = r[idx] || { pts: 0 }, tv = D.me.t.map(P).filter(Boolean).reduce((s, p) => s + p.pr, 0);
     return `<div class="fxTop"><div class="fxHi"><img src="escudo.png" alt=""><div><small>Real Garra Fantasy</small><b>${E(D.me.name)}</b></div></div>
-    <div class="fxStats"><div class="fxStat gold"><small>Presupuesto</small><b>${fm(D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Puntos</small><b>${fp(me.pts)}</b></div><div class="fxStat"><small>Puesto</small><b>${idx + 1}<span>/ ${r.length}</span></b></div></div></div>`;
+    <div class="fxStats"><div class="fxStat"><small>Valor plantilla</small><b>${fm(tv)}<span>M</span></b></div><div class="fxStat gold"><small>Presupuesto</small><b>${fm(D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Patrimonio</small><b>${fm(tv + D.me.b)}<span>M</span></b></div><div class="fxStat"><small>Puntos</small><b>${fp(me.pts)}</b></div><div class="fxStat"><small>Puesto</small><b>${idx + 1}<span>/ ${r.length}</span></b></div></div></div>`;
   }
   const tok = (p, last) => `<button class="fxTok fxP-${p.pos}" data-act="pl" data-id="${p.id}" aria-label="${E(p.name)}, ${POSL[p.pos]}"><span class="sh${p.ph ? ' ph' : ''}">${p.ph ? `<img loading="lazy" decoding="async" src="${photo(p)}" alt=""><u>${p.n}</u>` : p.n}${last && last.pt && last.pt[p.id] != null ? `<span class="bd${last.pt[p.id] < 0 ? ' neg' : ''}">${fp(last.pt[p.id])}</span>` : ''}</span><b>${E(p.name)}</b><i>${M(p.pr)}</i></button>`;
   function viewTeam() {
@@ -119,7 +119,7 @@
   function viewRules() {
     const R = D.cfg.rules;
     return `<div class="fxH2">Cómo funciona</div><ul class="fxRules">
-    <li>💶 Empiezas con <b>${D.cfg.budget} M</b> y puedes tener hasta <b>${D.cfg.max} jugadores</b> de la plantilla del Garra. Varios participantes pueden fichar al mismo jugador.</li>
+    <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> en total (lo que sobra tras el equipo es tu presupuesto). Puedes tener hasta <b>${D.cfg.max} jugadores</b> de la plantilla del Garra. Varios participantes pueden fichar al mismo jugador.</li>
     <li>⭐ <b>Las notas mandan.</b> Tras cada partido todos puntúan del 1 al 10 a los que han jugado (una nota por persona y jugador). Cada punto de media por encima de 5 suma <b>${R.rate}</b> puntos (y por debajo, resta).</li>
     <li>⚽ <b>Estadísticas:</b> jugar +${R.play} · gol (portero ${R.GOAL.POR}, defensa ${R.GOAL.DEF}, medio ${R.GOAL.MED}, delantero ${R.GOAL.DEL}) · asistencia +${R.assist} · amarilla ${R.yellow} · roja ${R.red}.</li>
     <li>🧤 <b>Portería a cero:</b> portero +${R.CS.POR}, defensas +${R.CS.DEF}, medios +${R.CS.MED}.</li>
@@ -218,6 +218,8 @@
   const ad = (u, m, b) => adm('/api/fantasy-admin' + u, m, b);
   const msg = t => { const m = $('#amsg'); if (m) m.textContent = t; };
   async function aLoad() { try { A = await ad('/all'); aDraw(); } catch (e) { const r = $('#fxAdmin'); if (r) r.innerHTML = '<p class="msg">' + E(e.message) + '</p>'; } }
+  let fresh = new Set();
+  const shareText = c => '🦁 ¡Únete a mi liga Fantasy de Garra!\nEntra con este enlace: ' + invite(c) + '\nTu código de invitación: ' + c + '';
   const invite = c => location.origin + '/?fc=' + c + '#fantasy';
   const dt = n => n;
   function aDraw() {
@@ -229,9 +231,9 @@
     const userName = id => (A.users.find(u => u.id === id) || {}).name || '?';
     root.innerHTML = `<div class="fxA">
     <details class="ad" data-k="codes"${O('codes')}><summary>🎟️ Códigos de invitación (${A.codes.length})</summary><div class="adb">
-      <p class="sub" style="font-size:15px">Un código = una persona (se gasta al usarlo). Pásaselo por WhatsApp: «Copiar invitación» incluye el enlace.</p>
-      <div class="row"><input id="fxaN" type="number" min="1" max="20" value="1" style="width:72px"><button data-fa="gen">Generar códigos</button></div>
-      ${A.codes.map(c => `<div class="fxCode"><div><b>${c.c}</b><br><small>${c.u ? '🔑 Recuperación de ' + E(userName(c.u)) : 'Nuevo participante'}</small></div><div class="row" style="margin:0"><button class="sm" data-fa="copy" data-c="${c.c}">Copiar invitación</button><button class="sm ghost" data-fa="delcode" data-c="${c.c}">✕</button></div></div>`).join('') || '<p>No hay códigos pendientes.</p>'}
+      <p class="sub" style="font-size:15px">Un código sirve para <b>varias personas</b> (tú pones cuántas, o sin límite). Pulsa «📤 Compartir» para mandar «Únete a mi liga Fantasy de Garra» con el enlace de la web y el código. Si quieres cortar la entrada, bórralo con ✕.</p>
+      <div class="row"><input id="fxaL" maxlength="20" placeholder="Nombre del grupo (opcional)" style="flex:1;min-width:130px"><input id="fxaM" type="number" min="0" max="500" placeholder="Personas" style="width:96px" aria-label="Cuántas personas pueden entrar con este código (vacío = sin límite)"><button data-fa="gen">Generar código</button></div>
+      ${A.codes.slice().reverse().map(c => `<div class="fxCode${fresh.has(c.c) ? ' new' : ''}"><div><b>${c.c}</b>${fresh.has(c.c) ? ' <small>🆕</small>' : ''}<br><small>${c.u ? '🔑 Recuperación de ' + E(userName(c.u)) : (c.l ? E(c.l) + ' · ' : '') + 'Han entrado ' + (c.n || 0) + (c.max ? ' de ' + c.max : ' · sin límite')}</small></div><div class="row" style="margin:0"><button class="sm" data-fa="share" data-c="${c.c}">📤 Compartir</button><button class="sm ghost" data-fa="copy" data-c="${c.c}">Copiar</button><button class="sm ghost" data-fa="delcode" data-c="${c.c}">✕</button></div></div>`).join('') || '<p>No hay códigos pendientes.</p>'}
     </div></details>
     <details class="ad" data-k="users"${O('users')}><summary>👥 Participantes (${A.users.length})</summary><div class="adb">
       ${A.users.map(u => `<div class="pv" style="${u.off ? 'opacity:.55' : ''}"><div class="vh"><b>${E(u.name)}</b><span>${dt(u.pts)} pts · ${u.b} M · ${u.n} jug.</span></div>
@@ -282,8 +284,12 @@
   async function fa(b) {
     const a = b.dataset.fa, id = +b.dataset.id, j = +b.dataset.j, jd = b.closest('details[data-j]');
     try {
-      if (a === 'gen') { const r = await ad('/codes', 'POST', { n: +$('#fxaN').value || 1 }); msg('Códigos generados: ' + r.codes.join(', ')); }
-      else if (a === 'copy') { const t = '🦁 Te invito a REAL GARRA FANTASY\nCódigo: ' + b.dataset.c + '\n' + invite(b.dataset.c); try { await navigator.clipboard.writeText(t); msg('Invitación copiada'); } catch { prompt('Copia la invitación:', t); } return; }
+      if (a === 'gen') { const r = await ad('/codes', 'POST', { n: 1, max: +$('#fxaM').value || 0, label: $('#fxaL').value }); fresh = new Set(r.codes); msg('Código listo: pulsa «Compartir»'); }
+      else if (a === 'share') { // hoja de compartir del móvil (WhatsApp, Telegram...); si no existe, abre WhatsApp con el mensaje
+        const t = shareText(b.dataset.c);
+        if (navigator.share) { try { await navigator.share({ title: 'Real Garra Fantasy', text: t }); } catch (e) { if (e && e.name === 'AbortError') return; } return; }
+        window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank', 'noopener'); return; }
+      else if (a === 'copy') { const t = shareText(b.dataset.c); try { await navigator.clipboard.writeText(t); msg('Invitación copiada'); } catch { prompt('Copia la invitación:', t); } return; }
       else if (a === 'delcode') await ad('/code/' + b.dataset.c, 'DELETE');
       else if (a === 'uname') { const n = prompt('Nuevo nombre fantasy:'); if (!n) return; await ad('/user/' + id, 'PUT', { name: n }); }
       else if (a === 'ubud') { const n = prompt('Presupuesto (millones):', b.dataset.b); if (n == null) return; await ad('/user/' + id, 'PUT', { b: n.replace(',', '.') }); }

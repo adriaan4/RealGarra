@@ -87,6 +87,24 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const mkCode = () => { let s = ''; const b = crypto.randomBytes(8); for (let i = 0; i < 8; i++) s += ALPHA[b[i] % ALPHA.length]; return s.slice(0, 4) + '-' + s.slice(4); };
   const cleanCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^(.{4})(.+)$/, '$1-$2');
+  // Equipo aleatorio: 1 portero y el resto repartido entre defensas, medios y delanteros. Se intenta que cueste como mucho 90 M para dejar algo de presupuesto.
+  function randomTeam(f) {
+    const pool = { POR: [], DEF: [], MED: [], DEL: [] };
+    for (const p of squad()) pool[posOf(p)].push(p.id);
+    const N = Math.min(f.cfg.max, squad().length), order = ['POR', 'DEF', 'MED', 'DEL'], want = { POR: 1, DEF: 0, MED: 0, DEL: 0 };
+    for (let i = 0, k = 0; i < N - 1; k++) { const pos = order[1 + k % 3]; if (want[pos] < pool[pos].length) { want[pos]++; i++; } else if (k > 60) break; }
+    const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    let best = null, bc = Infinity;
+    for (let n = 0; n < 60; n++) {
+      const t = []; for (const pos of order) t.push(...shuffle(pool[pos]).slice(0, Math.min(want[pos], pool[pos].length)));
+      const cost = t.reduce((s, id) => s + f.pr[id], 0);
+      if (cost <= 90) return t;
+      if (cost < bc) { best = t; bc = cost; }
+    }
+    best = best.slice().sort((a, b) => f.pr[a] - f.pr[b]);
+    while (best.length && best.reduce((s, id) => s + f.pr[id], 0) > BUDGET) best.pop();
+    return best;
+  }
   const cleanName = s => String(s || '').trim().replace(/\s+/g, ' ').slice(0, 16);
 
   // ---- Vista para participantes ----
@@ -132,11 +150,15 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       const name = cleanName(req.body.name);
       if (name.length < 2) return bad(res, 'Elige tu nombre fantasy (mínimo 2 letras)');
       if (f.users.some(x => norm(x.name) === norm(name))) return bad(res, 'Ese nombre fantasy ya está cogido');
-      u = { id: getDb().nextId++, tk: '', name, b: BUDGET, t: [] };
+      ensure();
+      const t = randomTeam(f);                       // equipo aleatorio de salida; lo que sobra de los 100 M queda de presupuesto
+      u = { id: getDb().nextId++, tk: '', name, b: r1(BUDGET - t.reduce((s, id) => s + f.pr[id], 0)), t };
       f.users.push(u);
     }
     u.tk = crypto.randomBytes(18).toString('base64url');
-    f.codes = f.codes.filter(x => x !== c);   // un solo uso: el código desaparece (así no pesa en la base de datos)
+    // código de grupo: vale para varias personas (hasta el máximo que puso el admin, o sin límite). El de recuperación es de un solo uso.
+    c.n = (c.n || 0) + 1;
+    if (c.u || (c.max && c.n >= c.max)) f.codes = f.codes.filter(x => x !== c);
     await save();
     res.json({ ok: true, tk: u.tk });
   });
@@ -208,7 +230,8 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   });
   A('post', '/codes', async (req, res) => {
     const f = F(), n = clamp(Math.floor(Number(req.body.n)) || 1, 1, 20), out = [];
-    for (let i = 0; i < n; i++) { let c; do { c = mkCode(); } while (f.codes.some(x => x.c === c)); f.codes.push({ c }); out.push(c); }
+    const label = cleanName(req.body.label).slice(0, 20), max = clamp(Math.floor(Number(req.body.max)) || 0, 0, 500); // etiqueta (solo la ve el admin) y nº de personas que pueden usarlo (0 = sin límite)
+    for (let i = 0; i < n; i++) { let c; do { c = mkCode(); } while (f.codes.some(x => x.c === c)); f.codes.push({ c, ...(label ? { l: label } : {}), ...(max ? { max } : {}), n: 0 }); out.push(c); }
     await save(); res.json({ ok: true, codes: out });
   });
   A('delete', '/code/:c', async (req, res) => { const f = F(); f.codes = f.codes.filter(x => x.c !== req.params.c); await save(); res.json({ ok: true }); });
