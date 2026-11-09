@@ -15,6 +15,7 @@
     rank: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
     rules: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/>'
   };
+  const VER = '20261109b';
   const TABS = [['team', 'Equipo'], ['market', 'Mercado'], ['rate', 'Notas'], ['rank', 'Ranking'], ['rules', 'Reglas']];
 
   let tk = ''; try { tk = localStorage.getItem('fk') || ''; } catch { }
@@ -177,7 +178,7 @@
     <li>🔒 El mercado y la alineación se cierran mientras se puntúa la jornada y se reabren al cerrarla.</li>
     <li>📊 <b>Ranking de jugadores:</b> en Ranking → Jugadores ves quién suma más puntos, en toda la temporada o en cada jornada.</li>
     <li>🏁 Tu puntuación de cada jornada es la suma de los puntos de tus titulares (y del suplente si ha entrado).</li></ul>
-    <p style="text-align:center;margin-top:22px"><button class="fxLink" data-act="logout">Salir de Fantasy en este dispositivo</button></p>`;
+    <p style="text-align:center;margin-top:22px"><small style="opacity:.45">Fantasy v${VER}</small><br><button class="fxLink" data-act="logout">Salir de Fantasy en este dispositivo</button></p>`;
   }
   const VIEWS = { team: viewTeam, market: viewMarket, rate: viewRate, rank: viewRank, rules: viewRules };
 

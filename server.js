@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const webpush = require('web-push');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static('public'));
+app.use(express.static('public', { setHeaders: (res, f) => { if (/\.(js|css|html)$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } })); // js/css/html siempre se revalidan: así nunca se queda una versión vieja
 
 // ---- Datos en un archivo JSON. En Render apunta DATA_DIR al disco persistente (p. ej. /var/data) ----
 const DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
