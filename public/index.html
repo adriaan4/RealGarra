@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Real Garra">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>try{if(sessionStorage.splash)document.documentElement.classList.add("nosplash");sessionStorage.splash=1}catch(e){}</script>
+<link rel="stylesheet" href="fantasy.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;500&display=swap">
 <style>
 :root{--bg:#0d0b09;--ink:#f6eedb;--gold:#e2ab2c;--red:#a01f22;--card:#1a1512;--line:#3b2e1f}
@@ -47,6 +48,7 @@ main{max-width:1000px;margin:0 auto;padding:24px 18px 60px}
 .pbtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0}
 .pbtn{font:800 clamp(20px,5vw,28px) "Barlow Condensed",sans-serif;padding:14px 8px;border-radius:10px;border:2px solid var(--gold);background:var(--card);color:var(--gold);text-transform:uppercase;overflow-wrap:anywhere;line-height:1.1}
 .pbtn:hover{background:var(--gold);color:#0d0b09}
+.pbtn .dn{display:block;font:600 15px Barlow,sans-serif;opacity:.65;letter-spacing:1px}
 .cand{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 8px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:space-between;min-width:0}
 .cand b{font:800 clamp(18px,4.8vw,30px) "Barlow Condensed",sans-serif;color:var(--gold);overflow-wrap:anywhere;line-height:1.1}
 .cand button{width:100%;padding:6px 4px}
@@ -436,7 +438,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#penaltis">🥅 Penaltis</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#penaltis">🥅 Penaltis</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -469,6 +471,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  <h2 style="margin-top:28px">🏆 Ranking de la peña</h2><p class="sub">Ordenado por pavos. «Acertadas» son las apuestas ganadas sobre las ya resueltas.</p><div id="gbRank"></div>
 </section>
 
+<section id="fantasy" class="fx" hidden><div id="fxRoot"></div><div id="fxBar" role="tablist" aria-label="Fantasy"></div></section>
 <section id="porra" hidden><h1>🦁 PORRA GARRA</h1>
  <p class="sub">Adivina los resultados del Garra y suma puntos. Entras con tu mismo nombre de GarraBet: sin registros ni contraseñas.</p>
  <div id="prName"></div>
@@ -556,6 +559,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <button type="button" class="atab" data-at="votos" role="tab">🗳️ Votaciones</button>
    <button type="button" class="atab" data-at="bet" role="tab">🎲 GarraBet</button>
    <button type="button" class="atab" data-at="porra" role="tab">🦁 Porra</button>
+   <button type="button" class="atab" data-at="fantasy" role="tab">🏆 Fantasy</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
    <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/Nombres</button>
    <button type="button" class="atab" data-at="insta" role="tab">📸 Instagram</button>
@@ -593,13 +597,13 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <details class="ad" open><summary>🗳️ Votación MVP</summary><div class="adb">
    <p class="sub" style="font-size:15px">La votación se abre <b>1 hora después</b> del inicio del partido y el MVP se da solo <b>al día siguiente a las 20:00</b> (hora de Madrid).</p>
    <div class="row"><input id="roundRival" placeholder="Rival del partido votado"><input id="roundStart" type="datetime-local" aria-label="Inicio del partido votado"></div>
-   <h3>Quién juega <small>(solo ellos salen para votar; si no marcas a nadie salen todos)</small></h3><div class="grid" id="playedBox"></div>
+   <h3>Quién juega <small>(solo ellos salen para votar; si no marcas a nadie salen todos)</small></h3><div class="row"><button type="button" class="ghost" id="playAll">Marcar toda la plantilla</button><button type="button" class="ghost" id="playNone">Quitar todos</button></div><div class="grid" id="playedBox"></div>
    <div class="row"><button id="saveRound">Guardar partido votado</button><button id="closeRound">Cerrar votación y mostrar MVP ya</button></div>
    <p class="msg" id="roundInfo"></p>
    <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
   </div></details>
 <details class="ad"><summary>👥 Jugadores (votación MVP)</summary><div class="adb">
-   <div class="row"><input id="pn" placeholder="Nombre del jugador"><button id="addP">Añadir jugador</button></div>
+   <p class="sub" style="font-size:15px">Aquí sale <b>toda la plantilla</b>. Para añadir o quitar a alguien, hazlo en <b>Partido → Plantilla</b>: la votación MVP y Real Garra Fantasy se actualizan solas.</p>
    <div class="grid" id="adminList"></div>
   </div></details>
   <details class="ad"><summary>🏅 MVPs anteriores</summary><div class="adb"><div id="adminHist"></div></div></details>
@@ -645,6 +649,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   </div></details>
   <details class="ad"><summary>🏆 Porra final de temporada</summary><div class="adb"><div id="prAFinal"><p>Cargando…</p></div></div></details>
   </div>
+  <div class="apane" data-ap="fantasy" hidden><div id="fxAdmin"><p>Cargando…</p></div></div>
   <div class="apane" data-ap="eco" hidden>
    <div class="ecoSum" id="ecoSum"></div>
    <div class="pv ecoAll"><b>Toda la gente a la vez</b><small>Escribe una cantidad (sin signo) y elige si se añade o se quita a todos.</small>
@@ -727,10 +732,10 @@ function render(){
  try{renderGB()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
  try{renderSquad()}catch(e){console.error(e)}
- $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(p.name)}</b><button class="ghost" data-d="${p.id}">Borrar</button></div>`).join('')||'<p>No hay jugadores.</p>';
+ $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(plNum(p.id))}${esc(p.name)}</b></div>`).join('')||'<p>No hay jugadores.</p>';
  const psig=S.players.map(p=>p.id).join(',')+'|'+(S.round.played||[]).join(',');
  if(psig!==playedSig&&!$('#playedBox').contains(document.activeElement)){playedSig=psig;
-  $('#playedBox').innerHTML=S.players.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}"${(S.round.played||[]).includes(p.id)?' checked':''}> ${esc(p.name)}</label>`).join('')||'<p>No hay jugadores.</p>'}
+  $('#playedBox').innerHTML=S.players.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}"${(S.round.played||[]).includes(p.id)?' checked':''}> ${esc(plNum(p.id)+p.name)}</label>`).join('')||'<p>No hay jugadores.</p>'}
  $('#roundInfo').textContent=S.round.opens?'Se abre: '+mvpDt(S.round.opens)+' · Se cierra y da el MVP: '+mvpDt(S.round.closes)+' · Ahora: '+({wait:'aún sin abrir',open:'abierta',closed:'cerrada'}[S.round.phase]||''):'Sin hora de inicio: la votación está siempre abierta. Pon el inicio del partido para programarla.';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
  $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
@@ -738,6 +743,7 @@ function render(){
  tick()}
 const mvpDt=iso=>iso?new Date(iso).toLocaleString('es-ES',{timeZone:'Europe/Madrid',weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}):'';
 let playedSig='';
+const plNum=id=>{const q=(S.squad||[]).find(x=>x.id===id);return q?q.n+' · ':''}; // dorsal de la plantilla (mismo id que en MVP y Fantasy)
 const mvpCands=()=>{const pl=S.round.played||[];return pl.length?S.players.filter(p=>pl.includes(p.id)):S.players};
 function mvpStatus(){ // abre 1 h después del inicio del partido y se cierra el día siguiente a las 20:00; se recalcula con el reloj sin pedir nada al servidor
  const r=S.round,mine=S.mine;let ph=r.phase||'open';
@@ -758,7 +764,7 @@ function renderMvp(){
  const votes=S.round.votes,mine=S.mine,mp=mine&&S.players.find(p=>p.id===mine.playerId);
  $('#miVoto').innerHTML=mine?`<div class="banner">Ya has votado<b>${mp?esc(mp.name):'tu MVP'}</b></div>`:'';
  // botones de los jugadores que juegan; al votar desaparecen y el voto entra en la lista de abajo
- $('#votos').innerHTML=cands.map(p=>`<button class="pbtn" data-v="${p.id}" data-n="${esc(p.name)}">${esc(p.name)}</button>`).join('')||'<p>Aún no hay jugadores.</p>';
+ $('#votos').innerHTML=cands.map(p=>`<button class="pbtn" data-v="${p.id}" data-n="${esc(p.name)}"><small class="dn">${esc(plNum(p.id).replace(' · ',''))}</small>${esc(p.name)}</button>`).join('')||'<p>Aún no hay jugadores.</p>';
  mvpStatus();
  // lista: solo los votados, de más a menos votos
  const cnt=id=>votes.filter(v=>v.playerId===id);
@@ -865,9 +871,10 @@ act('#saveMatch',()=>adm('/api/match','PUT',{date:$('#fecha-in').value?new Date(
 $('#delMatch').onclick=async()=>{if(!confirm('¿Borrar el próximo partido (fecha, rival y escudo)?'))return;
  try{await adm('/api/match','PUT',{date:'',rival:'',crest:'',field:''});$('#fecha-in').value='';$('#rivalIn').value='';$('#campoIn').value='';crestData='';$('#crestFile').value='';updateCrestPreview();$('#amsg').textContent='Partido borrado';await load()}catch(e){$('#amsg').textContent=e.message}};
 act('#saveRound',()=>adm('/api/round','PUT',{rival:$('#roundRival').value,start:$('#roundStart').value?new Date($('#roundStart').value).toISOString():'',played:[...document.querySelectorAll('#playedBox input:checked')].map(i=>+i.value)}).then(()=>{playedSig=''}),'Partido votado guardado');
-act('#addP',async()=>{await adm('/api/players','POST',{name:$('#pn').value});$('#pn').value=''},'Jugador añadido');
 $('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;
  try{const e=await adm('/api/round/close','POST');filled=false;await load();$('#dlgRival').textContent=e.rival;$('#dlgTxt').innerHTML=names(e);$('#dlg').showModal()}catch(err){$('#amsg').textContent=err.message}};
+$('#playAll').onclick=()=>document.querySelectorAll('#playedBox input').forEach(i=>i.checked=true);
+$('#playNone').onclick=()=>document.querySelectorAll('#playedBox input').forEach(i=>i.checked=false);
 $('#dlgOk').onclick=()=>$('#dlg').close();
 $('#exportBtn').onclick=async()=>{const r=await fetch('/api/export',{headers:{'x-admin':pw}});const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='garra-datos.json';a.click()};
 $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('Esto reemplaza todos los datos actuales por los del archivo. ¿Seguro?'))return;
@@ -1672,5 +1679,6 @@ setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn(
 })();
 </script>
 <script src="insta.js" defer></script>
+<script src="fantasy.js" defer></script>
 <script src="mla-admin.js" defer></script>
 </body></html>

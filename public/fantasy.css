@@ -1,0 +1,151 @@
+/* REAL GARRA FANTASY — mismo ADN que la web (oro / rojo / negro) con look más deportivo y pensado para el móvil */
+#fantasy{--fxPOR:#3fb6ff;--fxDEF:#e2ab2c;--fxMED:#3ddc84;--fxDEL:#ff5a4e;--up:#35d07f;--dn:#ff6b5e;--glass:rgba(255,255,255,.045);padding-bottom:92px}
+#fantasy h1{font-size:clamp(34px,9vw,52px);letter-spacing:.5px;line-height:1}
+.fxNum,.fxStat b,.fxPr b,.fxPts,.fxBig{font-variant-numeric:tabular-nums}
+.fxP-POR{--c:var(--fxPOR)}.fxP-DEF{--c:var(--fxDEF)}.fxP-MED{--c:var(--fxMED)}.fxP-DEL{--c:var(--fxDEL)}
+.fx em{font-style:normal;font:800 14px "Barlow Condensed",sans-serif;letter-spacing:.3px}
+.fx em.up{color:var(--up)}.fx em.dn{color:var(--dn)}.fx em.eq{opacity:.45}
+
+/* Entrada privada */
+.fxGate{max-width:460px;margin:8px auto 0;text-align:center;border-radius:20px;padding:26px 20px 22px;background:radial-gradient(420px 220px at 50% -40px,rgba(226,171,44,.28),transparent 70%),linear-gradient(160deg,#241608,#15110e 60%,#2a0d0f);border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.fxGate img{display:block;margin:0 auto;width:92px;filter:drop-shadow(0 8px 22px rgba(226,171,44,.35))}
+.fxGate .tagl{display:inline-block;margin:10px 0 4px;padding:3px 12px;border-radius:99px;background:rgba(160,31,34,.35);border:1px solid var(--red);font:800 15px "Barlow Condensed",sans-serif;letter-spacing:1.5px;text-transform:uppercase}
+.fxGate h1{margin:4px 0 6px}
+.fxGate p{margin:0 0 16px;opacity:.8;font-size:16px}
+.fxGate input{width:100%;margin:0 0 10px;padding:13px 14px;border-radius:12px;font-size:18px;background:#0f0c0a;border:1px solid var(--line);text-align:center}
+.fxGate input#fxCode{font:800 26px "Barlow Condensed",sans-serif;letter-spacing:5px;text-transform:uppercase;color:var(--gold)}
+.fxGate input:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(226,171,44,.25)}
+.fxBtn{width:100%;padding:14px;border-radius:12px;border:0;font:800 22px "Barlow Condensed",sans-serif;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(180deg,#f0be3f,#d99b17);color:#150f06;box-shadow:0 6px 18px rgba(226,171,44,.28);transition:transform .12s,filter .12s}
+.fxBtn:active{transform:scale(.98)}.fxBtn:disabled{filter:grayscale(.7) brightness(.7);cursor:default}
+.fxBtn.sm{width:auto;padding:9px 16px;font-size:18px}
+.fxMsg{min-height:22px;margin-top:10px;color:#ffb4a8;font-weight:500}.fxMsg.ok{color:var(--up)}
+
+/* Cabecera con las tres cifras */
+.fxTop{position:relative;overflow:hidden;border-radius:20px;padding:16px 16px 14px;background:linear-gradient(135deg,#33200a 0%,#1a1512 52%,#3b1013 100%);border:1px solid var(--line)}
+.fxTop::after{content:"";position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(226,171,44,.25),transparent 70%)}
+.fxHi{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:relative;z-index:1}
+.fxHi img{height:38px}.fxHi small{display:block;opacity:.65;font-size:13px;line-height:1;text-transform:uppercase;letter-spacing:1.5px}
+.fxHi b{font:800 28px/1.05 "Barlow Condensed",sans-serif;color:var(--gold);overflow-wrap:anywhere}
+.fxStats{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px;position:relative;z-index:1}
+.fxStat{background:var(--glass);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:9px 11px;backdrop-filter:blur(4px)}
+.fxStat small{display:block;opacity:.6;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+.fxStat b{font:800 26px/1.1 "Barlow Condensed",sans-serif}.fxStat b span{font-size:15px;opacity:.65;margin-left:2px}
+.fxStat.gold b{color:var(--gold)}
+
+.fxH2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:22px 2px 10px;font:800 24px "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase;letter-spacing:.5px}
+.fxH2 small{font:500 14px Barlow,sans-serif;color:var(--ink);opacity:.6;text-transform:none;letter-spacing:0}
+.fxNote{background:var(--glass);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:11px 14px;margin:12px 0;font-size:16px}
+.fxNote.lock{border-left-color:var(--red);background:rgba(160,31,34,.14)}
+
+/* Campo dibujado con CSS (ligero, sin imágenes) */
+.fxPitch{position:relative;margin:14px auto 0;max-width:480px;aspect-ratio:5/6;border-radius:18px;overflow:hidden;border:2px solid rgba(255,255,255,.18);background:repeating-linear-gradient(0deg,#1f6a2b 0 12.5%,#237532 12.5% 25%);box-shadow:0 14px 34px rgba(0,0,0,.45),inset 0 0 60px rgba(0,0,0,.35);display:flex;flex-direction:column;justify-content:space-around;padding:14px 6px}
+.fxPitch::before{content:"";position:absolute;inset:10px;border:2px solid rgba(255,255,255,.35);border-radius:6px;pointer-events:none;background:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)) center/100% 2px no-repeat,radial-gradient(circle at 50% 50%,transparent 0 17%,rgba(255,255,255,.35) 17.4% 18.6%,transparent 19%)}
+.fxPitch::after{content:"";position:absolute;left:28%;right:28%;bottom:10px;height:15%;border:2px solid rgba(255,255,255,.35);border-bottom:0;pointer-events:none}
+.fxLine{position:relative;z-index:1;display:flex;justify-content:space-evenly;align-items:flex-start;min-height:58px}
+.fxTok{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px;text-align:center;position:relative;-webkit-tap-highlight-color:transparent}
+.fxTok .sh{position:relative;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 25%,#fff8,transparent 45%),var(--c);color:#0d0b09;font:800 24px "Barlow Condensed",sans-serif;box-shadow:0 4px 10px rgba(0,0,0,.5),0 0 0 3px rgba(0,0,0,.35);transition:transform .15s}
+.fxTok:active .sh{transform:scale(.92)}
+.fxTok b{font:800 16px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;background:rgba(10,8,6,.78);padding:2px 8px;border-radius:6px;white-space:nowrap}
+.fxTok i{font:700 13px/1 Barlow,sans-serif;font-style:normal;color:#fff;text-shadow:0 1px 3px #000;opacity:.95}
+.fxTok .bd{position:absolute;top:-6px;right:12px;min-width:26px;padding:1px 5px;border-radius:99px;background:var(--gold);color:#150f06;font:800 14px/1.25 "Barlow Condensed",sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.fxTok .bd.neg{background:var(--dn);color:#fff}
+.fxTok.empty .sh{background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.4);color:#fff;font-size:28px;box-shadow:none}
+.fxTok.empty b{background:transparent;opacity:.8}
+
+/* Barras de puntos por jornada */
+.fxBars{display:flex;align-items:flex-end;gap:8px;height:96px;padding:10px 12px 8px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+.fxBars div{flex:1;min-width:34px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%}
+.fxBars i{display:block;width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--gold),var(--red));min-height:3px}
+.fxBars b{font:800 14px "Barlow Condensed",sans-serif}.fxBars small{opacity:.6;font-size:11px}
+
+/* Filas (mercado, notas, ranking) */
+.fxChips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}.fxChips::-webkit-scrollbar{display:none}
+.fxChip{all:unset;box-sizing:border-box;cursor:pointer;flex:none;padding:6px 14px;border-radius:99px;border:1px solid var(--line);font:800 17px "Barlow Condensed",sans-serif;letter-spacing:.4px;background:var(--card);color:var(--ink);white-space:nowrap}
+.fxChip.on{background:var(--gold);border-color:var(--gold);color:#150f06}
+.fxChip:focus-visible,.fxTok:focus-visible,.fxTab:focus-visible,.fxG:focus-visible,.fxRow:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.fxRow{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:11px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c,var(--red));border-radius:14px;padding:10px 12px;margin-top:9px}
+.fxRow.mine{background:linear-gradient(90deg,rgba(226,171,44,.14),var(--card) 60%);border-color:rgba(226,171,44,.55);border-left-color:var(--c,var(--gold))}
+.fxNum{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#0d0b09;font:800 21px "Barlow Condensed",sans-serif;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.fxNm b{display:block;font:800 21px/1.05 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere}
+.fxNm small{display:block;opacity:.68;font-size:13.5px;line-height:1.25;margin-top:2px}
+.fxNm small u{text-decoration:none;color:var(--c);font-weight:700}
+.fxPr{text-align:right;line-height:1.05}.fxPr b{display:block;font:800 21px "Barlow Condensed",sans-serif;color:var(--gold)}
+.fxRow button.act{padding:8px 13px;border-radius:10px;font:800 17px "Barlow Condensed",sans-serif;letter-spacing:.4px;min-width:74px;text-transform:uppercase}
+.fxRow button.act.sell{background:transparent;color:var(--dn);border:1px solid var(--dn)}
+.fxRow button.act:disabled{opacity:.35;cursor:default}
+@media(max-width:420px){.fxRow{gap:9px;padding:9px 10px}.fxRow button.act{padding:8px 10px;min-width:66px;font-size:16px}.fxStat b{font-size:23px}.fxNum{width:36px;height:36px;font-size:19px}}
+
+/* Notas 1-10 */
+.fxRate{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:14px;padding:12px;margin-top:10px}
+.fxRate .hd{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.fxRate .hd .fxNm{flex:1}
+.fxGs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.fxG{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;padding:9px 0;border-radius:10px;font:800 22px "Barlow Condensed",sans-serif;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink);-webkit-tap-highlight-color:transparent;transition:transform .1s}
+.fxG:active{transform:scale(.94)}
+.fxG.on{background:var(--gc);border-color:var(--gc);color:#0b0a08;box-shadow:0 0 0 2px rgba(255,255,255,.25),0 4px 12px rgba(0,0,0,.4);transform:scale(1.04)}
+.fxDone{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:var(--gc);color:#0b0a08;font:800 20px "Barlow Condensed",sans-serif}
+.fxSend{position:sticky;bottom:78px;z-index:5;margin-top:14px;padding-top:6px}
+.fxSend .fxBtn{box-shadow:0 10px 30px rgba(0,0,0,.6),0 6px 18px rgba(226,171,44,.3)}
+
+/* Ranking */
+.fxPod .me{border-color:var(--gold);box-shadow:0 0 0 2px rgba(226,171,44,.3)}
+.fxPod{margin-top:16px!important;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:8px;align-items:end;margin:12px 0 4px}
+.fxPod div{text-align:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 4px;position:relative;cursor:pointer}
+.fxPod .m1{background:linear-gradient(180deg,rgba(226,171,44,.28),var(--card));border-color:var(--gold);padding-top:16px;padding-bottom:14px}
+.fxPod .mdl{font-size:26px;line-height:1}.fxPod b{display:block;font:800 19px/1.1 "Barlow Condensed",sans-serif;overflow-wrap:anywhere;margin-top:3px}
+.fxPod .fxPts{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}.fxPod small{display:block;opacity:.6;font-size:12px}
+.fxRk{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:7px;cursor:pointer}
+.fxRk.me{border-color:var(--gold);background:linear-gradient(90deg,rgba(226,171,44,.16),var(--card))}
+.fxRk .pos{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center}
+.fxRk b{font:800 20px "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere}.fxRk small{display:block;opacity:.6;font-size:13px}
+.fxPts{font:800 24px "Barlow Condensed",sans-serif;color:var(--gold);text-align:right}.fxPts small{display:inline;font-size:13px;opacity:.6;margin-left:2px}
+
+/* Hoja inferior (ficha de jugador / plantilla de otro participante) */
+.fxOv{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.66);display:flex;align-items:flex-end;justify-content:center;animation:fxFade .18s}
+.fxSheet{width:100%;max-width:520px;max-height:84vh;overflow:auto;background:linear-gradient(180deg,#221a12,#15110e);border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;padding:8px 18px calc(22px + env(safe-area-inset-bottom,0px));animation:fxUp .25s cubic-bezier(.2,.9,.3,1)}
+.fxSheet .grab{width:44px;height:5px;border-radius:9px;background:var(--line);margin:6px auto 14px}
+.fxSheet h3{margin:0;font:800 32px/1 "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase}
+.fxSheet .fxRow{margin-top:7px}
+.fxKv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.fxKv div{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}.fxKv small{display:block;opacity:.6;font-size:12px;text-transform:uppercase;letter-spacing:1px}.fxKv b{font:800 22px "Barlow Condensed",sans-serif}
+@keyframes fxUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}@keyframes fxFade{from{opacity:0}to{opacity:1}}
+
+/* Barra inferior (solo visible dentro de Fantasy) */
+#fxBar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:none;gap:4px;max-width:560px;margin:0 auto;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));background:rgba(13,11,9,.94);backdrop-filter:blur(10px);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0}
+#fxBar.on{display:flex}
+.fxBench{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 6px;margin-top:10px;padding:12px 6px;border:1px dashed var(--line);border-radius:14px;background:var(--glass)}
+.fxBench small{flex-basis:100%;text-align:center;opacity:.65;font-size:14px}
+.fxTab{all:unset;box-sizing:border-box;flex:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0 4px;border-radius:12px;font:800 14px "Barlow Condensed",sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--ink);opacity:.6;-webkit-tap-highlight-color:transparent}
+.fxTab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fxTab.on{opacity:1;color:#150f06;background:var(--gold)}
+.fxTab .dot{position:absolute;margin:-2px 0 0 18px;width:9px;height:9px;border-radius:50%;background:var(--red);border:2px solid #0d0b09}
+.fxToast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:70;max-width:90vw;padding:10px 18px;border-radius:99px;background:#fff;color:#14110d;font:800 18px "Barlow Condensed",sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);animation:fxUp .2s}
+.fxToast.err{background:#ff6b5e;color:#190603}
+
+/* Reglas */
+.fxRules{counter-reset:r}.fxRules li{list-style:none;margin:8px 0;padding:10px 12px 10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:16px}
+.fxRules li b{color:var(--gold)}.fxRules ul{padding:0;margin:0}
+.fxLink{all:unset;cursor:pointer;color:var(--dn);text-decoration:underline;font-size:15px;opacity:.85}
+
+/* Admin */
+.fxA table{width:100%;border-collapse:collapse;font-size:15px}.fxA th{font:800 15px "Barlow Condensed",sans-serif;color:var(--gold);text-align:left;padding:4px 3px;border-bottom:2px solid var(--gold);white-space:nowrap}
+.fxA td{padding:4px 3px;border-bottom:1px solid var(--line);vertical-align:middle}.fxA td input{width:100%;min-width:42px;padding:5px 4px;text-align:center;border-radius:6px}
+.fxA .tw{margin-top:8px}.fxA table.wide{min-width:430px}
+.fxCode{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#120e0b;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px}
+.fxCode b{font:800 24px "Barlow Condensed",sans-serif;letter-spacing:3px;color:var(--gold)}
+.fxCode small{opacity:.65}.fxA button.sm{padding:5px 10px;font-size:14px}
+.fxA .rt{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}.fxA .rt button{padding:2px 8px;font-size:13px;border-radius:99px}
+.fxA h4{margin:12px 0 4px;font:800 18px "Barlow Condensed",sans-serif;color:var(--gold)}
+.fxA .pchk{display:inline-flex}
+html{scroll-padding-bottom:96px}
+
+/* Fotos de la plantilla: siempre enteras (contain), sin recortar cabezas. Marco 4:3 como en la pestaña Plantilla */
+.fxAv{position:relative;flex:none;width:58px;aspect-ratio:4/3;border-radius:9px;overflow:hidden;background:#0d0b09;border:2px solid var(--c,var(--gold));box-shadow:0 3px 8px rgba(0,0,0,.4);display:block}
+.fxAv img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
+.fxAv i{position:absolute;left:0;bottom:0;min-width:18px;padding:0 4px;border-radius:0 7px 0 0;background:var(--c,var(--gold));color:#0d0b09;font:800 14px/1.25 "Barlow Condensed",sans-serif;font-style:normal;text-align:center}
+.fxTok .sh.ph{width:76px;height:57px;border-radius:11px;overflow:visible;background:#0d0b09;border:2px solid var(--c);box-shadow:0 4px 10px rgba(0,0,0,.55)}
+.fxTok .sh.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:9px}
+.fxTok .sh.ph u{position:absolute;left:0;bottom:0;min-width:20px;padding:0 5px;border-radius:0 8px 0 9px;background:var(--c);color:#0d0b09;font:800 15px/1.25 "Barlow Condensed",sans-serif;text-decoration:none}
+.fxPhBig{width:100%;max-width:340px;margin:0 auto 10px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#0d0b09;border:3px solid var(--c,var(--gold))}
+.fxPhBig img{width:100%;height:100%;object-fit:contain;display:block}
+@media(max-width:420px){.fxAv{width:52px}}

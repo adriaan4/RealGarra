@@ -160,6 +160,28 @@ function migrateCalV3() {
   console.log('Calendario nuevo desde la J2: ' + changed.size + ' jornadas cambiadas · boletos anulados: ' + voided + ' · predicciones de porra quitadas: ' + (nPreds - P.preds.length));
 }
 
+// La lista de la votación MVP (db.players) es un espejo de la Plantilla: mismos ids y nombres, sin duplicar datos. Así Fantasy y MVP comparten jugador.
+// Se rehace al arrancar y cada vez que cambia la plantilla. Los votos de la votación en curso se conservan (por nombre, con los apodos antiguos).
+const MVP_ALIAS = { ROBERT: 'ROBER', ADRIAN: 'ADRI' };
+function syncPlayers() {
+  if (!Array.isArray(db.squad)) return;
+  for (const p of db.squad) if (!p.id) p.id = db.nextId++;
+  const bySquad = new Map(db.squad.map(p => [norm(p.name), p]));
+  const old = new Map((db.players || []).map(p => [p.id, p]));
+  const target = v => { // plantilla a la que pertenece un voto antiguo
+    if (db.squad.some(p => p.id === v.playerId)) return db.squad.find(p => p.id === v.playerId);
+    const o = old.get(v.playerId), n = norm(o ? o.name : v.playerName);
+    return bySquad.get(MVP_ALIAS[n] || n) || null;
+  };
+  const votes = [];
+  for (const v of db.round.votes) { const t = target(v); if (t) { v.playerId = t.id; v.playerName = t.name; votes.push(v); } }
+  db.round.votes = votes;
+  const played = [];
+  for (const id of roundPlayed()) { const t = target({ playerId: id }); if (t) played.push(t.id); }
+  db.round.played = [...new Set(played)];
+  db.players = db.squad.map(p => ({ id: p.id, name: p.name }));
+}
+
 async function init() {
   let loaded = REMOTE ? await loadRemote() : null;
   if (REMOTE && !loaded) { // primera vez con Redis: sube lo que haya en local (o vacío)
@@ -215,6 +237,8 @@ async function init() {
     }
     db.squadV2 = true;
   }
+  if (!db.mvpSquadV1) { snapshot('antes-de-unir-mvp-y-plantilla'); db.mvpSquadV1 = true; } // una sola vez: la votación MVP pasa a usar toda la plantilla
+  syncPlayers();
   // Migración de una sola vez: las apuestas que ya estaban ganadas no avisan (solo las que se ganen a partir de ahora)
   if (!db.winNotifV1) {
     for (const t of db.garrabet.tickets) if (gbTicketOut(t).status === 'win') t.winNotified = true;
@@ -227,6 +251,7 @@ async function init() {
 const PASS = process.env.ADMIN_PASSWORD || 'Garra26?';
 const admin = (req, res, next) => (req.headers['x-admin'] === PASS ? next() : res.status(401).json({ error: 'Contraseña incorrecta' }));
 const bad = (res, msg) => res.status(400).json({ error: msg });
+const FANTASY = require('./fantasy')({ app, getDb: () => db, save, admin, bad, norm, crypto, snapshot }); // REAL GARRA FANTASY (todo vive en db.fantasy)
 const pub = ({ device, ...v }) => v; // el identificador del dispositivo nunca sale al público
 
 // ---- Avisos push (Android, iPhone y ordenador) con Web Push + VAPID ----
@@ -364,11 +389,12 @@ async function closeRound() { // devuelve la entrada del historial, o null si no
   const max = Math.max(0, ...Object.values(c));
   if (!max) return null;
   const mvps = Object.keys(c).filter(id => c[id] === max).map(id => ({ id: +id, name: db.round.votes.find(v => v.playerId == id).playerName, votes: max }));
-  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps, totalVotes: db.round.votes.length, votes: db.round.votes };
+  const entry = { id: db.nextId++, rival: db.round.rival || 'rival por confirmar', closedAt: new Date().toISOString(), mvps, totalVotes: db.round.votes.length, votes: db.round.votes, played: roundPlayed().slice() };
   db.history.unshift(entry);
   const nx = db.next && db.next.date && new Date(db.next.date) > Date.now() ? db.next : null; // si el siguiente partido ya está puesto, la nueva votación se prepara sola
   db.round = { rival: nx ? nx.rival || '' : '', votes: [], played: [], start: nx ? nx.date : '' };
   await save();
+  FANTASY.onMvp({ rival: entry.rival }).catch(e => console.error('Fantasy (MVP): ' + e.message)); // los votos MVP puntúan en Fantasy
   snapshot('cierre-votacion');
   notify('🏆 ¡Ya hay MVP!', entry.mvps.map(m => m.name).join(' y ') + (entry.mvps.length > 1 ? ' se reparten el MVP' : ' es el MVP') + ' contra ' + entry.rival + ' 👏', '/#mvp', 'mvp');
   return entry;
@@ -448,23 +474,9 @@ app.post('/api/push/send', admin, async (req, res) => {
 // ---- Admin ----
 app.get('/api/admin/check', admin, (_, res) => res.json({ ok: true }));
 
-app.post('/api/players', admin, async (req, res) => {
-  const name = String(req.body.name || '').trim().toUpperCase().slice(0, 30);
-  if (!name) return bad(res, 'Falta el nombre');
-  if (db.players.some(p => norm(p.name) === norm(name))) return bad(res, 'Ese jugador ya está en la lista');
-  const p = { id: db.nextId++, name };
-  db.players.push(p);
-  await save();
-  res.json(p);
-});
-app.delete('/api/players/:id', admin, async (req, res) => {
-  const id = +req.params.id;
-  db.players = db.players.filter(p => p.id !== id);
-  db.round.votes = db.round.votes.filter(v => v.playerId !== id); // el historial de MVPs no se toca
-  db.round.played = roundPlayed().filter(x => x !== id);
-  await save();
-  res.json({ ok: true });
-});
+// Los jugadores de la votación MVP son los de la Plantilla: se añaden y se quitan allí (Admin → Partido → Plantilla)
+app.post('/api/players', admin, (req, res) => bad(res, 'La lista de MVP sale de la Plantilla: añade al jugador en Admin → Partido → Plantilla'));
+app.delete('/api/players/:id', admin, (req, res) => bad(res, 'La lista de MVP sale de la Plantilla: quítalo en Admin → Partido → Plantilla'));
 app.get('/api/squad-photo/:id', (req, res) => {
   const p = db.squad.find(x => x.id === +req.params.id);
   const m = p && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(p.photo || '');
@@ -503,6 +515,8 @@ app.put('/api/squad', admin, async (req, res) => {
   }
   if (out.some(p => p.c)) { const i = out.findIndex(p => p.c); out.forEach((p, k) => (p.c = k === i)); } // un solo capitán
   db.squad = out;
+  syncPlayers();
+  FANTASY.ensure();
   await save();
   res.json({ ok: true });
 });
@@ -583,6 +597,7 @@ app.put('/api/round', admin, async (req, res) => {
   }
   await save();
   res.json({ ok: true });
+  FANTASY.onPlayed({ rival: db.round.rival, played: roundPlayed() }).catch(e => console.error('Fantasy (jugadores): ' + e.message)); // la jornada de Fantasy abierta puntúa a los mismos
 });
 app.delete('/api/votes/:id', admin, async (req, res) => {
   const id = +req.params.id;
@@ -645,6 +660,7 @@ app.post('/api/import', admin, async (req, res) => {
   db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs };
   const seeded = !Array.isArray(db.calendar) || !db.calendar.length;
   if (seeded) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
+  db.mvpSquadV1 = true; syncPlayers();
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
   if (seeded) db.calV3 = true; else { lgEnsure(); migrateCalV3(); } // una copia hecha antes del calendario nuevo se pasa a él
   await save();

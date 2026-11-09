@@ -111,3 +111,18 @@ El código está en `mla.js` (lectura) y en el bloque «MLA Sport» de `server.j
 ## Calendario (desde la J2)
 - El calendario oficial está en `CAL_SEED` (server.js): J1 vs Huerta FC (25/10/2026) y de la J2 (08/11/2026) a la J22 (30/05/2027). La hora, el campo y el resultado se rellenan desde Admin.
 - Al arrancar por primera vez con este cambio se ejecuta una migración única (`migrateCalV3`) con copia previa en `data/backups/` (y en Upstash): la J1 no se toca; en las jornadas cuyo rival cambia se recalculan las cuotas, se anulan los boletos pendientes (se devuelven los pavos, el boleto sigue mostrando el rival original), se quitan las predicciones de la porra de partidos y «Próximo partido» pasa al rival nuevo (misma fecha y hora). Las jornadas que no cambian (mismo rival y fecha) conservan todo.
+
+## REAL GARRA FANTASY (pestaña «🦁 Fantasy»)
+Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstash o `data.json`) y reutiliza la plantilla (`db.squad`): los jugadores NO se duplican, su id es el de la Plantilla (el mismo que en la votación MVP).
+- **Acceso:** solo con código de invitación. Admin → 🏆 Fantasy → Códigos: generas códigos de un solo uso y «Copiar invitación» incluye un enlace (`/?fc=CODIGO#fantasy`). Cada persona elige su **nombre fantasy** (independiente de GarraBet). «🔑 Nuevo acceso» da un código de recuperación para entrar desde otro móvil.
+- **Equipos:** 100 M de presupuesto y hasta 7 jugadores (ajustable). Precios de salida por posición (POR 11, DEF 12, MED 14, DEL 16 + goles de la plantilla).
+- **Notas:** tras el partido cada participante puntúa de 1 a 10 a los que jugaron. **Una nota por persona y jugador** (no se puede cambiar). Las notas pesan más que cualquier otra cosa: cada punto de media sobre 5 suma 2 puntos. Además: jugar +1, gol (POR 8 / DEF 6 / MED 5 / DEL 4), asistencia +3, amarilla −1, roja −3, portería a cero (POR +4, DEF +3, MED +1) y MVP de la web (+4 el más votado, +1 quien reciba algún voto).
+- **Mercado:** fichar y vender al precio del momento. El precio se mueve solo al cerrar cada jornada según la nota media (6 = neutro; media de 8 ≈ +12 %, de 4 ≈ −12 %, tope ±15 %). El mercado se cierra mientras una jornada está abierta a notas.
+- **Clasificación:** general y por jornada, con podio.
+- **Admin → 🏆 Fantasy:** códigos, participantes (nombre, presupuesto, activar/desactivar, borrar), jugadores y precios, jornadas (crear, goles/asistencias/tarjetas, notas de cada participante, cerrar y puntuar, recalcular) y ajustes (nº de jugadores, mercado abierto/cerrado).
+- **Ligero:** al cerrar una jornada se borran las notas individuales y solo queda la media; los códigos se borran al usarse.
+
+### MVP y Fantasy comparten jugadores
+- La lista de la votación MVP (`db.players`) es ahora un espejo de la **Plantilla**: sale toda la plantilla (con dorsal), incluidos Pajares y Juan. Para añadir o quitar a alguien se hace en Admin → Partido → Plantilla. Los votos en curso se pasan solos (por nombre: ROBERT→ROBER, ADRIAN→ADRI). Hay copia previa en `data/backups/`.
+- Admin → Votaciones → «Quién juega» tiene los botones «Marcar toda la plantilla» / «Quitar todos». Los marcados son los que se puntúan en Fantasy.
+- Al crear una jornada de Fantasy se cogen solos los jugadores marcados y los votos de MVP de ese rival (también «Traer quién jugó y los votos de la pestaña MVP»).
