@@ -174,3 +174,6 @@ html{scroll-padding-bottom:96px}
 @media(max-width:420px){.fxRow.pk{gap:8px}}
 .fxTok.oop .sh{outline:2px dashed rgba(255,255,255,.6);outline-offset:2px}
 .fxBtn.alt.on,.fxBtn.on{outline:2px solid var(--gold);opacity:.7}
+
+.fxMvBar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0 0}.fxMvBar small{opacity:.7;font-size:14px;flex:1 1 200px}
+.fxTok.sel .sh{box-shadow:0 0 0 4px var(--gold),0 0 18px var(--gold);transform:scale(1.08)}.fxPitch.mv{outline:2px dashed var(--gold);outline-offset:3px}
