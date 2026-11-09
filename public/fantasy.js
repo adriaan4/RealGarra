@@ -48,7 +48,7 @@
   function gate() {
     let c = ''; try { c = new URLSearchParams(location.search).get('fc') || ''; } catch { }
     return `<div class="fxGate"><img src="escudo.png" alt=""><div class="tagl">🔒 Acceso privado</div><h1>REAL GARRA<br>FANTASY</h1>
-    <p>Al entrar recibes un equipo aleatorio de la plantilla del Garra y 100 M para fichar: mejóralo, puntúa a tus compañeros tras cada partido y sube en la clasificación. Solo entra quien tenga un código de invitación.</p>
+    <p>Al entrar recibes un equipo aleatorio de la plantilla del Garra y <b>40 M</b> para fichar: mejóralo, puntúa a tus compañeros tras cada partido y sube en la clasificación. Solo entra quien tenga un código de invitación.</p>
     <input id="fxCode" placeholder="XXXX-XXXX" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Código de invitación" value="${E(c)}">
     <input id="fxName" placeholder="Tu nombre fantasy" maxlength="16" autocomplete="off" aria-label="Nombre fantasy (distinto de tu usuario de GarraBet)">
     <button class="fxBtn" data-act="join">Entrar</button><div class="fxMsg" id="fxMsg" role="alert"></div>
@@ -119,7 +119,7 @@
   function viewRules() {
     const R = D.cfg.rules;
     return `<div class="fxH2">Cómo funciona</div><ul class="fxRules">
-    <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> en total (lo que sobra tras el equipo es tu presupuesto). Puedes tener hasta <b>${D.cfg.max} jugadores</b> de la plantilla del Garra. Varios participantes pueden fichar al mismo jugador.</li>
+    <li>💶 Recibes un <b>equipo aleatorio</b> al entrar y empiezas con <b>${D.cfg.budget} M</b> de presupuesto para fichar. Puedes tener hasta <b>${D.cfg.max} jugadores</b> de la plantilla del Garra. Varios participantes pueden fichar al mismo jugador.</li>
     <li>⭐ <b>Las notas mandan.</b> Tras cada partido todos puntúan del 1 al 10 a los que han jugado (una nota por persona y jugador). Cada punto de media por encima de 5 suma <b>${R.rate}</b> puntos (y por debajo, resta).</li>
     <li>⚽ <b>Estadísticas:</b> jugar +${R.play} · gol (portero ${R.GOAL.POR}, defensa ${R.GOAL.DEF}, medio ${R.GOAL.MED}, delantero ${R.GOAL.DEL}) · asistencia +${R.assist} · amarilla ${R.yellow} · roja ${R.red}.</li>
     <li>🧤 <b>Portería a cero:</b> portero +${R.CS.POR}, defensas +${R.CS.DEF}, medios +${R.CS.MED}.</li>
