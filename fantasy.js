@@ -92,7 +92,8 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   function randomTeam(f) {
     const pool = { POR: [], DEF: [], MED: [], DEL: [] };
     for (const p of squad()) pool[posOf(p)].push(p.id);
-    const N = Math.min(f.cfg.max, squad().length), order = ['POR', 'DEF', 'MED', 'DEL'], want = { POR: 1, DEF: 0, MED: 0, DEL: 0 };
+    const N = Math.min(Math.max(1, f.cfg.max - 2), squad().length), // 2 huecos libres para poder fichar desde el primer momento
+           order = ['POR', 'DEF', 'MED', 'DEL'], want = { POR: 1, DEF: 0, MED: 0, DEL: 0 };
     for (let i = 0, k = 0; i < N - 1; k++) { const pos = order[1 + k % 3]; if (want[pos] < pool[pos].length) { want[pos]++; i++; } else if (k > 60) break; }
     const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
     let best = null, bc = Infinity;

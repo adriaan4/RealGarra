@@ -126,3 +126,8 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - La lista de la votación MVP (`db.players`) es ahora un espejo de la **Plantilla**: sale toda la plantilla (con dorsal), incluidos Pajares y Juan. Para añadir o quitar a alguien se hace en Admin → Partido → Plantilla. Los votos en curso se pasan solos (por nombre: ROBERT→ROBER, ADRIAN→ADRI). Hay copia previa en `data/backups/`.
 - Admin → Votaciones → «Quién juega» tiene los botones «Marcar toda la plantilla» / «Quitar todos». Los marcados son los que se puntúan en Fantasy.
 - Al crear una jornada de Fantasy se cogen solos los jugadores marcados y los votos de MVP de ese rival (también «Traer quién jugó y los votos de la pestaña MVP»).
+
+## 📮 Buzón de sugerencias y quejas
+- Pestaña pública «📮 Buzón»: se conecta con el nombre de GarraBet del dispositivo (si no tiene, pide uno). Tipos: sugerencia, queja, duda u otro (máx. 600 letras y 6 mensajes al día). Cada persona solo ve sus mensajes y las respuestas del admin.
+- Cada mensaje nuevo manda un **aviso al admin** (el mismo que las apuestas: activa «Activar mis avisos» en Admin → Más en tu móvil). Al responder desde Admin → 📮 Buzón, a la persona le llega un aviso si tiene las notificaciones activadas.
+- Se guarda en `db.buzon` (`buzon.js` + `public/buzon.js`). Al pasar de 400 mensajes se borra el más viejo ya resuelto.

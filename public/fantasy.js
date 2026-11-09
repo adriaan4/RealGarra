@@ -77,14 +77,14 @@
     let list = D.pl.filter(p => filt === 'ALL' || p.pos === filt);
     list.sort(sort === 'pr' ? (a, b) => b.pr - a.pr : sort === 'av' ? (a, b) => (b.av ?? -1) - (a.av ?? -1) || b.pr - a.pr : (a, b) => b.tn - a.tn || b.pr - a.pr);
     const nU = Math.max(1, D.us.length);
-    return `${D.cfg.locked ? '<div class="fxNote lock">🔒 <b>Mercado cerrado</b> mientras se juega y se puntúa la jornada. Se reabre al cerrarla, con los precios nuevos.</div>' : '<div class="fxNote">💶 Venta al precio actual: si un jugador sube, ganas. Plantilla máxima: <b>' + D.cfg.max + '</b>.</div>'}
+    return `${D.cfg.locked ? '<div class="fxNote lock">🔒 <b>Mercado cerrado</b> mientras se juega y se puntúa la jornada. Se reabre al cerrarla, con los precios nuevos.</div>' : '<div class="fxNote">💶 Tienes <b>' + M(D.me.b) + '</b> · plantilla <b>' + D.me.t.length + '/' + D.cfg.max + '</b>' + (full ? ' — <b>está llena: vende a alguien para poder fichar</b>' : '') + '. Vendes al precio actual: si un jugador sube, ganas.</div>'}
     <div class="fxChips">${['ALL', 'POR', 'DEF', 'MED', 'DEL'].map(k => `<button class="fxChip${filt === k ? ' on' : ''}" data-act="filt" data-k="${k}">${k === 'ALL' ? 'Todos' : POSL[k] + 's'}</button>`).join('')}</div>
     <div class="fxChips">${[['pr', '💶 Precio'], ['av', '⭐ Nota'], ['tn', '👥 Más fichados']].map(([k, l]) => `<button class="fxChip${sort === k ? ' on' : ''}" data-act="sort" data-k="${k}">${l}</button>`).join('')}</div>
     ${list.map(p => { const own = owned.has(p.id), dis = D.cfg.locked || (!own && (full || D.me.b < p.pr));
       return `<div class="fxRow fxP-${p.pos}${own ? ' mine' : ''}">${av(p)}
       <div class="fxNm" data-act="pl" data-id="${p.id}" role="button" tabindex="0"><b>${E(p.name)}</b><small><u>${POSL[p.pos]}</u> · ${p.av != null ? '⭐ ' + fm(p.av) : 'sin nota'} · 👥 ${Math.round(p.tn / nU * 100)}%</small></div>
       <div class="fxPr"><b>${M(p.pr)}</b>${trend(p)}</div>
-      <button class="act${own ? ' sell' : ''}" data-act="${own ? 'sell' : 'buy'}" data-id="${p.id}"${dis ? ' disabled' : ''}>${own ? 'Vender' : 'Fichar'}</button></div>`; }).join('')}`;
+      <button class="act${own ? ' sell' : ''}" data-act="${own ? 'sell' : 'buy'}" data-id="${p.id}"${dis ? ' disabled' : ''}>${own ? 'Vender' : D.cfg.locked ? 'Cerrado' : full ? 'Llena' : D.me.b < p.pr ? 'Sin saldo' : 'Fichar'}</button></div>`; }).join('')}`;
   }
   function viewRate() {
     const j = openJ();

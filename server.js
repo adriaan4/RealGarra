@@ -252,6 +252,7 @@ const PASS = process.env.ADMIN_PASSWORD || 'Garra26?';
 const admin = (req, res, next) => (req.headers['x-admin'] === PASS ? next() : res.status(401).json({ error: 'Contraseña incorrecta' }));
 const bad = (res, msg) => res.status(400).json({ error: msg });
 const FANTASY = require('./fantasy')({ app, getDb: () => db, save, admin, bad, norm, crypto, snapshot }); // REAL GARRA FANTASY (todo vive en db.fantasy)
+require('./buzon')({ app, getDb: () => db, save, admin, bad, gbUser: d => gbUser(d), notifyAdmin: (...a) => notifyAdmin(...a), sendPush }); // Buzón de sugerencias y quejas (db.buzon)
 const pub = ({ device, ...v }) => v; // el identificador del dispositivo nunca sale al público
 
 // ---- Avisos push (Android, iPhone y ordenador) con Web Push + VAPID ----
