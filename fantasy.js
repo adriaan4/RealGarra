@@ -13,6 +13,8 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const GOAL = { POR: 8, DEF: 6, MED: 5, DEL: 4 };          // puntos por gol (los de atrás valen más)
   const CS = { POR: 4, DEF: 3, MED: 1, DEL: 0 };            // portería a cero
   const RULES = { play: 1, assist: 3, yellow: -1, red: -3, mvp: 4, mvp2: 1, rate: 2 }; // «rate»: puntos por cada punto de nota sobre 5
+  const MK_MS = 24 * 3600 * 1000;           // el mercado se renueva cada 24 h
+  const POS4 = ['POR', 'DEF', 'MED', 'DEL'];
 
   const F = () => {
     const db = getDb();
@@ -21,6 +23,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     if (!f.cfg || typeof f.cfg !== 'object') f.cfg = {};
     f.cfg.max = clamp(Math.floor(Number(f.cfg.max)) || 7, 3, 14);
     f.cfg.mk = [0, 1, 2].includes(f.cfg.mk) ? f.cfg.mk : 0;       // 0 = automático, 1 = abierto a la fuerza, 2 = cerrado a la fuerza
+    f.cfg.mkn = clamp(Math.floor(Number(f.cfg.mkn)) || 0, 0, 60);  // jugadores que salen al mercado cada 24 h (0 = automático: la mitad de la plantilla)
     for (const k of ['codes', 'users', 'jor']) if (!Array.isArray(f[k])) f[k] = [];
     for (const k of ['pr', 'pp', 'av']) if (!f[k] || typeof f[k] !== 'object') f[k] = {};
     return f;
@@ -32,6 +35,52 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const all = u => (u.bn ? [...u.t, u.bn] : u.t.slice());
   const byId = id => squad().find(p => p.id === id);
 
+  // ---- Formaciones: «D-M-F» (siempre 1 portero). Los titulares que tienes en cada línea no pueden pasar de los huecos de la formación ----
+  const cnt = ids => { const c = { POR: 0, DEF: 0, MED: 0, DEL: 0 }; for (const id of ids) { const q = byId(id); if (q) c[posOf(q)]++; } return c; };
+  const parseFm = s => { const m = /^(?:(\d{1,2})-)?(\d{1,2})-(\d{1,2})-(\d{1,2})$/.exec(String(s || '')); return m ? { POR: m[1] ? +m[1] : 1, DEF: +m[2], MED: +m[3], DEL: +m[4] } : null; };
+  const fmTotal = s => { const q = parseFm(s); return q ? q.POR + q.DEF + q.MED + q.DEL : 0; };
+  const fitsFm = (c, fm) => { const q = parseFm(fm); return !!q && POS4.every(k => c[k] <= q[k]); };
+  function fmList(max) {                                          // formaciones válidas para N titulares (1 portero + N-1 de campo)
+    const n = max - 1, out = [];
+    if (n < 3) { for (let d = 0; d <= n; d++) for (let m = 0; m + d <= n; m++) out.push(d + '-' + m + '-' + (n - d - m)); return out; }
+    const dM = Math.min(5, Math.max(2, Math.ceil(n * 2 / 3))), fM = Math.max(1, Math.ceil(n / 2));
+    for (let d = 1; d <= dM; d++) for (let m = 1; m <= dM; m++) { const fw = n - d - m; if (fw >= 1 && fw <= fM) out.push(d + '-' + m + '-' + fw); }
+    return out;
+  }
+  const fmTarget = max => { const n = max - 1, d = Math.round(n / 3), m = Math.round(n / 2); return [d, m, n - d - m]; };
+  const fmDist = (a, b) => { const x = parseFm(a), y = Array.isArray(b) ? { DEF: b[0], MED: b[1], DEL: b[2] } : parseFm(b); return Math.abs(x.DEF - y.DEF) + Math.abs(x.MED - y.MED) + Math.abs(x.DEL - y.DEL); };
+  // Formación que admite esos titulares: la actual si cabe; si no, la más parecida de la lista; null si ninguna
+  function fitFm(ids, cur, max) {
+    const c = cnt(ids);
+    if (cur && fmTotal(cur) === max && fitsFm(c, cur)) return cur;
+    let best = null, bd = Infinity; const ref = parseFm(cur) ? cur : fmTarget(max);
+    for (const fm of fmList(max)) if (fitsFm(c, fm)) { const d = fmDist(fm, ref); if (d < bd) { best = fm; bd = d; } }
+    return best;
+  }
+  // Equipo antiguo que no cabe en ninguna formación de la lista: se le da una a medida con lo que ya tiene (los huecos libres, a medio campo)
+  const legacyFm = (ids, max) => { const c = cnt(ids), rest = Math.max(0, max - c.POR - c.DEF - c.MED - c.DEL), pr = Math.max(1, c.POR); return (pr === 1 ? '' : pr + '-') + c.DEF + '-' + (c.MED + rest) + '-' + c.DEL; };
+
+  // ---- Mercado: cada 24 h sale a la venta una selección de jugadores (la misma para todos). Solo se ficha a quien esté en ella; los vendidos vuelven a la lista ----
+  function pickMarket(f, prev) {
+    const sq = squad(), size = sq.length; if (!size) return [];
+    const n = f.cfg.mkn ? Math.min(f.cfg.mkn, size) : clamp(Math.ceil(size / 2), Math.min(5, size), size);
+    const sh = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+    const old = new Set(prev || []), pools = {}; for (const k of POS4) pools[k] = [];
+    for (const q of sh(sq)) pools[posOf(q)].push(q.id);
+    const out = [];
+    if (n >= 4) for (const k of POS4) { const i = pools[k].findIndex(id => !old.has(id)); const j = i >= 0 ? i : 0; if (pools[k].length) out.push(pools[k].splice(j, 1)[0]); } // al menos uno de cada posición
+    const rest = sh(POS4.flatMap(k => pools[k])).sort((a, b) => (old.has(a) ? 1 : 0) - (old.has(b) ? 1 : 0)); // primero los que no salieron ayer
+    return [...out, ...rest].slice(0, n);
+  }
+  function rollMarket(f) {
+    const now = Date.now(), ids = new Set(squad().map(q => q.id)); let m = f.mkt, ch = false;
+    if (!m || typeof m !== 'object' || !Array.isArray(m.ids) || !(m.at > 0)) { m = f.mkt = { at: now, ids: [], prev: [] }; ch = true; }
+    if (now - m.at >= MK_MS) { m.at += MK_MS * Math.floor((now - m.at) / MK_MS); m.prev = m.ids.slice(); m.ids = []; ch = true; } // se renueva (sin saltarse días aunque nadie entrara)
+    const keep = m.ids.filter(id => ids.has(id)); if (keep.length !== m.ids.length) { m.ids = keep; ch = true; }
+    if (!m.ids.length && ids.size) { m.ids = pickMarket(f, m.prev); ch = true; }
+    return ch;
+  }
+
   // Deja todo coherente: precios iniciales de la plantilla actual y equipos sin jugadores que ya no existen (se devuelve su precio)
   function ensure() {
     const f = F(), ids = new Set(squad().map(p => p.id));
@@ -40,8 +89,11 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     for (const u of f.users) {
       const keep = u.t.filter(id => ids.has(id));
       if (keep.length !== u.t.length) { u.b = r1(u.b + u.t.filter(id => !ids.has(id)).reduce((s, id) => s + (f.pr[id] || 0), 0)); u.t = keep; ch = true; }
+      const fmOk = parseFm(u.fm) && fmTotal(u.fm) === f.cfg.max && fitsFm(cnt(u.t), u.fm);
+      if (!fmOk) { const nf = fitFm(u.t, u.fm, f.cfg.max) || legacyFm(u.t, f.cfg.max); if (nf !== u.fm) { u.fm = nf; ch = true; } }  // formación coherente con los titulares (equipos antiguos incluidos)
       if (u.bn && (!ids.has(u.bn) || u.t.includes(u.bn))) { if (!ids.has(u.bn)) u.b = r1(u.b + (f.pr[u.bn] || 0)); u.bn = 0; ch = true; }   // banquillo con un jugador que ya no existe (o repetido): se devuelve su precio
     }
+    if (rollMarket(f)) ch = true;
     return ch;
   }
   const locked = f => f.cfg.mk === 2 || (f.cfg.mk === 0 && f.jor.some(j => j.st === 'rate'));
@@ -63,6 +115,14 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   const avgOf = (rt, pid) => { const v = Object.values((rt || {})[pid] || {}); return v.length ? [r1(v.reduce((a, b) => a + b, 0) / v.length), v.length] : null; };
   const liveRa = j => { const o = {}; for (const pid of j.pl) { const a = avgOf(j.rt, pid); if (a) o[pid] = a; } return o; };
 
+  // Suplente automático: si un titular NO jugó y el del banquillo SÍ, el del banquillo entra por él (solo por un titular de su misma posición)
+  function autoSub(u, j) {
+    const t = u.t.slice(); if (!u.bn || !j.pl.includes(u.bn)) return { t, sb: null };
+    const bp = byId(u.bn); if (!bp) return { t, sb: null };
+    const i = t.findIndex(id => { const q = byId(id); return !j.pl.includes(id) && q && posOf(q) === posOf(bp); });
+    if (i < 0) return { t, sb: null };
+    const out = t[i]; t[i] = u.bn; return { t, sb: [out, u.bn] };
+  }
   function scoreJor(j, snapTeams) { // calcula puntos de jugadores y de cada participante
     const f = F();
     j.pt = {}; for (const pid of j.pl) j.pt[pid] = playerPts(j, pid);
@@ -81,7 +141,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const pl = [...new Set([...played, ...Object.keys(mv).map(Number)])].filter(id => ids.has(id));
     return { pl, mv };
   }
-  function blankJor(j, rival, pl) { return { j, rival: String(rival || '').slice(0, 40), st: 'rate', pl, rt: {}, s: {}, mv: {}, gc: null, ov: {}, ra: {}, pt: {}, up: {}, tm: {} }; }
+  function blankJor(j, rival, pl) { return { j, rival: String(rival || '').slice(0, 40), st: 'rate', pl, rt: {}, s: {}, mv: {}, gc: null, ov: {}, ra: {}, pt: {}, up: {}, tm: {}, sb: {} }; }
 
   // ---- Acceso: el token lo genera el servidor al canjear un código; viaja en la cabecera x-fk ----
   const me = req => { const t = String(req.headers['x-fk'] || ''); return t.length > 20 ? F().users.find(u => u.tk === t) : null; };
@@ -115,7 +175,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   // ---- Vista para participantes ----
   function jorOut(j) {
     const o = { j: j.j, rival: j.rival, st: j.st, pl: j.pl };
-    if (j.st === 'done') { o.pt = j.pt; o.ra = j.ra; o.up = j.up; o.s = j.s; o.mv = j.mv; o.gc = j.gc; }
+    if (j.st === 'done') { o.pt = j.pt; o.ra = j.ra; o.up = j.up; o.s = j.s; o.mv = j.mv; o.gc = j.gc; o.sb = j.sb || {}; }
     else { o.n = Object.fromEntries(j.pl.map(pid => [pid, Object.keys(j.rt[pid] || {}).length])); }
     return o;
   }
@@ -127,10 +187,10 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const val = x => r1(x.b + all(x).reduce((s, id) => s + (f.pr[id] || 0), 0));
     const open = f.jor.find(j => j.st === 'rate');
     return {
-      me: { id: u.id, name: u.name, b: u.b, t: u.t, bn: u.bn || 0 },
-      cfg: { max: f.cfg.max, budget: START_CASH, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS } },
+      me: { id: u.id, name: u.name, b: u.b, t: u.t, bn: u.bn || 0, fm: u.fm },
+      cfg: { max: f.cfg.max, budget: START_CASH, locked: locked(f), forced: f.cfg.mk, rules: { ...RULES, GOAL, CS }, fms: fmList(f.cfg.max), mkt: { end: f.mkt.at + MK_MS, ids: f.mkt.ids, now: Date.now() } },
       pl: squad().map(p => { const pos = posOf(p), a = f.av[p.id]; return { id: p.id, n: p.n, name: p.name, pos, ph: p.photo ? (p.photoV || 1) : 0, pr: f.pr[p.id], pp: f.pp[p.id] ?? f.pr[p.id], av: a && a[1] ? r1(a[0] / a[1]) : null, tn: team[p.id] || 0 }; }),
-      us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, bn: x.bn || 0, pts: gen[x.id] || 0, val: val(x) })),
+      us: f.users.filter(x => !x.off).map(x => ({ id: x.id, name: x.name, t: x.t, bn: x.bn || 0, fm: x.fm, pts: gen[x.id] || 0, val: val(x) })),
       jor: f.jor.slice().sort((a, b) => a.j - b.j).map(jorOut),
       mine: open ? Object.fromEntries(open.pl.filter(pid => (open.rt[pid] || {})[u.id]).map(pid => [pid, open.rt[pid][u.id]])) : {}
     };
@@ -157,7 +217,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
       if (f.users.some(x => norm(x.name) === norm(name))) return bad(res, 'Ese nombre fantasy ya está cogido');
       ensure();
       const t = randomTeam(f);                       // equipo aleatorio de salida (gratis) + 40 M de presupuesto
-      u = { id: getDb().nextId++, tk: '', name, b: START_CASH, t };
+      u = { id: getDb().nextId++, tk: '', name, b: START_CASH, t, fm: fitFm(t, null, f.cfg.max) || legacyFm(t, f.cfg.max) };
       f.users.push(u);
     }
     u.tk = crypto.randomBytes(18).toString('base64url');
@@ -172,38 +232,51 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     if (!p) return bad(res, 'Jugador no encontrado');
     if (locked(f)) return bad(res, 'El mercado está cerrado (jornada en curso)');
     if (all(u).includes(p.id)) return bad(res, 'Ya tienes a ' + p.name);
-    const free = u.t.length < f.cfg.max;             // hueco entre los titulares
-    if (!free && u.bn) return bad(res, 'Tu plantilla está completa (' + f.cfg.max + ' titulares + 1 en el banquillo). Vende a alguien antes');
+    if (!f.mkt.ids.includes(p.id)) return bad(res, p.name + ' no está en el mercado de hoy. La lista se renueva cada 24 h');
+    if (all(u).length >= f.cfg.max + 1) return bad(res, 'Tu plantilla está completa (' + f.cfg.max + ' titulares + 1 suplente). Vende a alguien antes');
     const pr = f.pr[p.id];
     if (u.b < pr) return bad(res, 'Te faltan ' + r1(pr - u.b) + ' M para fichar a ' + p.name);
+    let where = 'b', fm = null;
+    if (u.t.length < f.cfg.max) { fm = fitFm([...u.t, p.id], u.fm, f.cfg.max); if (fm) where = 't'; }   // al campo si cabe en tu formación (si hace falta, se ajusta la formación)
+    if (where === 'b' && u.bn) return bad(res, 'No te cabe un ' + POS_NAME[posOf(p)].toLowerCase() + ' en el campo (formación ' + u.fm + ') y el suplente está ocupado. Vende a alguien o cambia la alineación');
     u.b = r1(u.b - pr);
-    if (free) u.t.push(p.id); else u.bn = p.id;      // primero se llena el campo; el siguiente fichaje va al banquillo
-    await save(); res.json({ ok: true, ...view(u) });
+    let note = '';
+    if (where === 't') { u.t.push(p.id); if (fm !== u.fm) { u.fm = fm; note = 'Formación cambiada a ' + fm; } }
+    else { u.bn = p.id; note = 'No cabe en tu formación (' + u.fm + '): va al banquillo'; }
+    await save(); res.json({ ok: true, note, ...view(u) });
   });
   app.post('/api/fantasy/sell', member, async (req, res) => {
     const f = F(), u = req.fu, id = +req.body.pid;
     if (!all(u).includes(id)) return bad(res, 'Ese jugador no está en tu plantilla');
     if (locked(f)) return bad(res, 'El mercado está cerrado (jornada en curso)');
     u.b = r1(u.b + (f.pr[id] || 0)); u.t = u.t.filter(x => x !== id); if (u.bn === id) u.bn = 0;
+    if (!f.mkt.ids.includes(id)) f.mkt.ids.push(id);              // el jugador vendido vuelve al mercado de hoy
     await save(); res.json({ ok: true, ...view(u) });
   });
-  // Banquillo: manda un titular al banquillo (o lo cambia por el que está allí) o sube al del banquillo al campo. Solo con el mercado abierto,
-  // porque al cerrar la jornada solo puntúan los titulares que tenías en ese momento. body: { pid, out? } (out = el titular al que sustituye el del banquillo)
+  // Alineación: manda un titular al suplente (el suplente salta al campo), sube al suplente al campo o cambia de formación. Solo con el mercado abierto,
+  // porque al cerrar la jornada cuenta la alineación que tengas en ese momento. body: { pid, out? } (out = el titular al que sustituye el suplente)
   app.post('/api/fantasy/swap', member, async (req, res) => {
-    const f = F(), u = req.fu, id = +req.body.pid, out = +req.body.out || 0;
+    const f = F(), u = req.fu, id = +req.body.pid, out = +req.body.out || 0, max = f.cfg.max;
     if (locked(f)) return bad(res, 'El mercado está cerrado: no se puede tocar la alineación mientras se puntúa la jornada');
+    let t2, bn2;
     if (u.t.includes(id)) {                                     // titular → banquillo
-      const old = u.bn; u.t = u.t.filter(x => x !== id); u.bn = id;
-      if (old) u.t.push(old);                                   // el del banquillo salta al campo
+      t2 = u.t.filter(x => x !== id); bn2 = id; if (u.bn) t2.push(u.bn);
     } else if (u.bn && u.bn === id) {                           // banquillo → campo
-      if (u.t.length < f.cfg.max) u.t.push(id);
-      else {
-        if (!u.t.includes(out)) return bad(res, 'Elige a qué titular sustituye');
-        u.t = u.t.map(x => x === out ? id : x); u.bn = out;
-      }
-      if (u.t.includes(u.bn)) u.bn = 0;
+      if (u.t.length < max) { t2 = [...u.t, id]; bn2 = 0; }
+      else { if (!u.t.includes(out)) return bad(res, 'Elige a qué titular sustituye'); t2 = u.t.map(x => x === out ? id : x); bn2 = out; }
     } else return bad(res, 'Ese jugador no está en tu plantilla');
-    await save(); res.json({ ok: true, ...view(u) });
+    const fm = fitFm(t2, u.fm, max);
+    if (!fm) return bad(res, 'Ese cambio no cabe en ninguna formación: elige a alguien de la misma posición');
+    u.t = t2; u.bn = bn2; const note = fm !== u.fm ? 'Formación cambiada a ' + fm : ''; u.fm = fm;
+    await save(); res.json({ ok: true, note, ...view(u) });
+  });
+  app.post('/api/fantasy/formation', member, async (req, res) => {
+    const f = F(), u = req.fu, fm = String(req.body.fm || '');
+    if (locked(f)) return bad(res, 'El mercado está cerrado: no se puede cambiar la formación mientras se puntúa la jornada');
+    if (!fmList(f.cfg.max).includes(fm)) return bad(res, 'Formación no válida');
+    const c = cnt(u.t), q = parseFm(fm), over = POS4.filter(k => c[k] > q[k]);
+    if (over.length) return bad(res, 'Con la ' + fm + ' te sobran ' + over.map(k => (c[k] - q[k]) + ' ' + POS_NAME[k].toLowerCase() + (c[k] - q[k] > 1 ? 's' : '')).join(' y ') + ' en el campo. Mándalos al banquillo o véndelos antes');
+    u.fm = fm; await save(); res.json({ ok: true, ...view(u) });
   });
   // Notas de 1 a 10. Una sola nota por persona y jugador: lo ya votado no se puede cambiar
   app.post('/api/fantasy/rate', member, async (req, res) => {
@@ -246,9 +319,9 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     const gen = {};
     for (const j of f.jor) if (j.st === 'done') for (const [id, p] of Object.entries(j.up)) gen[id] = r1((gen[id] || 0) + p);
     res.json({
-      cfg: { max: f.cfg.max, mk: f.cfg.mk, locked: locked(f) },
+      cfg: { max: f.cfg.max, mk: f.cfg.mk, mkn: f.cfg.mkn, locked: locked(f), mkEnd: f.mkt.at + MK_MS, mkCount: f.mkt.ids.length },
       codes: f.codes,
-      users: f.users.map(u => ({ id: u.id, name: u.name, b: u.b, n: all(u).length, off: !!u.off, pts: gen[u.id] || 0, linked: !!u.tk })),
+      users: f.users.map(u => ({ id: u.id, name: u.name, fm: u.fm, b: u.b, n: all(u).length, off: !!u.off, pts: gen[u.id] || 0, linked: !!u.tk })),
       pl: squad().map(p => ({ id: p.id, n: p.n, name: p.name, pos: posOf(p), pr: f.pr[p.id], av: f.av[p.id] && f.av[p.id][1] ? r1(f.av[p.id][0] / f.av[p.id][1]) : null })),
       jor: f.jor.slice().sort((a, b) => b.j - a.j).map(j => ({ ...j, ra: j.st === 'rate' ? liveRa(j) : j.ra, tm: undefined, np: j.pl.length }))
     });
@@ -283,14 +356,18 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
   A('delete', '/user/:id', async (req, res) => {
     const f = F(), id = +req.params.id;
     f.users = f.users.filter(x => x.id !== id); f.codes = f.codes.filter(x => x.u !== id);
-    for (const j of f.jor) { delete j.up[id]; delete j.tm[id]; for (const m of Object.values(j.rt)) delete m[id]; }
+    for (const j of f.jor) { delete j.up[id]; delete j.tm[id]; if (j.sb) delete j.sb[id]; for (const m of Object.values(j.rt)) delete m[id]; }
     await save(); res.json({ ok: true });
   });
   A('put', '/cfg', async (req, res) => {
     const f = F();
     if (req.body.max != null) f.cfg.max = clamp(Math.floor(Number(req.body.max)) || 7, 3, 14);
     if (req.body.mk != null && [0, 1, 2].includes(+req.body.mk)) f.cfg.mk = +req.body.mk;
-    await save(); res.json({ ok: true });
+    if (req.body.mkn != null) f.cfg.mkn = clamp(Math.floor(Number(req.body.mkn)) || 0, 0, 60);
+    ensure(); await save(); res.json({ ok: true });
+  });
+  A('post', '/market/renew', async (req, res) => { // renueva el mercado ya: nueva selección y vuelve a empezar la cuenta de 24 h
+    const f = F(); ensure(); f.mkt.prev = f.mkt.ids.slice(); f.mkt.at = Date.now(); f.mkt.ids = pickMarket(f, f.mkt.prev); await save(); res.json({ ok: true, n: f.mkt.ids.length });
   });
   A('put', '/price/:pid', async (req, res) => {
     const f = F(), p = byId(+req.params.pid), v = Number(req.body.pr);
@@ -346,7 +423,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     snapshot('cierre-fantasy-j' + j.j);
     if (!Object.keys(j.mv || {}).length) j.mv = mvpFor(j.rival).mv;
     j.ra = liveRa(j);
-    j.tm = {}; for (const u of f.users) j.tm[u.id] = u.t.slice();
+    j.tm = {}; j.sb = {}; for (const u of f.users) { const r = autoSub(u, j); j.tm[u.id] = r.t; if (r.sb) j.sb[u.id] = r.sb; } // el suplente entra por un titular de su posición que no jugó
     scoreJor(j, j.tm);
     for (const pid of j.pl) {
       const ra = j.ra[pid]; if (!ra) continue;

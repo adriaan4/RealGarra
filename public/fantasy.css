@@ -159,3 +159,16 @@ html{scroll-padding-bottom:96px}
 .fxBtn.alt{background:transparent;color:inherit;border:1px solid var(--line)}
 .fxSwap{display:flex;flex-wrap:wrap;gap:8px}
 .fxSwap .fxBtn{flex:1 1 40%}
+
+/* Formaciones, mercado cada 24 h y ranking de jugadores */
+.fxFm{margin-bottom:2px}
+.fxChip.no{opacity:.5}
+.fxChip:disabled{opacity:.35;cursor:default}
+.fxLine.dense{gap:2px}
+.fxLine.dense .fxTok{min-width:60px}
+.fxLine.dense .fxTok b{font-size:14px;padding:2px 5px}
+.fxCd{font-variant-numeric:tabular-nums;color:var(--gold)}
+.fxCdN{border-left-color:var(--fxMED)}
+.fxRow.pk{grid-template-columns:34px auto 1fr auto;cursor:pointer}
+.fxRow.pk .pos{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);text-align:center}
+@media(max-width:420px){.fxRow.pk{gap:8px}}
