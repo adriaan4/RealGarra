@@ -9,7 +9,7 @@
   const FONT = '"Barlow Condensed",Impact,"Arial Narrow",sans-serif';
   const COL = { win: '#3ecf6e', draw: '#e2ab2c', lose: '#e0474c' };
   const st = { fmt: 'story', tipo: 'matchday', j: '', local: true, bg: 'cesped', dark: 45, frame: true, accent: '#e2ab2c', ink: '#f6eedb',
-    league: '3ª B DOMINGO TARDE · GRUPO 1', footer: '#VamosGarra', photo: '', els: [], sel: null };
+    league: '3ª B DOMINGO TARDE · GRUPO 1', footer: '#VamosGarra', photo: '', els: [], sel: null, mvpName: '', mvpPhoto: '', prev: null };
   let built = false, drag = null, raf = 0, nid = 0;
 
   const SS = () => (typeof S !== 'undefined' ? S : { calendar: [], next: {}, crests: [] });
@@ -46,7 +46,7 @@
   }
   function defaultJ(tipo) {
     const c = cal(), t = todayMad();
-    if (tipo === 'resultado') { const d = c.filter(m => m.result).sort((a, b) => b.date.localeCompare(a.date) || b.j - a.j)[0]; if (d) return d.j; }
+    if (tipo === 'resultado' || tipo === 'mvp') { const d = c.filter(m => m.result).sort((a, b) => b.date.localeCompare(a.date) || b.j - a.j)[0]; if (d) return d.j; }
     const n = c.find(m => m.date >= t && !m.result) || c.find(m => !m.result) || c[c.length - 1];
     return n ? n.j : '';
   }
@@ -58,6 +58,23 @@
     const tx = (label, text, x, y, size, o = {}) => add({ k: 't', label, text, x, y, size, ...o });
     const garra = { name: 'REAL GARRA', src: '/escudo.png', ini: 'RG' }, riv = { name: (m.rival || 'RIVAL').toUpperCase(), src: m.crest, ini: initials(m.rival) };
     const [A, B] = st.local ? [garra, riv] : [riv, garra];
+    if (t === 'mvp') { // «MVP del partido»: negro y naranja, foto grande en el centro y solo el nombre (sin «Ha sido»)
+      const Pz = story
+        ? { hl: [230, 165, 48], hr: [850, 160, 48], mvp: [540, 420, 400], del: [540, 665, 150], esc: [190, 985, 320], riv: [890, 960, 260], rn: [890, 1135, 48], ph: [540, 1230, 960], nm: [540, 1590, 250], ft: [540, 1805, 96] }
+        : { hl: [215, 118, 36], hr: [865, 114, 36], mvp: [540, 265, 290], del: [540, 425, 108], esc: [200, 610, 320], riv: [880, 585, 240], rn: [880, 745, 42], ph: [540, 705, 740], nm: [540, 895, 185], ft: [540, 1030, 60] };
+      add({ k: 'i', label: 'Foto del MVP', key: 'mvpphoto', src: st.mvpPhoto, ini: 'FOTO', x: Pz.ph[0], y: Pz.ph[1], size: Pz.ph[2] });
+      add({ k: 'i', label: 'Escudo Real Garra', src: garra.src, ini: garra.ini, x: Pz.esc[0], y: Pz.esc[1], size: Pz.esc[2] });
+      add({ k: 'i', label: 'Escudo rival', src: riv.src, ini: riv.ini, x: Pz.riv[0], y: Pz.riv[1], size: Pz.riv[2] });
+      tx('Real Garra Balonpié', 'REAL GARRA\nBALONPIÉ', Pz.hl[0], Pz.hl[1], Pz.hl[2], { role: 'accent', lh: .95 });
+      tx('Más que un equipo', 'MÁS QUE UN\nEQUIPO', Pz.hr[0], Pz.hr[1], Pz.hr[2], { lh: .95 });
+      tx('MVP', 'MVP', Pz.mvp[0], Pz.mvp[1], Pz.mvp[2], { role: 'accent', w: 800 });
+      tx('Del partido', 'DEL PARTIDO', Pz.del[0], Pz.del[1], Pz.del[2], { color: '#ffffff' });
+      tx('Nombre rival', riv.name, Pz.rn[0], Pz.rn[1], Pz.rn[2], { role: 'accent', maxW: story ? 360 : 300 });
+      tx('Nombre del MVP', (st.mvpName || 'NOMBRE').toUpperCase(), Pz.nm[0], Pz.nm[1], Pz.nm[2], { role: 'accent', key: 'mvpname', maxW: W - 120, w: 800 });
+      tx('¡Vamos Garra!', '¡VAMOS GARRA!', Pz.ft[0], Pz.ft[1], Pz.ft[2], { role: 'accent', maxW: W - 160 });
+      st.els = els; st.sel = null;
+      return Promise.all(els.filter(e => e.k === 'i').map(async e => { e.img = await getImg(e.src); }));
+    }
     const res = t === 'resultado';
     const cs = story ? 330 : (res ? 210 : 260), cy = story ? (res ? 800 : 860) : (res ? 350 : 480);
     const ax = story ? 265 : (res ? 190 : 250), bx = W - ax;
@@ -94,7 +111,34 @@
   // ---- dibujo ----
   const cover = (c, img, w, h) => { const r = Math.max(w / img.width, h / img.height), dw = img.width * r, dh = img.height * r; c.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh); };
   let bgImg = null, photoImg = null;
+  // Fondo «MVP»: negro con focos, trazos de pincel naranja en las esquinas, destello detrás del jugador y césped abajo.
+  const rnd = seed => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  function brush(c, x, y, len, th, ang, alpha, seed) {
+    const r = rnd(seed), n = 28; c.save(); c.translate(x, y); c.rotate(ang); c.globalAlpha = alpha; c.fillStyle = st.accent; c.beginPath(); c.moveTo(0, -th / 2);
+    for (let i = 1; i <= n; i++) c.lineTo(len * i / n, -th / 2 + (r() - .5) * th * .5);
+    c.lineTo(len + th * .3 * r(), (r() - .5) * th * .3);
+    for (let i = n; i >= 0; i--) c.lineTo(len * i / n, th / 2 + (r() - .5) * th * .5);
+    c.closePath(); c.fill(); c.restore();
+  }
+  function drawMvpBg(c, w, h) {
+    const story = h > w, cx = w / 2, cy = story ? 1120 : 650;
+    c.fillStyle = '#070605'; c.fillRect(0, 0, w, h);
+    const base = c.createRadialGradient(cx, cy, 40, cx, cy, Math.max(w, h) * .75); base.addColorStop(0, '#24160a'); base.addColorStop(1, '#070605'); c.fillStyle = base; c.fillRect(0, 0, w, h);
+    for (const [fx, fy] of [[.06, .3], [.94, .3], [.5, .02]]) { const g = c.createRadialGradient(w * fx, h * fy, 0, w * fx, h * fy, w * .28); g.addColorStop(0, 'rgba(255,190,90,.35)'); g.addColorStop(1, 'rgba(255,190,90,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }
+    const r = rnd(7); c.save(); c.translate(cx, cy); c.fillStyle = st.accent; c.globalAlpha = .12;   // rayos del destello
+    for (let i = 0; i < 64; i++) { const a = i * Math.PI * 2 / 64 + (r() - .5) * .08, len = w * (.28 + r() * .22), wd = .014 + r() * .018; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(a - wd) * len, Math.sin(a - wd) * len); c.lineTo(Math.cos(a + wd) * len * 1.05, Math.sin(a + wd) * len * 1.05); c.closePath(); c.fill(); }
+    c.restore();
+    const gl = c.createRadialGradient(cx, cy, 0, cx, cy, w * .5); gl.addColorStop(0, 'rgba(255,150,30,.28)'); gl.addColorStop(1, 'rgba(255,150,30,0)'); c.fillStyle = gl; c.fillRect(0, 0, w, h);
+    const gr = c.createLinearGradient(0, h * .78, 0, h); gr.addColorStop(0, 'rgba(20,60,22,0)'); gr.addColorStop(1, 'rgba(20,60,22,.7)'); c.fillStyle = gr; c.fillRect(0, h * .78, w, h * .22);
+    const u1 = story ? 768 : 497, u2 = story ? 1728 : 992;
+    brush(c, -70, story ? 30 : 15, w * .24, story ? 44 : 34, .45, .95, 1); brush(c, -90, story ? 95 : 70, w * .16, story ? 22 : 16, .45, .7, 2);
+    brush(c, w + 70, story ? 40 : 20, w * .24, story ? 44 : 34, Math.PI - .45, .95, 3); brush(c, w + 90, story ? 105 : 78, w * .16, story ? 22 : 16, Math.PI - .45, .7, 4);
+    brush(c, w + 70, h - (story ? 80 : 60), w * .5, story ? 62 : 48, Math.PI + .5, .95, 5); brush(c, w + 90, h - (story ? 190 : 140), w * .34, 26, Math.PI + .5, .7, 6);
+    brush(c, -70, h - (story ? 70 : 50), w * .45, story ? 56 : 44, -.5, .9, 8);
+    brush(c, w * .22, u1, w * .56, story ? 20 : 15, -.025, 1, 9); brush(c, w * .2, u2, w * .6, story ? 18 : 13, -.02, 1, 10);
+  }
   function drawBg(c, w, h) {
+    if (st.bg === 'mvp') { drawMvpBg(c, w, h); if (st.frame) { c.strokeStyle = st.accent; c.lineWidth = 6; c.strokeRect(34, 34, w - 68, h - 68); } return; }
     const photo = st.bg === 'cesped' ? bgImg : st.bg === 'foto' ? photoImg : null;
     if (photo) {
       cover(c, photo, w, h);
@@ -159,6 +203,12 @@
     if (e.k === 't') { $('#igTxt').value = e.text; $('#igCol').value = e.color || (e.role === 'accent' ? st.accent : st.ink); }
     $('#igSize').min = e.k === 't' ? 20 : 80; $('#igSize').max = e.k === 't' ? 420 : 900; $('#igSize').value = e.size;
   }
+  function look(prev, now) { // al entrar en «MVP» se pone su fondo naranja; al salir se devuelve lo que había
+    if (now === 'mvp' && prev !== 'mvp') { st.prev = { bg: st.bg, accent: st.accent, frame: st.frame }; st.bg = 'mvp'; st.accent = '#f59e1b'; st.frame = false; }
+    else if (prev === 'mvp' && now !== 'mvp' && st.prev) { Object.assign(st, st.prev); st.prev = null; }
+    $('#igBg').value = st.bg; $('#igAcc').value = st.accent; $('#igFrame').checked = st.frame; $('#igMvpRow').hidden = now !== 'mvp';
+  }
+  function fillPlayers() { const dl = $('#igMvpList'); if (dl) dl.innerHTML = (SS().players || []).map(p => `<option value="${String(p.name).replace(/[<>&"]/g, '')}">`).join(''); }
   async function rebuild() { say('Preparando…'); await build(); fillSel(); redraw(); say(''); }
   function fit() { const cv = $('#igCv'), r = FM[st.fmt]; cv.style.aspectRatio = r.w + ' / ' + r.h; cv.style.width = st.fmt === 'story' ? 'min(100%, 380px)' : 'min(100%, 560px)'; }
   async function pickFile(inp) { const f = inp.files && inp.files[0]; inp.value = ''; return f ? URL.createObjectURL(f) : ''; }
@@ -177,11 +227,16 @@
 <div class="igc">
  <h3>Qué quieres subir</h3>
  <div class="row"><select id="igFmt" aria-label="Formato"><option value="story">Historia · 9:16 vertical</option><option value="post">Publicación · 1:1 cuadrada</option></select>
- <select id="igTipo" aria-label="Tipo"><option value="matchday">Matchday</option><option value="resultado">Resultado</option><option value="proximo">Próximo partido</option></select></div>
+ <select id="igTipo" aria-label="Tipo"><option value="matchday">Matchday</option><option value="resultado">Resultado</option><option value="proximo">Próximo partido</option><option value="mvp">MVP del partido</option></select></div>
  <div class="row"><select id="igJ" aria-label="Partido"></select><select id="igLocal" aria-label="Local o visitante"><option value="1">Real Garra juega de local</option><option value="0">Real Garra juega de visitante</option></select></div>
  <div class="row"><input id="igLeague" placeholder="Cabecera" maxlength="60" style="flex:1"><input id="igFoot" placeholder="Pie (hashtag…)" maxlength="40"></div>
+ <div id="igMvpRow" hidden>
+  <div class="row"><input id="igMvpName" list="igMvpList" placeholder="Nombre del MVP (solo el nombre)" maxlength="24" style="flex:1" autocomplete="off"><datalist id="igMvpList"></datalist></div>
+  <div class="row"><label>Foto del MVP: <input id="igMvpPhoto" type="file" accept="image/*"></label></div>
+  <p class="sub" style="font-size:14px;margin:0">Queda mejor una foto recortada (PNG sin fondo). Puedes moverla y cambiarle el tamaño como cualquier elemento. Para el partido, elige la jornada arriba.</p>
+ </div>
  <h3>Fondo y colores</h3>
- <div class="row"><select id="igBg" aria-label="Fondo"><option value="cesped">Césped</option><option value="negro">Negro y dorado</option><option value="rojo">Rojo Garra</option><option value="foto">Mi foto</option></select>
+ <div class="row"><select id="igBg" aria-label="Fondo"><option value="cesped">Césped</option><option value="negro">Negro y dorado</option><option value="rojo">Rojo Garra</option><option value="foto">Mi foto</option><option value="mvp">Negro y naranja (MVP)</option></select>
  <label>Subir foto: <input id="igPhoto" type="file" accept="image/*"></label></div>
  <div class="row"><label style="flex:1">Oscurecer <input id="igDark" type="range" min="0" max="90" value="45"></label><label><input id="igFrame" type="checkbox" checked> Marco</label></div>
  <div class="row"><label>Acento <input id="igAcc" type="color" value="#e2ab2c"></label><label>Texto <input id="igInk" type="color" value="#f6eedb"></label></div>
@@ -216,7 +271,7 @@
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 
     $('#igFmt').onchange = async e => { st.fmt = e.target.value; fit(); await rebuild(); };
-    $('#igTipo').onchange = async e => { st.tipo = e.target.value; st.j = defaultJ(st.tipo); $('#igJ').value = st.j; await rebuild(); };
+    $('#igTipo').onchange = async e => { const prev = st.tipo; st.tipo = e.target.value; look(prev, st.tipo); st.j = defaultJ(st.tipo); $('#igJ').value = st.j; await rebuild(); };
     $('#igJ').onchange = async e => { st.j = e.target.value; await rebuild(); };
     $('#igLocal').onchange = async e => { st.local = e.target.value === '1'; await rebuild(); };
     $('#igLeague').oninput = e => { st.league = e.target.value; const t = st.els.find(x => x.key === 'tag'); if (t) t.text = st.league; syncEdit(); redraw(); };
@@ -236,6 +291,9 @@
     $('#igDel').onclick = () => { if (!st.sel) { say('Toca primero un elemento.'); return; } st.els = st.els.filter(x => x.id !== st.sel); st.sel = null; fillSel(); redraw(); };
     $('#igAddT').onclick = () => { const f = FM[st.fmt], e = { id: 'e' + (++nid), k: 't', label: 'Texto nuevo', text: 'TEXTO', x: f.w / 2, y: f.h / 2, size: 80, role: 'ink', color: null }; st.els.push(e); st.sel = e.id; fillSel(); redraw(); };
     $('#igAddI').onchange = async e => { const u = await pickFile(e.target); if (!u) return; const f = FM[st.fmt], el = { id: 'e' + (++nid), k: 'i', label: 'Imagen nueva', src: u, img: await getImg(u), x: f.w / 2, y: f.h / 2, size: 300, role: 'ink', color: null }; st.els.push(el); st.sel = el.id; fillSel(); redraw(); };
+    fillPlayers();
+    $('#igMvpName').oninput = e => { st.mvpName = e.target.value; const t = st.els.find(x => x.key === 'mvpname'); if (t) t.text = (st.mvpName || 'NOMBRE').toUpperCase(); syncEdit(); redraw(); };
+    $('#igMvpPhoto').onchange = async e => { const u = await pickFile(e.target); if (!u) return; st.mvpPhoto = u; const el = st.els.find(x => x.key === 'mvpphoto'); if (el) { el.src = u; el.img = await getImg(u); } redraw(); };
     $('#igReset').onclick = rebuild;
     const name = () => 'garra-' + st.tipo + '-' + (st.fmt === 'story' ? 'historia' : 'post') + (st.j ? '-J' + st.j : '') + '.png';
     $('#igDl').onclick = async () => { const b = await toBlob(); if (!b) { say('No se pudo crear la imagen.'); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name(); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('Imagen descargada.'); };
@@ -251,7 +309,7 @@
   // Se abre al entrar en la pestaña; si ya estaba abierta, solo se refresca la lista de partidos por si cambió el calendario.
   function open() {
     if (!built) { init(); return; }
-    const keep = st.j; fillMatches(); $('#igJ').value = keep;
+    const keep = st.j; fillMatches(); $('#igJ').value = keep; fillPlayers();
   }
   // La pestaña puede abrirse con un clic o por sí sola (el panel recuerda la última pestaña): se vigila cuando el panel deja de estar oculto.
   const pane = $('.apane[data-ap=insta]');
