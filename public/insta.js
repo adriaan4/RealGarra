@@ -260,19 +260,20 @@
   }
   function fillPlayers() { const dl = $('#igMvpList'); if (dl) dl.innerHTML = (SS().players || []).map(p => `<option value="${String(p.name).replace(/[<>&"]/g, '')}">`).join(''); }
   async function rebuild() { say('Preparando…'); await build(); fillSel(); redraw(); say(''); }
-  function fit() { const cv = $('#igCv'), r = FM[st.fmt]; cv.style.aspectRatio = r.w + ' / ' + r.h; cv.style.width = st.fmt === 'story' ? 'min(100%, 380px)' : 'min(100%, 560px)'; }
+  function fit() { const cv = $('#igCv'), r = FM[st.fmt], root = $('#igRoot'); cv.style.aspectRatio = r.w + ' / ' + r.h; root.style.setProperty('--igmax', st.fmt === 'story' ? '380px' : '560px'); root.style.setProperty('--igar', st.fmt === 'story' ? '.5625' : '1'); }
   async function pickFile(inp) { const f = inp.files && inp.files[0]; inp.value = ''; return f ? URL.createObjectURL(f) : ''; }
 
   async function init() {
     built = true; // evita abrirlo dos veces si se pulsa la pestaña varias veces seguidas
     const root = $('#igRoot');
     const css = document.createElement('style');
-    css.textContent = '#igRoot .igw{display:grid;gap:18px;align-items:start}@media(min-width:900px){#igRoot .igw{grid-template-columns:minmax(0,auto) minmax(0,1fr)}}' +
+    css.textContent = '#igRoot .igw{display:grid;gap:18px;align-items:start;grid-template-columns:minmax(0,1fr)}#igRoot .igw>div{min-width:0}#igRoot canvas{width:min(100%,var(--igmax,380px))}' +
+      '@media(min-width:760px){#igRoot .igw{grid-template-columns:minmax(0,var(--igmax,380px)) minmax(280px,1fr);gap:28px}#igRoot .igw>div:first-child{position:sticky;top:84px}#igRoot canvas{width:min(100%,var(--igmax,380px),calc((100vh - 170px) * var(--igar,.5625)))}}' +
       '#igRoot canvas{display:block;border:2px solid var(--line);border-radius:10px;background:#000;touch-action:none;cursor:grab;margin:0 auto}' +
-      '#igRoot .igc label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#igRoot .igc h3{margin:16px 0 4px;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}' +
+      '#igRoot .igc label{display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:100%;min-width:0}#igRoot input[type=file]{max-width:100%;min-width:0}#igRoot .igc h3{margin:16px 0 4px;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}' +
       '#igRoot input[type=color]{width:46px;height:40px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--card)}#igRoot textarea{width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}#igRoot input[type=range]{flex:1;min-width:120px}';
     document.head.appendChild(css);
-    root.innerHTML = `<p class="sub">Diseños hechos por ti, sin IA. Elige formato y tipo, ajusta los textos y <b>arrastra cualquier elemento</b> con el dedo o el ratón (toca uno para editarlo). En las <b>imágenes</b> (escudos, foto del MVP…) cambias el tamaño arrastrando el <b>círculo azul</b> de la esquina, con la rueda del ratón o <b>pellizcando con dos dedos</b>; el fondo no se redimensiona. Los datos salen del calendario; si cambias formato, tipo o partido el diseño se rehace.</p>
+    root.innerHTML = `<p class="sub">Elige formato y tipo, ajusta los textos y <b>arrastra cualquier elemento</b> (toca uno para editarlo). En las <b>imágenes</b> cambia el tamaño con el <b>círculo azul</b> de la esquina, la rueda del ratón o <b>pellizcando con dos dedos</b>; el fondo no se redimensiona.</p>
 <div class="igw"><div><canvas id="igCv"></canvas><p class="sub" id="igMsg" style="text-align:center"></p></div>
 <div class="igc">
  <h3>Qué quieres subir</h3>

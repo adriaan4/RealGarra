@@ -189,10 +189,9 @@ textarea.cnT{width:100%;min-height:150px;font:inherit;padding:10px 12px;border-r
 .gbr .nm small{display:block;font:600 15px "Barlow Condensed",sans-serif;opacity:.85;text-transform:none}
 .gbr .pv2{font:800 26px "Barlow Condensed",sans-serif;color:var(--gold);text-align:right;line-height:1}
 .gbr .pv2 small{display:block;font-size:13px;opacity:.8}
-.atabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0 14px}
-.atab[data-at=eco]{grid-column:span 2}
+.atabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
 .ecoAll b{display:block;font-size:18px}.ecoAll small{display:block}
-.atab{padding:8px 6px;min-height:44px;font:800 18px "Barlow Condensed",Impact,sans-serif;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;text-align:center;line-height:1.1}
+.atab{flex:1 1 calc(33.333% - 6px);min-width:0;overflow-wrap:break-word;padding:8px 4px;min-height:44px;font:800 18px "Barlow Condensed",Impact,sans-serif;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:10px;text-align:center;line-height:1.1}
 .atab.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
 .atab[data-at=eco]:not(.on){border-color:var(--gold);color:var(--gold)}
 .apane h3{margin:14px 0 6px;font:800 20px "Barlow Condensed",sans-serif;color:var(--gold)}
@@ -380,8 +379,8 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 .prsq{display:flex;flex-wrap:wrap;gap:6px 12px}
 .prsq label{display:inline-flex;align-items:center;gap:4px;font-size:16px;opacity:1}
 .prsq input{width:18px;height:18px;min-height:0;padding:0}
-.atab[data-at=insta]{grid-column:span 2}
-.atab[data-at=mas]{grid-column:span 3}
+@media(min-width:700px){.atab{flex-basis:150px;padding:8px 10px}}
+@media(max-width:340px){.atab{flex-basis:calc(50% - 6px)}}
 .lgW{overflow-x:auto;margin:6px 0}.lgT{width:100%;border-collapse:collapse;font-size:15px;min-width:520px}.lgT th,.lgT td{padding:5px 6px;text-align:center;border-bottom:1px solid var(--line)}.lgT th:first-child,.lgT td:first-child{text-align:left}.lgT tr.me td{color:var(--gold)}.lgF{letter-spacing:2px;font-weight:700}
 </style>
 <style id="pnCss">
@@ -563,7 +562,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
    <button type="button" class="atab" data-at="fantasy" role="tab">🏆 Fantasy</button>
    <button type="button" class="atab" data-at="buzon" role="tab">📮 Buzón</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
-   <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/Nombres</button>
+   <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/<wbr>Nombres</button>
    <button type="button" class="atab" data-at="insta" role="tab">📸 Instagram</button>
    <button type="button" class="atab" data-at="mas" role="tab">⚙️ Más</button>
   </div>
