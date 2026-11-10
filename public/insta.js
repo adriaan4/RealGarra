@@ -26,6 +26,51 @@
     return cache.get(src);
   };
 
+  // ---- quitar fondo (IA dentro del navegador: @imgly/background-removal) ----
+  // La 1ª vez descarga el modelo (~40 MB) y luego queda en la caché del navegador. Las fotos no salen del móvil/ordenador.
+  const BG_LIBS = ['https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm', 'https://esm.sh/@imgly/background-removal@1.7.0'];
+  const BG_MODEL = 'isnet_quint8'; // ~40 MB, rápido también en móvil. Con 'isnet_fp16' (~80 MB) saca mejor el pelo
+  let bgLib = null, cutQ = Promise.resolve();
+  const loadBg = () => bgLib || (bgLib = (async () => {
+    let err;
+    for (const u of BG_LIBS) { try { const m = await import(u), fn = m.removeBackground || m.default; if (typeof fn === 'function') return fn; } catch (e) { err = e; } }
+    throw err || new Error('sin librería');
+  })().catch(e => { bgLib = null; throw e; }));
+  const canvasBlob = (cv, type, q) => new Promise(ok => cv.toBlob(ok, type, q));
+  function hasAlpha(img) { // ¿ya viene con fondo transparente (PNG recortado)?
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'); c.drawImage(img, 0, 0, 64, 64);
+    const d = c.getImageData(0, 0, 64, 64).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 250) n++;
+    return n > 64 * 64 * .04;
+  }
+  async function shrink(img, max) { // las fotos del móvil son enormes: se bajan a 1600 px para ir rápido y gastar poca memoria
+    const r = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
+    const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height);
+    return canvasBlob(cv, 'image/jpeg', .92);
+  }
+  async function trimAlpha(blob) { // recorta los bordes transparentes: la caja de la imagen queda ajustada al jugador
+    const img = await getImg(URL.createObjectURL(blob)); if (!img) return blob;
+    const W = img.width, H = img.height, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d'); c.drawImage(img, 0, 0);
+    const d = c.getImageData(0, 0, W, H).data; let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 12) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+    if (x1 < 0) return blob;
+    const o = document.createElement('canvas'); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1; o.getContext('2d').drawImage(cv, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+    return canvasBlob(o, 'image/png');
+  }
+  async function cutOut(src) { // devuelve la URL de la imagen sin fondo, o '' si ya era transparente
+    const img = await getImg(src); if (!img) throw new Error('No se pudo leer la imagen');
+    if (hasAlpha(img)) return '';
+    const rm = await loadBg(), inp = await shrink(img, 1600);
+    const out = await rm(inp, { model: BG_MODEL, output: { format: 'image/png' },
+      progress: (k, a, t) => say(String(k).startsWith('fetch') ? 'Descargando el recortador (solo la 1ª vez)… ' + (t ? Math.round(a / t * 100) + '%' : '') : 'Quitando el fondo…') });
+    return URL.createObjectURL(await trimAlpha(out));
+  }
+  // Se encolan: si se suben dos fotos seguidas, se recortan una detrás de otra (el móvil no aguanta dos a la vez)
+  const cutImage = src => (cutQ = cutQ.then(async () => {
+    say('Quitando el fondo…');
+    try { const u = await cutOut(src); say(u ? 'Fondo quitado ✔ Ajusta el tamaño y la posición.' : 'Esa imagen ya tiene el fondo transparente.'); return u; }
+    catch (e) { console.warn('quitar fondo:', e); say('No se pudo quitar el fondo (hace falta internet la primera vez). Queda la foto original; prueba «✂ Quitar fondo» en un rato.'); return ''; }
+  }));
+
   // ---- datos del partido elegido ----
   const cal = () => (SS().calendar || []).slice().sort((a, b) => a.j - b.j);
   function crestSrc(rival) {
@@ -167,13 +212,16 @@
       lines.forEach((l, i) => c.fillText(l, e.x, y0 + i * lh)); c.restore();
       e._b = { x: e.x - w / 2, y: e.y - lines.length * lh / 2, w, h: lines.length * lh };
     } else {
-      const s = e.size, img = e.img;
+      const s = e.size, img = e.img; let bw = s, bh = s;
       c.save();
-      if (img) { const r = s / Math.max(img.width, img.height), dw = img.width * r, dh = img.height * r; c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 24; c.drawImage(img, e.x - dw / 2, e.y - dh / 2, dw, dh); }
+      if (img) { const r = s / Math.max(img.width, img.height), dw = img.width * r, dh = img.height * r; c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 24; c.drawImage(img, e.x - dw / 2, e.y - dh / 2, dw, dh); bw = dw; bh = dh; }
       else { c.strokeStyle = st.accent; c.lineWidth = 8; c.beginPath(); c.arc(e.x, e.y, s / 2 - 8, 0, 7); c.stroke(); c.fillStyle = st.ink; c.font = '800 ' + s * .34 + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(e.ini || '?', e.x, e.y); }
-      c.restore(); e._b = { x: e.x - s / 2, y: e.y - s / 2, w: s, h: s };
+      c.restore(); e._b = { x: e.x - bw / 2, y: e.y - bh / 2, w: bw, h: bh };
     }
   }
+  const SZ = { min: 40, max: 1600 }; // tamaño (lado mayor, en px del lienzo) de las imágenes
+  const clampSz = v => Math.max(SZ.min, Math.min(SZ.max, Math.round(v)));
+  function handleOf(e) { const f = FM[st.fmt]; return { x: Math.max(34, Math.min(f.w - 34, e._b.x + e._b.w + 10)), y: Math.max(34, Math.min(f.h - 34, e._b.y + e._b.h + 10)) }; } // círculo azul de la esquina
   function paint(cv, preview) {
     const f = FM[st.fmt]; if (cv.width !== f.w) cv.width = f.w; if (cv.height !== f.h) cv.height = f.h;
     const c = cv.getContext('2d'); c.clearRect(0, 0, f.w, f.h);
@@ -181,7 +229,9 @@
     if (preview) {
       if (drag && drag.snapX) { c.save(); c.strokeStyle = '#ff4fa3'; c.lineWidth = 3; c.setLineDash([14, 10]); c.beginPath(); c.moveTo(f.w / 2, 0); c.lineTo(f.w / 2, f.h); c.stroke(); c.restore(); }
       const e = st.els.find(x => x.id === st.sel);
-      if (e && e._b) { c.save(); c.strokeStyle = '#4fc3ff'; c.lineWidth = 4; c.setLineDash([12, 8]); c.strokeRect(e._b.x - 10, e._b.y - 10, e._b.w + 20, e._b.h + 20); c.restore(); }
+      if (e && e._b) { c.save(); c.strokeStyle = '#4fc3ff'; c.lineWidth = 4; c.setLineDash([12, 8]); c.strokeRect(e._b.x - 10, e._b.y - 10, e._b.w + 20, e._b.h + 20); c.restore();
+        if (e.k === 'i') { const h = handleOf(e); c.save(); c.fillStyle = '#4fc3ff'; c.strokeStyle = '#fff'; c.lineWidth = 5; c.beginPath(); c.arc(h.x, h.y, 30, 0, 7); c.fill(); c.stroke(); c.restore(); }
+      }
     }
   }
   const redraw = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; const cv = $('#igCv'); if (cv) paint(cv, true); }); };
@@ -201,7 +251,7 @@
     if (!e) return;
     $('#igTxtRow').hidden = e.k !== 't'; $('#igColRow').hidden = e.k !== 't'; $('#igImgRow').hidden = e.k !== 'i';
     if (e.k === 't') { $('#igTxt').value = e.text; $('#igCol').value = e.color || (e.role === 'accent' ? st.accent : st.ink); }
-    $('#igSize').min = e.k === 't' ? 20 : 80; $('#igSize').max = e.k === 't' ? 420 : 900; $('#igSize').value = e.size;
+    $('#igSize').min = e.k === 't' ? 20 : SZ.min; $('#igSize').max = e.k === 't' ? 420 : SZ.max; $('#igSize').value = e.size;
   }
   function look(prev, now) { // al entrar en «MVP» se pone su fondo naranja; al salir se devuelve lo que había
     if (now === 'mvp' && prev !== 'mvp') { st.prev = { bg: st.bg, accent: st.accent, frame: st.frame }; st.bg = 'mvp'; st.accent = '#f59e1b'; st.frame = false; }
@@ -222,7 +272,7 @@
       '#igRoot .igc label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#igRoot .igc h3{margin:16px 0 4px;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold)}' +
       '#igRoot input[type=color]{width:46px;height:40px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--card)}#igRoot textarea{width:100%;box-sizing:border-box;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}#igRoot input[type=range]{flex:1;min-width:120px}';
     document.head.appendChild(css);
-    root.innerHTML = `<p class="sub">Diseños hechos por ti, sin IA. Elige formato y tipo, ajusta los textos y <b>arrastra cualquier elemento</b> con el dedo o el ratón (toca uno para editarlo). Los datos salen del calendario; si cambias formato, tipo o partido el diseño se rehace.</p>
+    root.innerHTML = `<p class="sub">Diseños hechos por ti, sin IA. Elige formato y tipo, ajusta los textos y <b>arrastra cualquier elemento</b> con el dedo o el ratón (toca uno para editarlo). En las <b>imágenes</b> (escudos, foto del MVP…) cambias el tamaño arrastrando el <b>círculo azul</b> de la esquina, con la rueda del ratón o <b>pellizcando con dos dedos</b>; el fondo no se redimensiona. Los datos salen del calendario; si cambias formato, tipo o partido el diseño se rehace.</p>
 <div class="igw"><div><canvas id="igCv"></canvas><p class="sub" id="igMsg" style="text-align:center"></p></div>
 <div class="igc">
  <h3>Qué quieres subir</h3>
@@ -233,7 +283,8 @@
  <div id="igMvpRow" hidden>
   <div class="row"><input id="igMvpName" list="igMvpList" placeholder="Nombre del MVP (solo el nombre)" maxlength="24" style="flex:1" autocomplete="off"><datalist id="igMvpList"></datalist></div>
   <div class="row"><label>Foto del MVP: <input id="igMvpPhoto" type="file" accept="image/*"></label></div>
-  <p class="sub" style="font-size:14px;margin:0">Queda mejor una foto recortada (PNG sin fondo). Puedes moverla y cambiarle el tamaño como cualquier elemento. Para el partido, elige la jornada arriba.</p>
+  <div class="row"><label><input id="igAutoCut" type="checkbox" checked> Quitar el fondo automáticamente</label></div>
+  <p class="sub" style="font-size:14px;margin:0">Al subir la foto se le quita el fondo solo (la primera vez tarda más porque descarga el recortador; hace falta internet). Luego la puedes mover y cambiar de tamaño. Para el partido, elige la jornada arriba.</p>
  </div>
  <h3>Fondo y colores</h3>
  <div class="row"><select id="igBg" aria-label="Fondo"><option value="cesped">Césped</option><option value="negro">Negro y dorado</option><option value="rojo">Rojo Garra</option><option value="foto">Mi foto</option><option value="mvp">Negro y naranja (MVP)</option></select>
@@ -245,7 +296,7 @@
  <div id="igEdit" hidden>
   <div id="igTxtRow"><textarea id="igTxt" rows="2"></textarea></div>
   <div class="row"><label style="flex:1">Tamaño <input id="igSize" type="range" min="20" max="420" value="100"></label><span id="igColRow"><label>Color <input id="igCol" type="color" value="#ffffff"></label></span></div>
-  <div class="row" id="igImgRow"><label>Cambiar imagen: <input id="igImgFile" type="file" accept="image/*"></label></div>
+  <div class="row" id="igImgRow"><label>Cambiar imagen: <input id="igImgFile" type="file" accept="image/*"></label><button id="igCut" type="button" class="ghost">✂ Quitar fondo</button></div>
  </div>
  <div class="row"><button id="igAddT" type="button" class="ghost">+ Texto</button><label class="ghost" style="cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:8px 14px;min-height:44px;box-sizing:border-box">+ Imagen<input id="igAddI" type="file" accept="image/*" hidden></label><button id="igReset" type="button" class="ghost">↺ Rehacer diseño</button></div>
  <div class="row"><button id="igDl" type="button">⬇ Descargar PNG</button><button id="igShare" type="button">📤 Compartir (Instagram)</button></div>
@@ -255,20 +306,49 @@
     st.j = defaultJ(st.tipo); fillMatches(); $('#igJ').value = st.j; fit();
 
     const cv = $('#igCv'), pt = ev => { const r = cv.getBoundingClientRect(), f = FM[st.fmt]; return { x: (ev.clientX - r.left) * f.w / r.width, y: (ev.clientY - r.top) * f.h / r.height }; };
+    const ptrs = new Map(); let pinch = null;
+    const selEl = () => st.els.find(x => x.id === st.sel);
+    const nearHandle = (e, p) => { if (!e || e.k !== 'i' || !e._b) return false; const h = handleOf(e); return Math.hypot(p.x - h.x, p.y - h.y) < 60; };
+    const setSize = (e, v) => { e.size = clampSz(v); $('#igSize').value = e.size; redraw(); };
     cv.addEventListener('pointerdown', ev => {
-      const p = pt(ev), hit = st.els.slice().reverse().find(e => e._b && p.x >= e._b.x - 20 && p.x <= e._b.x + e._b.w + 20 && p.y >= e._b.y - 20 && p.y <= e._b.y + e._b.h + 20);
+      ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      const p = pt(ev);
+      if (ptrs.size === 2) { // dos dedos: pellizcar para cambiar el tamaño de la imagen seleccionada
+        const e = selEl(), [a, b] = [...ptrs.values()]; drag = null;
+        pinch = e && e.k === 'i' ? { id: e.id, s0: e.size, d0: Math.max(30, Math.hypot(a.x - b.x, a.y - b.y)) } : null;
+        try { cv.setPointerCapture(ev.pointerId); } catch (x) { /* sin captura */ }
+        return;
+      }
+      const se = selEl();
+      if (nearHandle(se, p)) { // círculo azul: arrastrar para agrandar / encoger desde el centro
+        drag = { id: se.id, resize: true, s0: se.size, d0: Math.max(30, Math.hypot(p.x - se.x, p.y - se.y)) };
+        try { cv.setPointerCapture(ev.pointerId); } catch (x) { /* sin captura */ }
+        return;
+      }
+      const hit = st.els.slice().reverse().find(e => e._b && p.x >= e._b.x - 20 && p.x <= e._b.x + e._b.w + 20 && p.y >= e._b.y - 20 && p.y <= e._b.y + e._b.h + 20);
       st.sel = hit ? hit.id : null; drag = hit ? { id: hit.id, dx: hit.x - p.x, dy: hit.y - p.y, snapX: false } : null;
       if (hit) { try { cv.setPointerCapture(ev.pointerId); } catch (e) { /* sin captura */ } }
       syncEdit(); redraw();
     });
     cv.addEventListener('pointermove', ev => {
-      if (!drag) return; const e = st.els.find(x => x.id === drag.id); if (!e) return; const p = pt(ev), W = FM[st.fmt].w;
+      if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pinch && ptrs.size >= 2) { const e = st.els.find(x => x.id === pinch.id), [a, b] = [...ptrs.values()]; if (e) setSize(e, pinch.s0 * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d0); return; }
+      const p = pt(ev);
+      if (!drag) { cv.style.cursor = nearHandle(selEl(), p) ? 'nwse-resize' : ''; return; }
+      const e = st.els.find(x => x.id === drag.id); if (!e) return;
+      if (drag.resize) { setSize(e, drag.s0 * Math.hypot(p.x - e.x, p.y - e.y) / drag.d0); return; }
+      const W = FM[st.fmt].w;
       e.x = Math.round(p.x + drag.dx); e.y = Math.round(p.y + drag.dy);
       drag.snapX = Math.abs(e.x - W / 2) < 16; if (drag.snapX) e.x = W / 2;
       redraw();
     });
-    const up = () => { drag = null; redraw(); };
+    const up = ev => { ptrs.delete(ev.pointerId); if (ptrs.size < 2) pinch = null; drag = null; redraw(); };
     cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', ev => { // rueda del ratón sobre la imagen seleccionada = cambiar tamaño
+      const e = selEl(), p = pt(ev); if (!e || e.k !== 'i' || !e._b) return;
+      if (p.x < e._b.x || p.x > e._b.x + e._b.w || p.y < e._b.y || p.y > e._b.y + e._b.h) return;
+      ev.preventDefault(); setSize(e, e.size * (ev.deltaY < 0 ? 1.06 : 1 / 1.06));
+    }, { passive: false });
 
     $('#igFmt').onchange = async e => { st.fmt = e.target.value; fit(); await rebuild(); };
     $('#igTipo').onchange = async e => { const prev = st.tipo; st.tipo = e.target.value; look(prev, st.tipo); st.j = defaultJ(st.tipo); $('#igJ').value = st.j; await rebuild(); };
@@ -293,7 +373,19 @@
     $('#igAddI').onchange = async e => { const u = await pickFile(e.target); if (!u) return; const f = FM[st.fmt], el = { id: 'e' + (++nid), k: 'i', label: 'Imagen nueva', src: u, img: await getImg(u), x: f.w / 2, y: f.h / 2, size: 300, role: 'ink', color: null }; st.els.push(el); st.sel = el.id; fillSel(); redraw(); };
     fillPlayers();
     $('#igMvpName').oninput = e => { st.mvpName = e.target.value; const t = st.els.find(x => x.key === 'mvpname'); if (t) t.text = (st.mvpName || 'NOMBRE').toUpperCase(); syncEdit(); redraw(); };
-    $('#igMvpPhoto').onchange = async e => { const u = await pickFile(e.target); if (!u) return; st.mvpPhoto = u; const el = st.els.find(x => x.key === 'mvpphoto'); if (el) { el.src = u; el.img = await getImg(u); } redraw(); };
+    $('#igMvpPhoto').onchange = async e => {
+      const u = await pickFile(e.target); if (!u) return;
+      const put = async url => { st.mvpPhoto = url; const el = st.els.find(x => x.key === 'mvpphoto'); if (el) { el.src = url; el.img = await getImg(url); } redraw(); };
+      await put(u); // primero se ve la foto tal cual; cuando termina el recorte se cambia por la que no tiene fondo
+      if (!$('#igAutoCut').checked) return;
+      const cut = await cutImage(u);
+      if (cut && st.mvpPhoto === u) await put(cut);
+    };
+    $('#igCut').onclick = async () => {
+      const el = selEl(); if (!el || el.k !== 'i') { say('Toca primero una imagen.'); return; }
+      const cut = await cutImage(el.src); if (!cut) return;
+      el.src = cut; el.img = await getImg(cut); if (el.key === 'mvpphoto') st.mvpPhoto = cut; redraw();
+    };
     $('#igReset').onclick = rebuild;
     const name = () => 'garra-' + st.tipo + '-' + (st.fmt === 'story' ? 'historia' : 'post') + (st.j ? '-J' + st.j : '') + '.png';
     $('#igDl').onclick = async () => { const b = await toBlob(); if (!b) { say('No se pudo crear la imagen.'); return; } const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name(); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('Imagen descargada.'); };
