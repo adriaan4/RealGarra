@@ -58,11 +58,14 @@
 .gsGoal.b{bottom:0;border-bottom:0;border-radius:6px 6px 0 0}
 .gsMid{position:absolute;left:4%;right:4%;top:50%;height:2px;background:rgba(255,255,255,.35);pointer-events:none}
 .gsDisc{position:absolute;border-radius:50%;transform:translate(-50%,-50%);border:3px solid var(--gold);background:#0d0b09;overflow:hidden;z-index:2}
-.gsDisc.b{border-color:var(--red)}
+.gsDisc.b,.gsDisc.them{border-color:var(--red)}
 .gsDisc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .gsDisc.mine{box-shadow:0 0 0 2px rgba(226,171,44,.55)}
 .gsBall{position:absolute;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 32% 28%,#fff,#e4e4e4 55%,#8f8f8f);box-shadow:0 4px 6px rgba(0,0,0,.5);z-index:1}
 .gsAim{position:absolute;height:3px;background:var(--gold);transform-origin:0 50%;pointer-events:none;z-index:5;border-radius:3px}
+.gsLbl{position:absolute;left:8px;z-index:3;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 14px "Barlow Condensed",sans-serif;text-transform:uppercase;padding:1px 9px;border-radius:99px;background:rgba(13,11,9,.78);pointer-events:none;border:1px solid var(--gold);color:var(--gold)}
+.gsLbl.t{top:7px}.gsLbl.b{bottom:7px}
+.gsLbl.opp{border-color:var(--red);color:#ff9f9d}
 .gsMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);font:800 clamp(24px,8vw,42px)/1 "Barlow Condensed",Impact,sans-serif;color:var(--gold);text-shadow:0 3px 0 #0d0b09,0 0 18px rgba(0,0,0,.8);opacity:0;pointer-events:none;z-index:6;white-space:nowrap;text-transform:uppercase;transition:opacity .2s,transform .25s}
 .gsMsg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .gsEnd h3{margin:0 0 4px;font:800 28px "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase}
@@ -73,6 +76,7 @@
   document.head.appendChild(css);
 
   let spectating = false, GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null;
+  let pendingQ = [], es = null, esKey = '', esOpen = false; // cola de tiros que llegan mientras animo + canal en directo (SSE)
   let ai = null; // modo entrenamiento contra la IA (nunca toca el servidor)
   const MATCH_MS = 3 * 60 * 1000, CELEB_MS = 1000, FRAME_MS = 16; // mismas cifras que el servidor (garrastars.js)
   let animating = 0, clock = null, timeUpAt = 0;
@@ -102,7 +106,21 @@
     const since = M && !force ? (M.updatedAt || 0) : 0;
     let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) { matchId = null; spectating = false; M = null; await load(true); return; }
     if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { matchId = null; spectating = false; M = null; await load(true); return; }
+    applyMatch(d, force);
+  }
+  // Recibe el estado de la partida (por el canal en directo o por consulta). Si estoy animando un tiro, se guarda en cola y se enseña justo después.
+  function applyMatch(d, force) {
+    if (!d || !d.a || !d.b || !Array.isArray(d.bodies) || !matchId || matchId === 'ai' || (d.id && d.id !== matchId)) return;
     const stamp = stampOf(d);
+    if (!force && M && (d.updatedAt || 0) < (M.updatedAt || 0)) return; // dato más viejo que lo que ya tengo
+    if (!force && (busy || animating)) {
+      if (stamp !== lastMatchStamp && !pendingQ.some(q => stampOf(q) === stamp)) {
+        pendingQ.push(d); pendingQ.sort((x, y) => (x.updatedAt || 0) - (y.updatedAt || 0));
+        if (pendingQ.length > 6) pendingQ.splice(0, pendingQ.length - 6);
+      }
+      return;
+    }
+    if (force) pendingQ = [];
     const isNew = stamp !== lastMatchStamp || force;
     if (!isNew) { setClock(d.timeLeftMs, d.pauseMs); return; } // nada ha cambiado: solo se reajusta el reloj y no se repinta
     const prev = M && matchId !== 'ai' ? { a: M.goalsA, b: M.goalsB } : null; // marcador de antes, para no adelantar el gol
@@ -112,12 +130,27 @@
     drawMatch(path && prev ? prev : undefined);
     if (path) playShot(path, d.result, () => { if (M && M.status === 'live') drawMatch(); });
     if (M.status !== 'live') matchId2Stop();
+    syncStream();
   }
+  function drainQ() { if (busy || animating || !pendingQ.length) return; applyMatch(pendingQ.shift()); }
   function matchId2Stop() { clearInterval(liveTimer); liveTimer = null; }
-  function scheduleMatchPoll() {
-    clearInterval(liveTimer);
-    if (M && M.status === 'live') liveTimer = setInterval(() => { if (!busy && !animating) loadMatch(); }, 1000);
+
+  // ---- Canal en directo (SSE): el servidor empuja cada tiro al instante. Si no hay SSE, se sigue consultando como antes (más rápido) ----
+  function syncStream() {
+    const want = matchId ? (matchId === 'ai' ? '' : 'm' + matchId) : (here() && !ai ? 'lobby' : '');
+    if (want === esKey) return;
+    if (es) { try { es.close(); } catch { } es = null; }
+    esOpen = false; esKey = want;
+    if (!want || typeof EventSource === 'undefined') return;
+    const e = es = new EventSource('/api/stars/stream?d=' + encodeURIComponent(dev) + (want === 'lobby' ? '' : '&match=' + matchId));
+    e.onopen = () => { esOpen = true; if (want === 'lobby') { if (here() && !matchId && !ai) load(); } else loadMatch(); }; // al (re)conectar se pone al día
+    e.onerror = () => { esOpen = false; }; // el navegador reconecta solo
+    e.addEventListener('lobby', () => { if (here() && !matchId && !ai) load(); });
+    e.addEventListener('match', ev => { try { applyMatch(JSON.parse(ev.data)); } catch (x) { console.error(x); } });
   }
+  (function matchPoll() { // red de seguridad: con el canal abierto basta cada 2 s; sin él, cada 0,7 s
+    setTimeout(() => { if (M && M.status === 'live' && matchId && matchId !== 'ai' && !busy && !animating && !pendingQ.length) loadMatch(); matchPoll(); }, esOpen ? 2000 : 700);
+  })();
 
   function draw() {
     const el = $('#gsRoot'); if (!el) return;
@@ -174,13 +207,17 @@
   }
 
   // ---- Partida ----
+  // Cada jugador se ve SIEMPRE abajo: si soy el equipo B se gira el campo 180° solo en mi pantalla (la física no cambia)
+  const FLIP = () => !!(M && M.mine === 'b');
+  const FWW = PH.FW || 100;
+  const vpos = (x, y) => FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
   function bodyStyle(b) {
-    const left = b.x, top = b.y / PH.FH * 100;
+    const v = vpos(b.x, b.y), left = v.x, top = v.y / PH.FH * 100;
     const wd = (b.isBall ? PH.R_BALL : PH.R_DISC) * 2, ht = wd / PH.FH * 100;
     return `left:${left}%;top:${top}%;width:${wd}%;height:${ht}%`;
   }
   function placeBodies(bodies) {
-    for (const b of bodies) { const n = $('#bd-' + b.id); if (n) { n.style.left = b.x + '%'; n.style.top = (b.y / PH.FH * 100) + '%'; } }
+    for (const b of bodies) { const n = $('#bd-' + b.id); if (n) { const v = vpos(b.x, b.y); n.style.left = v.x + '%'; n.style.top = (v.y / PH.FH * 100) + '%'; } }
   }
   // hold: marcador anterior {a,b}: el gol no se enseña en el marcador hasta que el balón entra en la red
   function drawMatch(hold) {
@@ -188,20 +225,22 @@
     const mine = M.mine, myTurn = mine && M.turn === mine;
     const done = M.status === 'done';
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
+    const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
-    <div class="gsHud"><b>${E(M.a.name)} <span id="gsSA">${ga}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gsSB">${gb}</span> ${E(M.b.name)}</b></div>
+    <div class="gsHud"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div><div class="gsGoal t"></div><div class="gsGoal b"></div>
+     <div class="gsLbl t opp">${mine ? '⬆ Rival · ' : '⬆ '}${nm(top)}</div><div class="gsLbl b">${mine ? '⬇ TÚ · ' : '⬇ '}${nm(bot)}</div>
      <div class="gsMsg" id="gsMsg"></div>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
-     ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
+     ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
     ${done ? `<div class="gsEnd gsCard"><h3>${spectating ? (M.winner ? '🏁 Gana ' + E(M.winner === 'a' ? M.a.name : M.b.name) : '🤝 Empate') : M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
     <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
-    if (matchId !== 'ai' && !done) scheduleMatchPoll();
+    syncStream();
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -224,7 +263,7 @@
   // after() se llama cuando ya está todo colocado con el estado nuevo (M.bodies).
   function playShot(path, result, after) {
     animating++;
-    const end = () => { if (M) placeBodies(M.bodies); animating--; if (after) after(); };
+    const end = () => { if (M) placeBodies(M.bodies); animating--; if (after) after(); setTimeout(drainQ, 0); };
     const fin = () => {
       if (result === 'A' || result === 'B') {
         const sa = $('#gsSA'), sb = $('#gsSB'); if (M) { if (sa) sa.textContent = M.goalsA; if (sb) sb.textContent = M.goalsB; }
@@ -239,6 +278,7 @@
 
   // Reloj en pantalla (solo cambia el texto, no repinta el campo)
   setInterval(() => {
+    drainQ(); syncStream();
     if (!M || M.status !== 'live' || !matchId) return;
     const left = clockLeft(), c = $('#gsClock');
     if (c) { c.textContent = fmtClock(left); c.classList.toggle('low', left > 0 && left <= 10000); }
@@ -251,14 +291,15 @@
   let drag = null;
   function fieldPt(e, field) {
     const r = field.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * PH.FH };
+    return { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * PH.FH }; // coordenadas de PANTALLA (si el campo está girado, la física las invierte al chutar)
   }
   document.addEventListener('pointerdown', e => {
     const disc = e.target.closest('.gsDisc.mine'); const field = $('#gsField');
     if (!disc || !field || !field.classList.contains('mine') || busy || animating) return;
     const id = disc.dataset.id, b = (M.bodies || []).find(x => x.id === id);
     if (!b) return;
-    drag = { id, bx: b.x, by: b.y };
+    const v = vpos(b.x, b.y);
+    drag = { id, bx: v.x, by: v.y }; // posición de la ficha tal y como se ve en pantalla
     field.setPointerCapture && field.setPointerCapture(e.pointerId);
   });
   document.addEventListener('pointermove', e => {
@@ -277,12 +318,14 @@
   document.addEventListener('pointerup', async e => {
     if (!drag) return;
     const field = $('#gsField'); const line = $('#gsAimLine'); if (line) line.style.display = 'none';
-    const p = field ? fieldPt(e, field) : drag;
-    const pullX = drag.bx - p.x, pullY = drag.by - p.y, dist = Math.hypot(pullX, pullY);
+    const p = field ? fieldPt(e, field) : { x: drag.bx, y: drag.by };
+    let pullX = drag.bx - p.x, pullY = drag.by - p.y;
+    const dist = Math.hypot(pullX, pullY);
     const d = drag; drag = null;
     if (dist < 2.5) return; // toque sin arrastrar: no dispara
     const MAXPULL = 26, k = Math.min(1, dist / MAXPULL) * PH.MAX_SPEED / dist;
-    const vx = pullX * k, vy = pullY * k;
+    let vx = pullX * k, vy = pullY * k;
+    if (FLIP()) { vx = -vx; vy = -vy; } // campo girado 180°: el tirón en pantalla es el contrario en el campo real
     if (busy || !M || M.status !== 'live') return;
     if (matchId === 'ai') { busy = true; try { await aiShot(d.id, vx, vy, 'a'); } finally { busy = false; } return; }
     busy = true;

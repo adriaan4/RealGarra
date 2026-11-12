@@ -151,3 +151,8 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (sin cambios).
 - **🔴 Directo**: en el lobby aparece la lista de partidos en juego (marcador y tiempo); con «👀 Ver» se mira el partido en vivo (solo mirar, sin poder tocar nada). Los tiros del rival se ven casi al momento (se consulta cada segundo).
 - El tiro propio es instantáneo: al soltar, el navegador ya anima el chute con la misma simulación que el servidor y el servidor solo lo confirma.
+
+## Garra Stars: tiempo real y «tú siempre abajo»
+- **Sin retraso:** el servidor empuja cada tiro por SSE (`GET /api/stars/stream`, `?match=ID` para una partida o sin `match` para el lobby) al rival y a quien mira, en cuanto se chuta. Antes se enteraban preguntando cada 1 s y el servidor esperaba a guardar en Redis antes de contestar; ahora el guardado va en segundo plano (`saveSoon`, salvo al acabar la partida, que sí se espera porque cambia el ranking). Si el navegador/proxy no admite SSE, se vuelve a consultar cada 0,7 s. Los tiros que llegan mientras se anima otro se ponen en cola y se enseñan en orden.
+- **Cada uno se ve abajo:** quien juega ve siempre sus 3 fichas abajo y ataca hacia arriba; si eres el equipo B el campo se gira 180° solo en tu pantalla (la física y el servidor no cambian). Etiquetas «⬇ TÚ · nombre» y «⬆ Rival · nombre», y el marcador pone tu nombre a la izquierda con «(tú)». Quien mira en directo ve el campo con el equipo A abajo.
+- Ficheros tocados: `garrastars.js` (servidor) y `public/garrastars.js` (cliente).

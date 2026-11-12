@@ -17,6 +17,28 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const SIM_BAND = 100;                    // diferencia de puntos que se considera "nivel similar"
   const r0 = n => Math.round(n);
 
+  // ---- Tiempo real (SSE): el servidor EMPUJA cada tiro a los dos jugadores y a quien mira, sin esperar a que pregunten ----
+  const matchStreams = new Map();          // id de partida -> Set de conexiones {res, uid}
+  const lobbyStreams = new Set();          // conexiones que están en el lobby (para refrescar partidas abiertas / directos al instante)
+  function sseWrite(c, ev, data) { try { c.res.write('event: ' + ev + '\ndata: ' + data + '\n\n'); } catch (e) { /* se limpia en 'close' */ } }
+  function pushMatch(m, skipUid) { // manda el estado de la partida a todos los que la siguen (cada uno con su 'mine')
+    const set = matchStreams.get(m.id); if (!set || !set.size) return;
+    const base = matchOut(m, null), cache = {};
+    for (const c of set) {
+      if (skipUid != null && c.uid === skipUid) continue; // quien ha tirado ya lo anima en local y recibe la respuesta del POST
+      const mine = c.uid != null && m.a.uid === c.uid ? 'a' : c.uid != null && m.b && m.b.uid === c.uid ? 'b' : null;
+      sseWrite(c, 'match', cache[mine] || (cache[mine] = JSON.stringify({ ...base, mine })));
+    }
+  }
+  let lobbyTimer = null;
+  function pushLobby() { // junta varios avisos seguidos en uno
+    if (lobbyTimer) return;
+    lobbyTimer = setTimeout(() => { lobbyTimer = null; for (const c of lobbyStreams) sseWrite(c, 'lobby', '1'); }, 120);
+  }
+  // Guardar en disco/Redis TARDA (se escribe toda la base de datos): en los tiros ya no se espera a ello para contestar.
+  let saveTimer = null;
+  function saveSoon() { if (saveTimer) return; saveTimer = setTimeout(() => { saveTimer = null; Promise.resolve(save()).catch(() => { }); }, 300); }
+
   function ST() {
     const db = getDb();
     let s = db.stars;
@@ -64,6 +86,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     m._path = null; m._result = null;
     m.payouts = applyResult(m);
     m.updatedAt = now;
+    pushMatch(m); pushLobby();
   }
   function sweepExpired() { // cierra las partidas cuyo reloj ha llegado a 0 (aunque nadie las esté mirando)
     const s = ST(), now = Date.now(); let n = 0;
@@ -212,6 +235,21 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     });
   });
 
+  // ---- Canal en directo (SSE): ?match=ID para seguir una partida (jugando o mirando); sin match = lobby ----
+  app.get('/api/stars/stream', (req, res) => {
+    const me = who(req), mid = +req.query.match || 0;
+    res.set({ 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
+    if (req.socket) { req.socket.setTimeout(0); req.socket.setNoDelay(true); req.socket.setKeepAlive(true); }
+    res.flushHeaders && res.flushHeaders();
+    res.write('retry: 1000\n\n');
+    const c = { res, uid: me ? me.id : null };
+    let set;
+    if (mid) { set = matchStreams.get(mid); if (!set) matchStreams.set(mid, set = new Set()); } else set = lobbyStreams;
+    set.add(c);
+    const hb = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) { } }, 15000);
+    res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición
+  });
+
   app.post('/api/stars/ficha', async (req, res) => {
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
     const p = squad().find(x => x.id === +req.body.playerId);
@@ -233,7 +271,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
       goalsA: 0, goalsB: 0, turn: 'a', bodies: freshBodies(),
       friendly: !!req.body.friendly, status: 'open', winner: null, createdAt: Date.now(), updatedAt: Date.now()
     };
-    await save();
+    pushLobby(); saveSoon();
     res.json({ ok: true, id });
   });
 
@@ -253,7 +291,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     m.b = { uid: me.id, ficha: mine.ficha, name: me.name };
     m.status = 'live'; m.turn = 'a'; m.bodies = freshBodies();
     m.endsAt = now + MATCH_MS; m.pausedUntil = 0; m.updatedAt = now;
-    await save();
+    pushLobby(); saveSoon();
     res.json({ ok: true, id: m.id, note });
   });
 
@@ -262,7 +300,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const s = ST(), m = s.matches[+req.params.id];
     if (!m || m.status !== 'open' || m.a.uid !== me.id) return bad(res, 'Esa partida ya no existe');
     delete s.matches[m.id];
-    await save(); res.json({ ok: true });
+    pushLobby(); saveSoon(); res.json({ ok: true });
   });
 
   // ---- Ver una partida (también cierra la partida si el reloj ya ha llegado a 0) ----
@@ -318,7 +356,9 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
       m.turn = m.turn === 'a' ? 'b' : 'a';
     }
     m.updatedAt = now;
-    await save();
+    pushMatch(m, me.id);                   // el rival y los que miran lo ven YA (sin esperar al guardado)
+    if (scored) pushLobby();               // marcador del directo en el lobby
+    saveSoon();                            // el guardado va en segundo plano: no hace esperar a nadie
     res.json(matchOut(m, me.id));
   });
 
@@ -332,7 +372,8 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     if (mySide === 'a') m.goalsB = Math.max(m.goalsB, m.goalsA + 1); else m.goalsA = Math.max(m.goalsA, m.goalsB + 1);
     m._path = null; m._result = null; m.updatedAt = Date.now();
     m.payouts = applyResult(m);
-    await save();
+    pushMatch(m, me.id); pushLobby();
+    await save();                          // aquí sí: cambia el ranking
     res.json(matchOut(m, me.id));
   });
 };
