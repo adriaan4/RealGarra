@@ -3,10 +3,15 @@
 // Cada persona elige una "ficha" (un jugador de la plantilla) como su avatar en el campo.
 // El resultado de cada tiro lo recalcula el SERVIDOR con el mismo motor de físicas que el navegador
 // (public/physics.js): el cliente solo manda el chute (qué ficha y con qué fuerza), nunca el resultado.
+// Lobby: alguien crea una partida abierta y otra persona se une. Cada partido dura 3 minutos (cuenta atrás en el servidor);
+// tras un gol todo vuelve a la formación inicial, saca quien ha encajado y la celebración no resta tiempo.
 // Las partidas amistosas y contra la IA no puntúan; la IA se juega entera en el navegador (no pasa por aquí).
 module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypto }) {
   const PH = require('./public/physics.js');
-  const TARGET_GOALS = 3;                 // primero en marcar esto gana el partido
+  const MATCH_MS = 3 * 60 * 1000;          // el partido dura 3 minutos (cuenta atrás); gana quien tenga más goles al acabar
+  const CELEB_MS = 1000;                   // pausa de celebración tras un gol: NO se descuenta de la cuenta atrás
+  const FRAME_MS = 28;                     // ms por fotograma al animar un tiro (igual que en el navegador)
+  const OPEN_TTL_MS = 15 * 60 * 1000;      // una partida abierta que nadie coge se borra sola
   const COOLDOWN_MS = 2 * 3600 * 1000;     // entre los mismos dos rivales: si juegan más seguido, la revancha es amistosa (no puntúa)
   const HIST_KEEP = 25;
   const SIM_BAND = 100;                    // diferencia de puntos que se considera "nivel similar"
@@ -38,14 +43,34 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
 
   // Si ha cambiado el mes desde la última vez: se archiva el campeón del mes anterior y se reinician los contadores mensuales
   // (el ranking global -puntos, victorias, derrotas- NUNCA se borra, solo esto)
-  function cleanup() { // retos sin responder tras 1h y partidas acabadas tras 7 días (ya aplicadas al ranking, no hace falta guardar el campo para siempre)
+  function cleanup() { // partidas abiertas que nadie ha cogido, retos antiguos y partidas acabadas tras 7 días (ya aplicadas al ranking)
     const s = ST(), now = Date.now();
     for (const id in s.matches) {
       const m = s.matches[id];
-      if (m.status === 'invite' && now - m.createdAt > 3600e3) delete s.matches[id];
+      if (m.status === 'invite') delete s.matches[id]; // sistema antiguo de retos directos: ya no existe
+      else if (m.status === 'open' && now - m.createdAt > OPEN_TTL_MS) delete s.matches[id];
       else if (m.status === 'done' && now - (m.updatedAt || m.createdAt) > 7 * 86400e3) delete s.matches[id];
     }
   }
+
+  // ---- Reloj del partido: endsAt es el instante en que acaba; cada gol lo retrasa lo que dura la celebración (pausedUntil) ----
+  function timeLeft(m, now) {
+    if (!m.endsAt) m.endsAt = now + MATCH_MS; // partidas en juego del sistema antiguo: empiezan con 3 min completos
+    return Math.max(0, m.endsAt - Math.max(now, m.pausedUntil || 0));
+  }
+  function finishByTime(m, now) { // se acabó el tiempo: gana quien tenga más goles; empate = empate
+    m.status = 'done'; m.byTime = true;
+    m.winner = m.goalsA > m.goalsB ? 'a' : m.goalsB > m.goalsA ? 'b' : null;
+    m._path = null; m._result = null;
+    m.payouts = applyResult(m);
+    m.updatedAt = now;
+  }
+  function sweepExpired() { // cierra las partidas cuyo reloj ha llegado a 0 (aunque nadie las esté mirando)
+    const s = ST(), now = Date.now(); let n = 0;
+    for (const m of Object.values(s.matches)) if (m.status === 'live' && timeLeft(m, now) <= 0) { finishByTime(m, now); n++; }
+    return n;
+  }
+  setInterval(async () => { try { if (getDb() && sweepExpired()) await save(); } catch (e) { /* se reintenta en 5 s */ } }, 5000).unref();
 
   function ensureMonth() {
     cleanup();
@@ -132,14 +157,17 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   function squadMini(id) { const p = squad().find(x => x.id === id); return p ? { id: p.id, name: p.name, hasPhoto: !!p.photo, photoV: p.photoV || 0 } : null; }
   function side(uid, ficha) { return { uid, ficha, name: gbName(uid), ...PH.kickoff() }; } // se rellena luego con bodies reales
 
+  function sideOut(x) { return x ? { uid: x.uid, name: gbName(x.uid) || x.name, ficha: squadMini(x.ficha) } : { uid: null, name: '…', ficha: null }; }
   function matchOut(m, forUid) {
+    const now = Date.now(), live = m.status === 'live';
     return {
-      id: m.id, friendly: !!m.friendly, target: m.target, status: m.status, turn: m.turn,
+      id: m.id, friendly: !!m.friendly, status: m.status, turn: m.turn, matchMs: MATCH_MS, byTime: !!m.byTime, updatedAt: m.updatedAt || 0,
       goalsA: m.goalsA, goalsB: m.goalsB, bodies: m.bodies,
-      a: { uid: m.a.uid, name: gbName(m.a.uid) || m.a.name, ficha: squadMini(m.a.ficha) },
-      b: { uid: m.b.uid, name: gbName(m.b.uid) || m.b.name, ficha: squadMini(m.b.ficha) },
-      mine: m.a.uid === forUid ? 'a' : m.b.uid === forUid ? 'b' : null,
-      winner: m.winner || null, path: m._path || null, result: m._result || null
+      timeLeftMs: live ? timeLeft(m, now) : m.status === 'done' ? 0 : MATCH_MS,
+      pauseMs: live ? Math.max(0, (m.pausedUntil || 0) - now) : 0, // celebración en curso: el reloj está parado
+      a: sideOut(m.a), b: sideOut(m.b),
+      mine: m.a.uid === forUid ? 'a' : m.b && m.b.uid === forUid ? 'b' : null,
+      winner: m.winner || null, path: m._path || null, result: m._result || null, payouts: m.payouts || null
     };
   }
 
@@ -156,23 +184,27 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     ];
   }
 
-  // ---- Estado general + mi perfil + ranking + plantilla + retos pendientes ----
-  app.get('/api/stars', (req, res) => {
+  const isMine = (m, uid) => m.a.uid === uid || (m.b && m.b.uid === uid);
+  const busyFor = uid => Object.values(ST().matches).some(m => (m.status === 'open' || m.status === 'live') && isMine(m, uid));
+
+  // ---- Estado general + mi perfil + ranking + plantilla + partidas abiertas (lobby) ----
+  app.get('/api/stars', async (req, res) => {
     ensureMonth();
+    if (sweepExpired()) await save();
     const d = String(req.query.d || '').slice(0, 80), me = d.length >= 8 ? who({ query: { d } }) : null;
-    const s = ST();
-    const peers = gbUsers().filter(u => !me || u.id !== me.id).map(u => ({ id: u.id, name: u.name }));
-    const invites = Object.values(s.matches).filter(m => m.status === 'invite');
+    const s = ST(), all = Object.values(s.matches);
+    const open = all.filter(m => m.status === 'open' && (!me || m.a.uid !== me.id)).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30)
+      .map(m => { const u = profile(m.a.uid); return { id: m.id, name: gbName(m.a.uid) || m.a.name, ficha: squadMini(m.a.ficha), pts: u.pts, div: divOf(u.pts), friendly: !!m.friendly }; });
+    const waiting = me ? all.find(m => m.status === 'open' && m.a.uid === me.id) : null;
     res.json({
       me: me ? { ...outProfile(me.id), hist: profile(me.id).hist } : null,
       squad: squad().map(p => ({ id: p.id, name: p.name, hasPhoto: !!p.photo, photoV: p.photoV || 0 })),
       ranking: ranking().slice(0, 100),
       monthly: monthlyRanking().slice(0, 100),
       champions: s.champions,
-      peers,
-      incoming: me ? invites.filter(m => m.b.uid === me.id).map(m => matchOut(m, me.id)) : [],
-      outgoing: me ? invites.filter(m => m.a.uid === me.id).map(m => matchOut(m, me.id)) : [],
-      activeId: me ? (Object.values(s.matches).find(m => m.status === 'live' && (m.a.uid === me.id || m.b.uid === me.id)) || {}).id || null : null
+      open,                                                   // partidas creadas por otras personas esperando rival
+      waiting: waiting ? { id: waiting.id, friendly: !!waiting.friendly } : null, // la mía, si tengo una abierta
+      activeId: me ? (all.find(m => m.status === 'live' && isMine(m, me.id)) || {}).id || null : null
     });
   });
 
@@ -184,52 +216,58 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     await save(); res.json({ ok: true });
   });
 
-  // ---- Retar a alguien (o jugar amistoso) ----
-  app.post('/api/stars/challenge', async (req, res) => {
+  // ---- Crear una partida abierta (cualquiera puede unirse) ----
+  app.post('/api/stars/create', async (req, res) => {
     ensureMonth();
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
     const you = profile(me.id); if (!you.ficha) return bad(res, 'Elige primero tu ficha');
-    const toId = +req.body.toId, rival = gbUsers().find(x => x.id === toId);
-    if (!rival || rival.id === me.id) return bad(res, 'Elige un rival válido');
-    const rp = profile(rival.id); if (!rp.ficha) return bad(res, (rival.name) + ' todavía no ha elegido su ficha');
-    const s = ST();
-    const busy = Object.values(s.matches).some(m => (m.status === 'invite' || m.status === 'live') && [m.a.uid, m.b.uid].includes(me.id));
-    if (busy) return bad(res, 'Ya tienes un reto o una partida en marcha');
-    let friendly = !!req.body.friendly;
-    const last = Math.max(you.lastVs[rival.id] || 0, rp.lastVs[me.id] || 0);
-    let note = '';
-    if (!friendly && Date.now() - last < COOLDOWN_MS) { friendly = true; note = 'Habéis jugado hace muy poco: esta va de amistoso y no puntúa (para que nadie se infle el ranking jugando siempre contra el mismo rival)'; }
-    const id = getDb().nextId++;
+    if (sweepExpired()) await save();
+    if (busyFor(me.id)) return bad(res, 'Ya tienes una partida abierta o en marcha');
+    const s = ST(), id = getDb().nextId++;
     s.matches[id] = {
-      id, a: { uid: me.id, ficha: you.ficha, name: me.name }, b: { uid: rival.id, ficha: rp.ficha, name: rival.name },
-      goalsA: 0, goalsB: 0, target: TARGET_GOALS, turn: 'a', bodies: freshBodies(),
-      friendly, status: 'invite', winner: null, createdAt: Date.now(), updatedAt: Date.now()
+      id, a: { uid: me.id, ficha: you.ficha, name: me.name }, b: null,
+      goalsA: 0, goalsB: 0, turn: 'a', bodies: freshBodies(),
+      friendly: !!req.body.friendly, status: 'open', winner: null, createdAt: Date.now(), updatedAt: Date.now()
     };
     await save();
-    res.json({ ok: true, id, note });
+    res.json({ ok: true, id });
   });
 
-  app.post('/api/stars/invite/:id/accept', async (req, res) => {
+  // ---- Unirse a la partida abierta de otra persona: en ese momento empieza la cuenta atrás ----
+  app.post('/api/stars/join/:id', async (req, res) => {
+    ensureMonth();
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
+    const mine = profile(me.id); if (!mine.ficha) return bad(res, 'Elige primero tu ficha');
     const s = ST(), m = s.matches[+req.params.id];
-    if (!m || m.status !== 'invite' || m.b.uid !== me.id) return bad(res, 'Ese reto ya no existe');
-    m.status = 'live'; m.updatedAt = Date.now();
-    await save(); res.json({ ok: true });
+    if (!m || m.status !== 'open') return bad(res, 'Esa partida ya no está disponible');
+    if (m.a.uid === me.id) return bad(res, 'Esa partida es tuya: espera a que se una alguien');
+    if (busyFor(me.id)) return bad(res, 'Ya tienes una partida abierta o en marcha');
+    const host = profile(m.a.uid), now = Date.now();
+    let note = '';
+    const last = Math.max(host.lastVs[me.id] || 0, mine.lastVs[m.a.uid] || 0);
+    if (!m.friendly && now - last < COOLDOWN_MS) { m.friendly = true; note = 'Habéis jugado hace muy poco: esta va de amistoso y no puntúa (para que nadie se infle el ranking jugando siempre contra el mismo rival)'; }
+    m.b = { uid: me.id, ficha: mine.ficha, name: me.name };
+    m.status = 'live'; m.turn = 'a'; m.bodies = freshBodies();
+    m.endsAt = now + MATCH_MS; m.pausedUntil = 0; m.updatedAt = now;
+    await save();
+    res.json({ ok: true, id: m.id, note });
   });
-  app.post('/api/stars/invite/:id/decline', async (req, res) => {
+
+  app.post('/api/stars/open/:id/cancel', async (req, res) => {
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
     const s = ST(), m = s.matches[+req.params.id];
-    if (!m || m.status !== 'invite' || (m.b.uid !== me.id && m.a.uid !== me.id)) return bad(res, 'Ese reto ya no existe');
+    if (!m || m.status !== 'open' || m.a.uid !== me.id) return bad(res, 'Esa partida ya no existe');
     delete s.matches[m.id];
     await save(); res.json({ ok: true });
   });
 
-  // ---- Ver una partida (para ir mirando si ya es tu turno) ----
-  app.get('/api/stars/match/:id', (req, res) => {
+  // ---- Ver una partida (también cierra la partida si el reloj ya ha llegado a 0) ----
+  app.get('/api/stars/match/:id', async (req, res) => {
     const me = who(req);
     const m = ST().matches[+req.params.id];
-    if (!m || (me && m.a.uid !== me.id && m.b.uid !== me.id)) return bad(res, 'Partida no encontrada');
-    res.json(matchOut(m, me ? me.id : null));
+    if (!m || !me || !isMine(m, me.id)) return bad(res, 'Partida no encontrada');
+    if (m.status === 'live' && timeLeft(m, Date.now()) <= 0) { finishByTime(m, Date.now()); await save(); }
+    res.json(matchOut(m, me.id));
   });
 
   // ---- Tirar: el cliente solo manda la ficha y la fuerza del chute; el servidor vuelve a simular él solo ----
@@ -237,8 +275,11 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
     const s = ST(), m = s.matches[+req.params.id];
     if (!m || m.status !== 'live') return bad(res, 'Esa partida no está en juego');
-    const mySide = m.a.uid === me.id ? 'a' : m.b.uid === me.id ? 'b' : null;
+    const mySide = m.a.uid === me.id ? 'a' : m.b && m.b.uid === me.id ? 'b' : null;
     if (!mySide) return bad(res, 'Esta partida no es tuya');
+    const now = Date.now();
+    if (timeLeft(m, now) <= 0) { finishByTime(m, now); await save(); return bad(res, '⏱️ Se acabó el tiempo'); }
+    if (now < (m.pausedUntil || 0)) return bad(res, 'Espera a que acabe la celebración');
     if (m.turn !== mySide) return bad(res, 'Todavía no es tu turno');
     const bodyId = String(req.body.bodyId || '');
     const b = m.bodies.find(x => x.id === bodyId && x.team === mySide);
@@ -249,31 +290,33 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const bodies = m.bodies.map(x => ({ ...x }));
     const shooter = bodies.find(x => x.id === bodyId); shooter.vx = vx; shooter.vy = vy;
     const { bodies: final, scored, path } = PH.simulate(bodies, true);
-    m.bodies = final.map(({ id, team, isBall, x, y }) => ({ id, team, isBall, x: r0(x * 100) / 100, y: r0(y * 100) / 100, vx: 0, vy: 0 }));
     m._path = path; m._result = scored;
-    let payouts = null;
-    if (scored === 'A') { m.goalsA++; const bl = m.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (scored === 'B') { m.goalsB++; const bl = m.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (scored) { /* quien marca, repite turno */ } else { m.turn = m.turn === 'a' ? 'b' : 'a'; }
-    if (m.goalsA >= m.target || m.goalsB >= m.target) {
-      m.status = 'done'; m.winner = m.goalsA > m.goalsB ? 'a' : 'b';
-      payouts = applyResult(m);
+    if (scored) {
+      if (scored === 'A') m.goalsA++; else m.goalsB++;
+      m.bodies = freshBodies();                    // tras un gol todo vuelve a la formación inicial (3 fichas + balón al centro)
+      m.turn = scored === 'A' ? 'b' : 'a';         // y saca quien ha encajado el gol
+      const pause = path.length * FRAME_MS + CELEB_MS; // vuelo del balón hasta la red + celebración: el reloj no corre
+      m.pausedUntil = now + pause; m.endsAt += pause;
+    } else {
+      m.bodies = final.map(({ id, team, isBall, x, y }) => ({ id, team, isBall, x: r0(x * 100) / 100, y: r0(y * 100) / 100, vx: 0, vy: 0 }));
+      m.turn = m.turn === 'a' ? 'b' : 'a';
     }
-    m.updatedAt = Date.now();
+    m.updatedAt = now;
     await save();
-    res.json({ ...matchOut(m, me.id), payouts });
+    res.json(matchOut(m, me.id));
   });
 
   app.post('/api/stars/match/:id/resign', async (req, res) => {
     const me = who(req); if (!me) return bad(res, 'Pon tu nombre para jugar');
     const s = ST(), m = s.matches[+req.params.id];
     if (!m || m.status !== 'live') return bad(res, 'Esa partida no está en juego');
-    const mySide = m.a.uid === me.id ? 'a' : m.b.uid === me.id ? 'b' : null;
+    const mySide = m.a.uid === me.id ? 'a' : m.b && m.b.uid === me.id ? 'b' : null;
     if (!mySide) return bad(res, 'Esta partida no es tuya');
     m.status = 'done'; m.abandonedBy = mySide; m.winner = mySide === 'a' ? 'b' : 'a';
     if (mySide === 'a') m.goalsB = Math.max(m.goalsB, m.goalsA + 1); else m.goalsA = Math.max(m.goalsA, m.goalsB + 1);
-    const payouts = applyResult(m);
+    m._path = null; m._result = null; m.updatedAt = Date.now();
+    m.payouts = applyResult(m);
     await save();
-    res.json({ ...matchOut(m, me.id), payouts });
+    res.json(matchOut(m, me.id));
   });
 };

@@ -41,6 +41,15 @@
 .gsPl:hover,.gsPl:focus-visible{border-color:var(--gold);background:#2a1d0c}
 .gsHud{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:420px;margin:4px auto}
 .gsHud b{color:var(--gold)}
+.gsClock{font:800 30px "Barlow Condensed",sans-serif;color:#fff;min-width:70px;text-align:center;font-variant-numeric:tabular-nums;background:#0d0b09;border:2px solid var(--line);border-radius:10px;padding:0 8px}
+.gsClock.low{color:var(--red);border-color:var(--red);animation:gsBlink 1s steps(2,start) infinite}
+@keyframes gsBlink{50%{opacity:.45}}
+#gsField.goal{animation:gsShake .35s 2}
+@keyframes gsShake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.gsOpen{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gsOpen b{flex:1;overflow-wrap:anywhere}
+.gsOpen button{font-size:14px;padding:6px 10px}
+.gsTag{font:700 13px "Barlow Condensed",sans-serif;opacity:.85}
 .gsTurn{text-align:center;font:700 16px "Barlow Condensed",sans-serif;opacity:.9;margin:2px 0 6px}
 #gsField{position:relative;width:100%;max-width:420px;margin:6px auto 8px;aspect-ratio:100/140;border:3px solid var(--gold);border-radius:16px;overflow:hidden;background:#1d5f27 url(cesped.jpg) center/cover;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;outline:none}
 #gsField.mine{cursor:crosshair}
@@ -63,8 +72,16 @@
 `;
   document.head.appendChild(css);
 
-  let GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null, mainTimer = null;
+  let GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null;
   let ai = null; // modo entrenamiento contra la IA (nunca toca el servidor)
+  const MATCH_MS = 3 * 60 * 1000, CELEB_MS = 1000, FRAME_MS = 28; // mismas cifras que el servidor (garrastars.js)
+  let animating = 0, clock = null, timeUpAt = 0;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // Reloj: left = ms que quedaban al recibirlo, pause = ms que aún dura la celebración (durante ese rato el reloj está parado)
+  function setClock(left, pause) { clock = { left: Math.max(0, left), t0: performance.now(), pause: Math.max(0, pause || 0) }; }
+  function clockLeft() { if (!clock) return MATCH_MS; const el = performance.now() - clock.t0; return Math.max(0, clock.left - Math.max(0, el - clock.pause)); }
+  const fmtClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const stampOf = d => d.status + '|' + d.turn + '|' + d.goalsA + '|' + d.goalsB + '|' + (d.updatedAt || '');
 
   const gbName = id => (GS.ranking.find(p => p.id === id) || GS.monthly.find(p => p.id === id) || {}).name
     || (GS.peers.find(p => p.id === id) || {}).name || '???';
@@ -78,19 +95,23 @@
   }
 
   async function loadMatch(force) {
-    if (!matchId) return;
-    let d; try { d = await api('/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev)); } catch (e) { matchId = null; await load(true); return; }
-    const stamp = d.status + '|' + d.turn + '|' + d.goalsA + '|' + d.goalsB + '|' + (d.updatedAt || '');
+    if (!matchId || matchId === 'ai') return;
+    let d; try { d = await api('/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev)); } catch (e) { matchId = null; M = null; await load(true); return; }
+    const stamp = stampOf(d);
     const isNew = stamp !== lastMatchStamp || force;
-    const prevBodies = M ? M.bodies : null;
-    M = d; lastMatchStamp = stamp;
-    drawMatch(isNew ? (M.path && !force ? M.path : null) : null, prevBodies);
-    if (M.status !== 'live') { matchId2Stop(); }
+    if (!isNew) { setClock(d.timeLeftMs, d.pauseMs); return; } // nada ha cambiado: solo se reajusta el reloj y no se repinta
+    const prev = M && matchId !== 'ai' ? { a: M.goalsA, b: M.goalsB } : null; // marcador de antes, para no adelantar el gol
+    lastMatchStamp = stamp; M = d; timeUpAt = 0;
+    setClock(d.timeLeftMs, d.pauseMs);
+    const path = !force && d.path && d.path.length ? d.path : null; // el tiro del rival se anima; al entrar de golpe no se repite
+    drawMatch(path && prev ? prev : undefined);
+    if (path) playShot(path, d.result, () => { if (M && M.status === 'live') drawMatch(); });
+    if (M.status !== 'live') matchId2Stop();
   }
   function matchId2Stop() { clearInterval(liveTimer); liveTimer = null; }
   function scheduleMatchPoll() {
     clearInterval(liveTimer);
-    if (M && M.status === 'live') liveTimer = setInterval(() => { if (!busy) loadMatch(); }, 2200);
+    if (M && M.status === 'live') liveTimer = setInterval(() => { if (!busy && !animating) loadMatch(); }, 2200);
   }
 
   function draw() {
@@ -113,11 +134,13 @@
     <div class="gsCard"><div class="gsMe"><img src="${img(mine)}" alt="" onerror="this.onerror=null;this.src='escudo.png'">
      <div><b>${E(me.name)}<span class="gsDivTag" style="border-color:${DIVC[me.div]};color:${DIVC[me.div]}">${me.div}</span></b>
      <div class="gsStat"><span><b>${me.pts}</b> pts</span><span><b>${me.w}</b>V</span><span><b>${me.l}</b>D</span><span><b>${me.d}</b>E</span><span>🔥 <b>${me.streak}</b></span></div></div></div></div>
-    ${GS.incoming.length ? GS.incoming.map(i => `<div class="gsInv"><span>⚔️ <b>${E(i.a.name)}</b> te ha retado${i.friendly ? ' (amistoso)' : ''}</span><span class="row" style="margin:0"><button type="button" data-acc="${i.id}">Aceptar</button><button type="button" class="ghost" data-dec="${i.id}">Rechazar</button></span></div>`).join('') : ''}
-    ${GS.outgoing.length ? GS.outgoing.map(i => `<div class="gsInv"><span>⌛ Esperando a <b>${E(i.b.name)}</b>…</span><button type="button" class="ghost" data-dec="${i.id}">Cancelar</button></div>`).join('') : ''}
-    <h2 style="margin-top:18px">⚔️ Retar a la peña</h2>
-    <div class="gsPeers">${GS.peers.length ? GS.peers.map(p => `<div class="gsPeer"><b>${E(p.name)}</b><button type="button" data-ch="${p.id}">⭐ Retar</button><button type="button" class="ghost" data-chf="${p.id}">🙂 Amistoso</button></div>`).join('') : '<p class="sub" style="font-size:15px">Todavía no hay nadie más con nombre puesto.</p>'}</div>
-    <div class="row"><button type="button" class="ghost" id="gsAI">🤖 Practicar contra la IA (no puntúa)</button><button type="button" class="ghost" id="gsChFicha">👤 Cambiar ficha</button></div>
+    <h2 style="margin-top:18px">🎮 Jugar</h2>
+    <p class="sub" style="font-size:15px;margin:0 0 8px">Partidos de 3 minutos: gana quien tenga más goles al acabar la cuenta atrás.</p>
+    ${GS.waiting ? `<div class="gsInv"><span>⌛ Tu partida ${GS.waiting.friendly ? 'amistosa' : 'puntuable'} está abierta. Esperando rival…</span><button type="button" class="ghost" data-cancel="${GS.waiting.id}">Cancelar</button></div>` :
+      `<div class="row"><button type="button" data-create="0">⭐ Crear partida puntuable</button><button type="button" class="ghost" data-create="1">🙂 Crear amistosa</button></div>`}
+    <div class="row"><button type="button" class="ghost" id="gsAI">🤖 Entrenamiento vs IA (no puntúa)</button><button type="button" class="ghost" id="gsChFicha">👤 Cambiar ficha</button></div>
+    <h3 style="margin:14px 0 6px;font:800 22px 'Barlow Condensed',sans-serif">🚪 Partidas abiertas</h3>
+    <div class="gsPeers">${GS.open.length ? GS.open.map(o => `<div class="gsOpen"><b>${E(o.name)} <span class="gsDivTag" style="border-color:${DIVC[o.div]};color:${DIVC[o.div]}">${o.div}</span></b><span class="gsTag">${o.friendly ? '🙂 amistosa' : '⭐ puntúa'}</span><button type="button" data-join="${o.id}">Unirme</button></div>`).join('') : '<p class="sub" style="font-size:15px">No hay partidas abiertas ahora mismo. Crea una y espera rival, o entrena contra la IA.</p>'}</div>
     <h2 style="margin-top:22px">🏆 Garra Stars</h2>
     <div class="gsTabs">
      <button type="button" class="gsTab${t === 'rank' ? ' on' : ''}" data-t="rank">General</button>
@@ -146,12 +169,17 @@
     const wd = (b.isBall ? PH.R_BALL : PH.R_DISC) * 2, ht = wd / PH.FH * 100;
     return `left:${left}%;top:${top}%;width:${wd}%;height:${ht}%`;
   }
-  function drawMatch(path, prevBodies) {
+  function placeBodies(bodies) {
+    for (const b of bodies) { const n = $('#bd-' + b.id); if (n) { n.style.left = b.x + '%'; n.style.top = (b.y / PH.FH * 100) + '%'; } }
+  }
+  // hold: marcador anterior {a,b}: el gol no se enseña en el marcador hasta que el balón entra en la red
+  function drawMatch(hold) {
     const el = $('#gsRoot'); if (!el || !M) return;
     const mine = M.mine, myTurn = mine && M.turn === mine;
     const done = M.status === 'done';
+    const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
     el.innerHTML = `
-    <div class="gsHud"><b>${E(M.a.name)} ${M.goalsA}</b> — <b>${M.goalsB} ${E(M.b.name)}</b></div>
+    <div class="gsHud"><b>${E(M.a.name)} <span id="gsSA">${ga}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gsSB">${gb}</span> ${E(M.b.name)}</b></div>
     <p class="gsTurn">${done ? '' : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div><div class="gsGoal t"></div><div class="gsGoal b"></div>
@@ -159,12 +187,11 @@
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
-    ${done ? `<div class="gsEnd gsCard"><h3>${M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : 'Empate'}</h3><p style="margin:0">${M.a.name} ${M.goalsA} - ${M.goalsB} ${M.b.name}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
+    ${done ? `<div class="gsEnd gsCard"><h3>${M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
     <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
       `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
-    if (path && path.length) animatePath(path, () => { });
-    if (matchId !== 'ai') scheduleMatchPoll();
+    if (matchId !== 'ai' && !done) scheduleMatchPoll();
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -173,14 +200,42 @@
     let i = 0;
     const step = () => {
       const frame = path[i];
-      if (frame) for (const b of frame) { const n = $('#bd-' + b.id); if (n) { n.style.left = (b.x) + '%'; n.style.top = (b.y / PH.FH * 100) + '%'; } }
+      if (frame) placeBodies(frame);
       i++;
-      if (i < path.length) setTimeout(step, 28); else done();
+      if (i < path.length) setTimeout(step, FRAME_MS); else done();
     };
     step();
   }
 
   function flash(txt) { const m = $('#gsMsg'); if (!m) return; m.textContent = txt; m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); setTimeout(() => m.classList.remove('on'), 1200); }
+  function goalSound(side) { try { const a = new Audio(M && M.mine === side ? '/sonidos/siuuu.mp3' : '/sonidos/fah.mp3'); a.volume = .6; a.play().catch(() => { }); } catch { } }
+
+  // Anima un tiro. Si acaba en gol: se enseña el gol, ~1 s de celebración (el reloj está parado) y entonces todo vuelve a la formación inicial.
+  // after() se llama cuando ya está todo colocado con el estado nuevo (M.bodies).
+  function playShot(path, result, after) {
+    animating++;
+    const end = () => { if (M) placeBodies(M.bodies); animating--; if (after) after(); };
+    const fin = () => {
+      if (result === 'A' || result === 'B') {
+        const sa = $('#gsSA'), sb = $('#gsSB'); if (M) { if (sa) sa.textContent = M.goalsA; if (sb) sb.textContent = M.goalsB; }
+        const f = $('#gsField'); if (f) { f.classList.add('goal'); setTimeout(() => f.classList.remove('goal'), 800); }
+        flash('⚽ ¡GOL' + (M ? ' de ' + (result === 'A' ? M.a.name : M.b.name) : '') + '!');
+        goalSound(result.toLowerCase());
+        setTimeout(end, CELEB_MS);
+      } else end();
+    };
+    if (path && path.length) animatePath(path, fin); else fin();
+  }
+
+  // Reloj en pantalla (solo cambia el texto, no repinta el campo)
+  setInterval(() => {
+    if (!M || M.status !== 'live' || !matchId) return;
+    const left = clockLeft(), c = $('#gsClock');
+    if (c) { c.textContent = fmtClock(left); c.classList.toggle('low', left > 0 && left <= 10000); }
+    if (left > 0 || animating) return;
+    if (matchId === 'ai') { finishAI(); return; }
+    if (Date.now() - timeUpAt > 2000) { timeUpAt = Date.now(); loadMatch(true); } // el servidor cierra el partido y manda el resultado
+  }, 200);
 
   // ---- Arrastrar para chutar ----
   let drag = null;
@@ -190,7 +245,7 @@
   }
   document.addEventListener('pointerdown', e => {
     const disc = e.target.closest('.gsDisc.mine'); const field = $('#gsField');
-    if (!disc || !field || !field.classList.contains('mine') || busy) return;
+    if (!disc || !field || !field.classList.contains('mine') || busy || animating) return;
     const id = disc.dataset.id, b = (M.bodies || []).find(x => x.id === id);
     if (!b) return;
     drag = { id, bx: b.x, by: b.y };
@@ -218,14 +273,15 @@
     if (dist < 2.5) return; // toque sin arrastrar: no dispara
     const MAXPULL = 26, k = Math.min(1, dist / MAXPULL) * PH.MAX_SPEED / dist;
     const vx = pullX * k, vy = pullY * k;
-    if (busy) return;
-    if (matchId === 'ai') { busy = true; await aiPlayerShoot(d.id, vx, vy); busy = false; return; }
+    if (busy || !M || M.status !== 'live') return;
+    if (matchId === 'ai') { busy = true; try { await aiShot(d.id, vx, vy, 'a'); } finally { busy = false; } return; }
     busy = true;
     try {
+      const hold = { a: M.goalsA, b: M.goalsB };
       const r = await api('/api/stars/match/' + matchId + '/shoot', 'POST', { device: dev, bodyId: d.id, vx, vy });
-      lastMatchStamp = ''; M = r;
-      const after = () => { if (r.result === 'A' || r.result === 'B') flash('⚽ ¡GOOOL!'); drawMatch(); busy = false; if (M.status !== 'live') matchId2Stop(); };
-      if (r.path && r.path.length) animatePath(r.path, after); else after();
+      M = r; lastMatchStamp = stampOf(r); timeUpAt = 0; setClock(r.timeLeftMs, r.pauseMs);
+      drawMatch(hold);
+      playShot(r.path, r.result, () => { busy = false; if (M.status !== 'live') matchId2Stop(); else drawMatch(); });
     } catch (err) { toast(err.message); busy = false; loadMatch(true); }
   });
 
@@ -237,33 +293,32 @@
     if (pl) { try { await api('/api/stars/ficha', 'POST', { device: dev, playerId: +pl.dataset.pl }); await load(true); } catch (x) { toast(x.message); } return; }
     if (e.target.closest('#gsChFicha')) { GS.me.ficha = 0; draw(); return; }
     const tb = e.target.closest('.gsTab'); if (tb) { pane.tab = tb.dataset.t; draw(); return; }
-    const chAny = e.target.closest('[data-ch],[data-chf]');
-    if (chAny) {
-      const toId = +(chAny.dataset.ch || chAny.dataset.chf), friendly = chAny.hasAttribute('data-chf');
-      try { const r = await api('/api/stars/challenge', 'POST', { device: dev, toId, friendly }); if (r.note) toast(r.note); await load(true); } catch (x) { toast(x.message); }
+    const cr = e.target.closest('[data-create]');
+    if (cr) { try { await api('/api/stars/create', 'POST', { device: dev, friendly: cr.dataset.create === '1' }); } catch (x) { toast(x.message); } await load(true); return; }
+    const jn = e.target.closest('[data-join]');
+    if (jn) {
+      try { const r = await api('/api/stars/join/' + jn.dataset.join, 'POST', { device: dev }); if (r.note) toast(r.note); matchId = r.id; lastMatchStamp = ''; await loadMatch(true); }
+      catch (x) { toast(x.message); await load(true); }
       return;
     }
-    const acc = e.target.closest('[data-acc]');
-    if (acc) { try { await api('/api/stars/invite/' + acc.dataset.acc + '/accept', 'POST', { device: dev }); matchId = +acc.dataset.acc; await loadMatch(true); } catch (x) { toast(x.message); } return; }
-    const dec = e.target.closest('[data-dec]');
-    if (dec) { try { await api('/api/stars/invite/' + dec.dataset.dec + '/decline', 'POST', { device: dev }); await load(true); } catch (x) { toast(x.message); } return; }
+    const cn = e.target.closest('[data-cancel]');
+    if (cn) { try { await api('/api/stars/open/' + cn.dataset.cancel + '/cancel', 'POST', { device: dev }); } catch (x) { toast(x.message); } await load(true); return; }
     if (e.target.closest('#gsResign')) {
-      if (matchId === 'ai') { ai = null; matchId = null; M = null; draw(); return; }
+      if (matchId === 'ai') { ai = null; matchId = null; M = null; clock = null; draw(); return; }
       if (!confirm('¿Rendirte? Cuenta como derrota.')) return;
-      try { M = await api('/api/stars/match/' + matchId + '/resign', 'POST', { device: dev }); drawMatch(); } catch (x) { toast(x.message); }
+      try { M = await api('/api/stars/match/' + matchId + '/resign', 'POST', { device: dev }); lastMatchStamp = stampOf(M); matchId2Stop(); drawMatch(); } catch (x) { toast(x.message); }
       return;
     }
-    if (e.target.closest('#gsBack')) { matchId = null; M = null; ai = null; matchId2Stop(); await load(true); return; }
+    if (e.target.closest('#gsBack')) { matchId = null; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
     if (e.target.closest('#gsAI')) { startAI(); return; }
   });
 
-  // ---- Modo entrenamiento contra la IA: nunca toca el servidor ni el ranking ----
+  // ---- Modo entrenamiento contra la IA: nunca toca el servidor ni el ranking. También dura 3 minutos con cuenta atrás ----
   function startAI() {
     const mine = GS.squad.find(p => p.id === GS.me.ficha), bot = GS.squad[(GS.squad.indexOf(mine) + 1) % GS.squad.length] || mine;
-    const k = PH.kickoff ? PH.kickoff() : null;
-    ai = { bodies: aiBodies(), goalsA: 0, goalsB: 0, turn: 'a', botFicha: bot };
-    M = { friendly: true, status: 'live', turn: 'a', mine: 'a', goalsA: 0, goalsB: 0, bodies: ai.bodies, a: { name: GS.me.name, ficha: mine }, b: { name: bot.name + ' (IA)', ficha: bot } };
-    matchId = 'ai';
+    ai = { id: Date.now() };
+    M = { friendly: true, status: 'live', turn: 'a', mine: 'a', goalsA: 0, goalsB: 0, bodies: aiBodies(), a: { name: GS.me.name, ficha: mine }, b: { name: bot.name + ' (IA)', ficha: bot } };
+    matchId = 'ai'; setClock(MATCH_MS, 0);
     drawMatch();
   }
   function aiBodies() {
@@ -278,44 +333,49 @@
       { id: 'ball', team: null, isBall: true, x: k.ball.x, y: k.ball.y, vx: 0, vy: 0 },
     ];
   }
-  // El chute del jugador en modo IA pasa por la MISMA simulación (PH.simulate), solo que corre aquí en vez de en el servidor
-  async function aiPlayerShoot(bodyId, vx, vy) {
+  function finishAI() {
+    if (!ai || !M || M.status !== 'live') return;
+    M.status = 'done'; M.byTime = true; setClock(0, 0);
+    M.winner = M.goalsA > M.goalsB ? 'a' : M.goalsB > M.goalsA ? 'b' : null;
+    drawMatch();
+  }
+  // Un tiro (del jugador o de la IA) pasa por la MISMA simulación que usa el servidor (PH.simulate), solo que corre aquí
+  async function aiShot(bodyId, vx, vy, side) {
+    const run = ai; if (!run || !M || M.status !== 'live') return;
     const bodies = M.bodies.map(b => ({ ...b }));
-    const b = bodies.find(x => x.id === bodyId); b.vx = vx; b.vy = vy;
+    const sh = bodies.find(x => x.id === bodyId); sh.vx = vx; sh.vy = vy;
     const { bodies: fin, scored, path } = PH.simulate(bodies, true);
     M.bodies = fin;
-    if (scored === 'A') { M.goalsA++; const bl = M.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (scored === 'B') { M.goalsB++; const bl = M.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (!scored) M.turn = 'b';
-    animatePath(path, async () => {
-      if (M.goalsA >= 3 || M.goalsB >= 3) { M.status = 'done'; M.winner = M.goalsA > M.goalsB ? 'a' : 'b'; drawMatch(); return; }
-      drawMatch();
-      if (M.turn === 'b') await aiTurn();
-    });
+    if (scored) {
+      if (scored === 'A') M.goalsA++; else M.goalsB++;
+      M.bodies = aiBodies();                       // tras el gol, formación inicial...
+      M.turn = scored === 'A' ? 'b' : 'a';         // ...y saca quien ha encajado
+      setClock(clockLeft(), path.length * FRAME_MS + CELEB_MS); // vuelo + celebración: el reloj no corre
+    } else M.turn = side === 'a' ? 'b' : 'a';
+    await new Promise(res => playShot(path, scored, res));
+    if (ai !== run || !M || M.status !== 'live') return;
+    if (clockLeft() <= 0) { finishAI(); return; }
+    drawMatch();
+    if (M.turn === 'b') await aiTurn();
   }
   async function aiTurn() {
-    await new Promise(r => setTimeout(r, 650));
+    const run = ai;
+    await sleep(650);
+    if (ai !== run || !M || M.status !== 'live') return;
+    if (clockLeft() <= 0) { finishAI(); return; }
     const bodies = M.bodies.map(b => ({ ...b }));
     const ball = bodies.find(x => x.isBall);
     const mine3 = bodies.filter(x => x.team === 'b');
     mine3.sort((a, b) => Math.hypot(a.x - ball.x, a.y - ball.y) - Math.hypot(b.x - ball.x, b.y - ball.y));
     const shooter = mine3[0];
-    let ang = Math.atan2(ball.y - shooter.y, ball.x - shooter.x) + (Math.random() - 0.5) * 0.5;
+    const ang = Math.atan2(ball.y - shooter.y, ball.x - shooter.x) + (Math.random() - 0.5) * 0.5;
     const power = (0.55 + Math.random() * 0.45) * PH.MAX_SPEED;
-    const b = bodies.find(x => x.id === shooter.id); b.vx = Math.cos(ang) * power; b.vy = Math.sin(ang) * power;
-    const { bodies: fin, scored, path } = PH.simulate(bodies, true);
-    M.bodies = fin;
-    if (scored === 'A') { M.goalsA++; const bl = M.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (scored === 'B') { M.goalsB++; const bl = M.bodies.find(x => x.isBall); bl.x = 50; bl.y = 70; }
-    if (!scored) M.turn = 'a';
-    animatePath(path, async () => {
-      if (M.goalsA >= 3 || M.goalsB >= 3) { M.status = 'done'; M.winner = M.goalsA > M.goalsB ? 'a' : 'b'; drawMatch(); return; }
-      drawMatch();
-      if (M.turn === 'b') await aiTurn();
-    });
+    await aiShot(shooter.id, Math.cos(ang) * power, Math.sin(ang) * power, 'b');
   }
 
   addEventListener('hashchange', () => { if (here()) load(true); });
-  mainTimer = setInterval(() => { if (here() && !matchId) load(); }, 20000);
+  (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
+    setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 10000);
+  })();
   if (here()) load(true);
 })();
