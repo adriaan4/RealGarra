@@ -10,7 +10,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const PH = require('./public/physics.js');
   const MATCH_MS = 3 * 60 * 1000;          // el partido dura 3 minutos (cuenta atrás); gana quien tenga más goles al acabar
   const CELEB_MS = 1000;                   // pausa de celebración tras un gol: NO se descuenta de la cuenta atrás
-  const FRAME_MS = 28;                     // ms por fotograma al animar un tiro (igual que en el navegador)
+  const FRAME_MS = 16;                     // ms por fotograma al animar un tiro (igual que en el navegador)
   const OPEN_TTL_MS = 15 * 60 * 1000;      // una partida abierta que nadie coge se borra sola
   const COOLDOWN_MS = 2 * 3600 * 1000;     // entre los mismos dos rivales: si juegan más seguido, la revancha es amistosa (no puntúa)
   const HIST_KEEP = 25;
@@ -196,12 +196,16 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const open = all.filter(m => m.status === 'open' && (!me || m.a.uid !== me.id)).sort((a, b) => b.createdAt - a.createdAt).slice(0, 30)
       .map(m => { const u = profile(m.a.uid); return { id: m.id, name: gbName(m.a.uid) || m.a.name, ficha: squadMini(m.a.ficha), pts: u.pts, div: divOf(u.pts), friendly: !!m.friendly }; });
     const waiting = me ? all.find(m => m.status === 'open' && m.a.uid === me.id) : null;
+    const now = Date.now();
+    const live = all.filter(m => m.status === 'live').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 20)
+      .map(m => ({ id: m.id, a: gbName(m.a.uid) || m.a.name, b: gbName(m.b.uid) || m.b.name, goalsA: m.goalsA, goalsB: m.goalsB, timeLeftMs: timeLeft(m, now), friendly: !!m.friendly }));
     res.json({
       me: me ? { ...outProfile(me.id), hist: profile(me.id).hist } : null,
       squad: squad().map(p => ({ id: p.id, name: p.name, hasPhoto: !!p.photo, photoV: p.photoV || 0 })),
       ranking: ranking().slice(0, 100),
       monthly: monthlyRanking().slice(0, 100),
       champions: s.champions,
+      live,                                                   // partidos en directo (para mirarlos)
       open,                                                   // partidas creadas por otras personas esperando rival
       waiting: waiting ? { id: waiting.id, friendly: !!waiting.friendly } : null, // la mía, si tengo una abierta
       activeId: me ? (all.find(m => m.status === 'live' && isMine(m, me.id)) || {}).id || null : null
@@ -267,7 +271,19 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const m = ST().matches[+req.params.id];
     if (!m || !me || !isMine(m, me.id)) return bad(res, 'Partida no encontrada');
     if (m.status === 'live' && timeLeft(m, Date.now()) <= 0) { finishByTime(m, Date.now()); await save(); }
-    res.json(matchOut(m, me.id));
+    const out = matchOut(m, me.id);
+    if (+req.query.since === (m.updatedAt || 0)) out.path = null; // nada nuevo: no se reenvía la animación
+    res.json(out);
+  });
+
+  // ---- Mirar un partido en directo (cualquiera, sin poder tocar nada) ----
+  app.get('/api/stars/watch/:id', async (req, res) => {
+    const m = ST().matches[+req.params.id];
+    if (!m || (m.status !== 'live' && m.status !== 'done')) return bad(res, 'Ese partido ya no está');
+    if (m.status === 'live' && timeLeft(m, Date.now()) <= 0) { finishByTime(m, Date.now()); await save(); }
+    const out = matchOut(m, null);
+    if (+req.query.since === (m.updatedAt || 0)) out.path = null;
+    res.json(out);
   });
 
   // ---- Tirar: el cliente solo manda la ficha y la fuerza del chute; el servidor vuelve a simular él solo ----

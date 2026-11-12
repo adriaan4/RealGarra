@@ -72,9 +72,9 @@
 `;
   document.head.appendChild(css);
 
-  let GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null;
+  let spectating = false, GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null;
   let ai = null; // modo entrenamiento contra la IA (nunca toca el servidor)
-  const MATCH_MS = 3 * 60 * 1000, CELEB_MS = 1000, FRAME_MS = 28; // mismas cifras que el servidor (garrastars.js)
+  const MATCH_MS = 3 * 60 * 1000, CELEB_MS = 1000, FRAME_MS = 16; // mismas cifras que el servidor (garrastars.js)
   let animating = 0, clock = null, timeUpAt = 0;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   // Reloj: left = ms que quedaban al recibirlo, pause = ms que aún dura la celebración (durante ese rato el reloj está parado)
@@ -99,8 +99,9 @@
 
   async function loadMatch(force) {
     if (!matchId || matchId === 'ai') return;
-    let d; try { d = await api('/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev)); } catch (e) { matchId = null; M = null; await load(true); return; }
-    if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { matchId = null; M = null; await load(true); return; }
+    const since = M && !force ? (M.updatedAt || 0) : 0;
+    let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) { matchId = null; spectating = false; M = null; await load(true); return; }
+    if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { matchId = null; spectating = false; M = null; await load(true); return; }
     const stamp = stampOf(d);
     const isNew = stamp !== lastMatchStamp || force;
     if (!isNew) { setClock(d.timeLeftMs, d.pauseMs); return; } // nada ha cambiado: solo se reajusta el reloj y no se repinta
@@ -115,7 +116,7 @@
   function matchId2Stop() { clearInterval(liveTimer); liveTimer = null; }
   function scheduleMatchPoll() {
     clearInterval(liveTimer);
-    if (M && M.status === 'live') liveTimer = setInterval(() => { if (!busy && !animating) loadMatch(); }, 2200);
+    if (M && M.status === 'live') liveTimer = setInterval(() => { if (!busy && !animating) loadMatch(); }, 1000);
   }
 
   function draw() {
@@ -124,7 +125,7 @@
     if (matchId && M) { drawMatch(); return; }
     if (!GS.me) {
       el.innerHTML = `<p class="sub">Para jugar usa el mismo nombre de GarraBet/Porra. Si no tienes, ponlo aquí:</p>
-      <div class="row"><input id="gsNameIn" maxlength="18" placeholder="Tu nombre"><button id="gsNameBtn" type="button">Guardar</button></div>`;
+      <div class="row"><input id="gsNameIn" maxlength="18" placeholder="Tu nombre"><button id="gsNameBtn" type="button">Guardar</button></div>` + liveHtml();
       return;
     }
     if (!GS.me.ficha) {
@@ -145,6 +146,7 @@
     <div class="row"><button type="button" class="ghost" id="gsAI">🤖 Entrenamiento vs IA (no puntúa)</button><button type="button" class="ghost" id="gsChFicha">👤 Cambiar ficha</button></div>
     <h3 style="margin:14px 0 6px;font:800 22px 'Barlow Condensed',sans-serif">🚪 Partidas abiertas</h3>
     <div class="gsPeers">${GS.open.length ? GS.open.map(o => `<div class="gsOpen"><b>${E(o.name)} <span class="gsDivTag" style="border-color:${DIVC[o.div]};color:${DIVC[o.div]}">${o.div}</span></b><span class="gsTag">${o.friendly ? '🙂 amistosa' : '⭐ puntúa'}</span><button type="button" data-join="${o.id}">Unirme</button></div>`).join('') : '<p class="sub" style="font-size:15px">No hay partidas abiertas ahora mismo. Crea una y espera rival, o entrena contra la IA.</p>'}</div>
+    ${liveHtml()}
     <h2 style="margin-top:22px">🏆 Garra Stars</h2>
     <div class="gsTabs">
      <button type="button" class="gsTab${t === 'rank' ? ' on' : ''}" data-t="rank">General</button>
@@ -155,6 +157,10 @@
     <div id="gsPane">${pane_(t, me.id)}</div>`;
   }
 
+  function liveHtml() {
+    const L = GS.live || [];
+    return `<h2 style="margin-top:18px">🔴 Directo</h2><div class="gsPeers">${L.length ? L.map(m => `<div class="gsOpen"><b>${E(m.a)} ${m.goalsA} - ${m.goalsB} ${E(m.b)}</b><span class="gsTag">⏱️ ${fmtClock(m.timeLeftMs)}${m.friendly ? ' · 🙂' : ''}</span><button type="button" data-watch="${m.id}">👀 Ver</button></div>`).join('') : '<p class="sub" style="font-size:15px">Ahora mismo no hay ningún partido en juego.</p>'}</div>`;
+  }
   function rankRows(list, meId) {
     if (!list.length) return '<p class="sub" style="font-size:15px">Todavía no hay partidas puntuables.</p>';
     return list.map((p, i) => `<div class="gsRow${p.id === meId ? ' me' : ''}"><span style="width:22px">${i + 1}</span><b>${E(p.name)}</b><span class="gsDivTag" style="border-color:${DIVC[p.div]};color:${DIVC[p.div]}">${p.div}</span><b>${p.pts}</b></div>`).join('');
@@ -184,16 +190,16 @@
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
     el.innerHTML = `
     <div class="gsHud"><b>${E(M.a.name)} <span id="gsSA">${ga}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gsSB">${gb}</span> ${E(M.b.name)}</b></div>
-    <p class="gsTurn">${done ? '' : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
+    <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div><div class="gsGoal t"></div><div class="gsGoal b"></div>
      <div class="gsMsg" id="gsMsg"></div>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
-    ${done ? `<div class="gsEnd gsCard"><h3>${M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
+    ${done ? `<div class="gsEnd gsCard"><h3>${spectating ? (M.winner ? '🏁 Gana ' + E(M.winner === 'a' ? M.a.name : M.b.name) : '🤝 Empate') : M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
     <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
-      `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
+      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     if (matchId !== 'ai' && !done) scheduleMatchPoll();
   }
@@ -212,7 +218,7 @@
   }
 
   function flash(txt) { const m = $('#gsMsg'); if (!m) return; m.textContent = txt; m.classList.remove('on'); void m.offsetWidth; m.classList.add('on'); setTimeout(() => m.classList.remove('on'), 1200); }
-  function goalSound(side) { try { const a = new Audio(M && M.mine === side ? '/sonidos/siuuu.mp3' : '/sonidos/fah.mp3'); a.volume = .6; a.play().catch(() => { }); } catch { } }
+  function goalSound(side) { if (!M || !M.mine) return; try { const a = new Audio(M && M.mine === side ? '/sonidos/siuuu.mp3' : '/sonidos/fah.mp3'); a.volume = .6; a.play().catch(() => { }); } catch { } }
 
   // Anima un tiro. Si acaba en gol: se enseña el gol, ~1 s de celebración (el reloj está parado) y entonces todo vuelve a la formación inicial.
   // after() se llama cuando ya está todo colocado con el estado nuevo (M.bodies).
@@ -280,13 +286,24 @@
     if (busy || !M || M.status !== 'live') return;
     if (matchId === 'ai') { busy = true; try { await aiShot(d.id, vx, vy, 'a'); } finally { busy = false; } return; }
     busy = true;
-    try {
-      const hold = { a: M.goalsA, b: M.goalsB };
-      const r = await api('/api/stars/match/' + matchId + '/shoot', 'POST', { device: dev, bodyId: d.id, vx, vy });
-      M = r; lastMatchStamp = stampOf(r); timeUpAt = 0; setClock(r.timeLeftMs, r.pauseMs);
-      drawMatch(hold);
-      playShot(r.path, r.result, () => { busy = false; if (M.status !== 'live') matchId2Stop(); else drawMatch(); });
-    } catch (err) { toast(err.message); busy = false; loadMatch(true); }
+    // Tiro instantáneo: la simulación es determinista (la misma del servidor), así que se anima ya y la respuesta del servidor solo confirma
+    const hold = { a: M.goalsA, b: M.goalsB };
+    const [cvx, cvy] = PH.clampPower ? PH.clampPower(vx, vy) : [vx, vy];
+    const sim = M.bodies.map(b => ({ ...b })); const sh = sim.find(x => x.id === d.id); sh.vx = cvx; sh.vy = cvy;
+    const loc = PH.simulate(sim, true);
+    M = { ...M, bodies: loc.scored ? aiBodies() : loc.bodies, goalsA: M.goalsA + (loc.scored === 'A' ? 1 : 0), goalsB: M.goalsB + (loc.scored === 'B' ? 1 : 0), turn: loc.scored ? (loc.scored === 'A' ? 'b' : 'a') : (M.turn === 'a' ? 'b' : 'a') };
+    if (loc.scored) setClock(clockLeft(), loc.path.length * FRAME_MS + CELEB_MS);
+    drawMatch(hold);
+    let reply = null;
+    const req = api('/api/stars/match/' + matchId + '/shoot', 'POST', { device: dev, bodyId: d.id, vx, vy }).then(r => { reply = r; return r; });
+    req.catch(() => { }); // el error se trata al acabar la animación
+    playShot(loc.path, loc.scored, async () => {
+      try {
+        const r = reply || await req;
+        M = r; lastMatchStamp = stampOf(r); timeUpAt = 0; setClock(r.timeLeftMs, r.pauseMs);
+        busy = false; if (M.status !== 'live') matchId2Stop(); else drawMatch();
+      } catch (err) { toast(err.message); busy = false; loadMatch(true); }
+    });
   });
 
   document.addEventListener('click', async e => {
@@ -305,6 +322,8 @@
       catch (x) { toast(x.message); await load(true); }
       return;
     }
+    const wt = e.target.closest('[data-watch]');
+    if (wt) { spectating = true; matchId = +wt.dataset.watch; lastMatchStamp = ''; M = null; await loadMatch(true); return; }
     const cn = e.target.closest('[data-cancel]');
     if (cn) { try { await api('/api/stars/open/' + cn.dataset.cancel + '/cancel', 'POST', { device: dev }); } catch (x) { toast(x.message); } await load(true); return; }
     if (e.target.closest('#gsResign')) {
@@ -313,7 +332,7 @@
       try { M = await api('/api/stars/match/' + matchId + '/resign', 'POST', { device: dev }); lastMatchStamp = stampOf(M); matchId2Stop(); drawMatch(); } catch (x) { toast(x.message); }
       return;
     }
-    if (e.target.closest('#gsBack')) { matchId = null; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
+    if (e.target.closest('#gsBack')) { matchId = null; spectating = false; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
     if (e.target.closest('#gsAI')) { startAI(); return; }
   });
 
@@ -364,7 +383,7 @@
   }
   async function aiTurn() {
     const run = ai;
-    await sleep(650);
+    await sleep(350);
     if (ai !== run || !M || M.status !== 'live') return;
     if (clockLeft() <= 0) { finishAI(); return; }
     const bodies = M.bodies.map(b => ({ ...b }));
@@ -379,7 +398,7 @@
 
   addEventListener('hashchange', () => { if (here()) load(true); });
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
-    setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 10000);
+    setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
   })();
   if (here()) load(true);
 })();

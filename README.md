@@ -149,3 +149,5 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - **Tras un gol**: se ve la celebración (~1 s) y todo vuelve a la formación inicial (3 fichas por equipo y balón al centro). Esa celebración y el vuelo del balón hasta la red **no se descuentan de la cuenta atrás**. **Saca quien ha encajado el gol.**
 - El entrenamiento vs IA también dura 3 minutos y sigue las mismas reglas; no puntúa ni toca el servidor.
 - Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (sin cambios).
+- **🔴 Directo**: en el lobby aparece la lista de partidos en juego (marcador y tiempo); con «👀 Ver» se mira el partido en vivo (solo mirar, sin poder tocar nada). Los tiros del rival se ven casi al momento (se consulta cada segundo).
+- El tiro propio es instantáneo: al soltar, el navegador ya anima el chute con la misma simulación que el servidor y el servidor solo lo confirma.
