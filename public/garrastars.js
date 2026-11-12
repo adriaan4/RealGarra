@@ -252,6 +252,7 @@
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
     <div class="gsHud" style="${LAND() ? 'max-width:680px' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
+    <div style="text-align:center;margin:2px 0"><button type="button" class="ghost gsRotBtn" style="font-size:15px;padding:4px 14px;min-height:34px">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}${LAND() ? ' land' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
@@ -261,8 +262,8 @@
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
     ${done ? `<div class="gsEnd gsCard"><h3>${spectating ? (M.winner ? '🏁 Gana ' + E(M.winner === 'a' ? M.a.name : M.b.name) : '🤝 Empate') : M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
-    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>` :
-      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>`}
+    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
+      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
   }
@@ -403,7 +404,7 @@
       try { M = await api('/api/stars/match/' + matchId + '/resign', 'POST', { device: dev }); lastMatchStamp = stampOf(M); matchId2Stop(); drawMatch(); } catch (x) { toast(x.message); }
       return;
     }
-    if (e.target.closest('#gsRot')) {
+    if (e.target.closest('.gsRotBtn')) {
       if (drag) return;
       horizPref = !LAND(); try { localStorage.gsHoriz = horizPref ? '1' : '0'; } catch { }
       drawMatch(); return;
