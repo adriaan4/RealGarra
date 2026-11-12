@@ -158,3 +158,4 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - Ficheros tocados: `garrastars.js` (servidor) y `public/garrastars.js` (cliente).
 - **Espectadores en horizontal:** quien solo mira ve el campo apaisado (equipo A a la izquierda atacando a la derecha, B a la derecha). Los jugadores siguen viendo sus fichas abajo.
 - **Anti-cuelgues:** un fallo de red suelto ya no echa a nadie del partido; si algo falla al pintar o una animación se queda colgada, la web vuelve sola al lobby; los avisos del lobby se limitan a 1 refresco cada 1,5 s; los canales SSE tienen tope y control de errores en el servidor.
+- **Botón 🔄 Horizontal/Vertical** (en la fila de botones del partido, para jugadores y espectadores): se guarda en el dispositivo (`localStorage.gsHoriz`). Por defecto quien mira ve horizontal y quien juega vertical. En horizontal tú estás a la izquierda atacando hacia la derecha.

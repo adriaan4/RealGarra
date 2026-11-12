@@ -228,10 +228,13 @@
   // ---- Partida ----
   // Cada jugador se ve SIEMPRE abajo: si soy el equipo B se gira el campo 180° solo en mi pantalla (la física no cambia)
   const FLIP = () => !!(M && M.mine === 'b');
-  const LAND = () => !!(M && !M.mine && spectating && matchId !== 'ai'); // quien solo mira ve el campo en HORIZONTAL: equipo A a la izquierda (ataca a la derecha), B a la derecha
+  let horizPref = null; // null = automático (quien mira: horizontal; quien juega: vertical); true/false = lo que elija con el botón 🔄
+  try { const v = localStorage.gsHoriz; if (v === '1' || v === '0') horizPref = v === '1'; } catch { }
+  // Horizontal: yo (o el equipo A si solo miro) a la izquierda atacando hacia la derecha
+  const LAND = () => !M ? false : horizPref !== null ? horizPref : (!M.mine && spectating && matchId !== 'ai');
   const FWW = PH.FW || 100;
   const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
-  const vpos = (x, y) => LAND() ? { x: PH.FH - y, y: x } : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
+  const vpos = (x, y) => LAND() ? (FLIP() ? { x: y, y: FWW - x } : { x: PH.FH - y, y: x }) : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
   function bodyStyle(b) {
     const v = vpos(b.x, b.y), D = VDIM(), dia = (b.isBall ? PH.R_BALL : PH.R_DISC) * 2;
     return `left:${v.x / D.w * 100}%;top:${v.y / D.h * 100}%;width:${dia / D.w * 100}%;height:${dia / D.h * 100}%`;
@@ -252,14 +255,14 @@
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}${LAND() ? ' land' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
-     <div class="gsLbl t opp">${mine ? '⬆ Rival · ' : ''}${nm(top)}</div><div class="gsLbl b">${mine ? '⬇ TÚ · ' : ''}${nm(bot)}</div>
+     <div class="gsLbl t opp">${mine ? (LAND() ? '▶ Rival · ' : '⬆ Rival · ') : ''}${nm(top)}</div><div class="gsLbl b">${mine ? (LAND() ? '◀ TÚ · ' : '⬇ TÚ · ') : ''}${nm(bot)}</div>
      <div class="gsMsg" id="gsMsg"></div>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
     ${done ? `<div class="gsEnd gsCard"><h3>${spectating ? (M.winner ? '🏁 Gana ' + E(M.winner === 'a' ? M.a.name : M.b.name) : '🤝 Empate') : M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
-    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
-      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
+    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>` :
+      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button><button type="button" class="ghost" id="gsRot">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button></div>`}
     `;
     syncStream();
   }
@@ -313,7 +316,8 @@
   let drag = null;
   function fieldPt(e, field) {
     const r = field.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width * 100, y: (e.clientY - r.top) / r.height * PH.FH }; // coordenadas de PANTALLA (si el campo está girado, la física las invierte al chutar)
+    const D = VDIM();
+    return { x: (e.clientX - r.left) / r.width * D.w, y: (e.clientY - r.top) / r.height * D.h }; // coordenadas de PANTALLA en las unidades del campo tal y como se ve (la física las deshace al chutar)
   }
   document.addEventListener('pointerdown', e => {
     const disc = e.target.closest('.gsDisc.mine'); const field = $('#gsField');
@@ -330,11 +334,11 @@
     const p = fieldPt(e, field);
     const line = $('#gsAimLine'); if (!line) return;
     const dx = p.x - drag.bx, dy = p.y - drag.by, dist = Math.hypot(dx, dy);
-    const leftPct = drag.bx, topPct = drag.by / PH.FH * 100;
-    const ang = Math.atan2(dy * (field.clientHeight / PH.FH), dx * (field.clientWidth / 100));
+    const D = VDIM(), leftPct = drag.bx / D.w * 100, topPct = drag.by / D.h * 100;
+    const ang = Math.atan2(dy * (field.clientHeight / D.h), dx * (field.clientWidth / D.w));
     line.style.display = 'block';
     line.style.left = leftPct + '%'; line.style.top = topPct + '%';
-    line.style.width = Math.min(60, dist) + '%';
+    line.style.width = (Math.min(60, dist) / D.w * 100) + '%';
     line.style.transform = `rotate(${ang}rad)`;
   });
   document.addEventListener('pointerup', async e => {
@@ -347,7 +351,9 @@
     if (dist < 2.5) return; // toque sin arrastrar: no dispara
     const MAXPULL = 26, k = Math.min(1, dist / MAXPULL) * PH.MAX_SPEED / dist;
     let vx = pullX * k, vy = pullY * k;
-    if (FLIP()) { vx = -vx; vy = -vy; } // campo girado 180°: el tirón en pantalla es el contrario en el campo real
+    // del tirón en pantalla al tirón en el campo real (deshacer el giro de la vista)
+    if (LAND()) { const tx = vx, ty = vy; if (FLIP()) { vx = -ty; vy = tx; } else { vx = ty; vy = -tx; } }
+    else if (FLIP()) { vx = -vx; vy = -vy; }
     if (busy || !M || M.status !== 'live') return;
     if (matchId === 'ai') { busy = true; try { await aiShot(d.id, vx, vy, 'a'); } finally { busy = false; } return; }
     busy = true;
@@ -396,6 +402,11 @@
       if (!confirm('¿Rendirte? Cuenta como derrota.')) return;
       try { M = await api('/api/stars/match/' + matchId + '/resign', 'POST', { device: dev }); lastMatchStamp = stampOf(M); matchId2Stop(); drawMatch(); } catch (x) { toast(x.message); }
       return;
+    }
+    if (e.target.closest('#gsRot')) {
+      if (drag) return;
+      horizPref = !LAND(); try { localStorage.gsHoriz = horizPref ? '1' : '0'; } catch { }
+      drawMatch(); return;
     }
     if (e.target.closest('#gsBack')) { matchId = null; spectating = false; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
     if (e.target.closest('#gsAI')) { startAI(); return; }
