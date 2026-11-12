@@ -281,7 +281,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v6</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v7</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
