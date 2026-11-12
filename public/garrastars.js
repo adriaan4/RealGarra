@@ -79,6 +79,18 @@
 .gsHist{font-size:14px;opacity:.9}
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
+.gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
+#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;background:#0d0b09;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;overflow:hidden;padding:max(4px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+#gsRoot.gsFull .gsHud{width:100%;max-width:none;margin:0}
+#gsRoot.gsFull .gsClock{font-size:24px}
+#gsRoot.gsFull .gsTurn{margin:0;font-size:14px;line-height:18px}
+#gsRoot.gsFull #gsField.land{margin:2px auto;width:min(100%,calc((100vh - 112px) * 1.4))}
+#gsRoot.gsFull .row{margin:2px 0}
+#gsRoot.gsFull .row button{min-height:34px;padding:4px 12px}
+#gsRoot.gsFull .gsEnd{padding:6px 10px;margin:2px 0}
+#gsRoot.gsFull .gsEnd h3{font-size:22px}
+#gsRoot.gsFull .gsVer{display:none}
+@supports (height:100dvh){#gsRoot.gsFull #gsField.land{width:min(100%,calc((100dvh - 112px) * 1.4))}}
 `;
   document.head.appendChild(css);
 
@@ -123,7 +135,7 @@
   // Recibe el estado de la partida (por el canal en directo o por consulta). Si estoy animando un tiro, se guarda en cola y se enseña justo después.
   function recover() { // salida limpia al lobby si algo va mal: nunca se queda la web colgada
     matchId = null; spectating = false; M = null; ai = null; pendingQ = []; animating = 0; busy = false; drag = null; clock = null; lastMatchStamp = '';
-    matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) r.style.maxWidth = '';
+    matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) { r.style.maxWidth = ''; r.classList.remove('gsFull'); }
     load(true);
   }
   function applyMatch(d, force) { try { applyMatch_(d, force); } catch (x) { console.error('Garra Stars:', x); recover(); } }
@@ -174,7 +186,7 @@
     const el = $('#gsRoot'); if (!el) return;
     if (!GS) { el.innerHTML = '<p>Cargando…</p>'; return; }
     if (matchId && M) { drawMatch(); return; }
-    el.style.maxWidth = '';
+    el.style.maxWidth = ''; el.classList.remove('gsFull');
     if (!GS.me) {
       el.innerHTML = `<p class="sub">Para jugar usa el mismo nombre de GarraBet/Porra. Si no tienes, ponlo aquí:</p>
       <div class="row"><input id="gsNameIn" maxlength="18" placeholder="Tu nombre"><button id="gsNameBtn" type="button">Guardar</button></div>` + liveHtml();
@@ -233,6 +245,7 @@
   let horizPref = null;
   const mqLand = window.matchMedia ? matchMedia('(orientation: landscape) and (max-height: 620px)') : null;
   const LAND = () => !M ? false : horizPref !== null ? horizPref : !!(mqLand && mqLand.matches);
+  const FULL = () => LAND() && innerWidth > innerHeight; // móvil realmente en horizontal: el juego ocupa TODA la pantalla (sin cabecera ni pestañas)
   const FWW = PH.FW || 100;
   const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
   const vpos = (x, y) => LAND() ? (FLIP() ? { x: y, y: FWW - x } : { x: PH.FH - y, y: x }) : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
@@ -250,23 +263,25 @@
     const done = M.status === 'done';
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
     el.style.maxWidth = LAND() ? '100%' : '';
+    el.classList.toggle('gsFull', FULL());
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
-    <div class="gsHud" style="${LAND() ? 'max-width:min(100%,106vh)' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
+    <div class="gsHud" style="${LAND() && !FULL() ? 'max-width:min(100%,106vh)' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}${LAND() ? ' land' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
      <div class="gsLbl t opp">${mine ? (LAND() ? '▶ Rival · ' : '⬆ Rival · ') : ''}${nm(top)}</div><div class="gsLbl b">${mine ? (LAND() ? '◀ TÚ · ' : '⬇ TÚ · ') : ''}${nm(bot)}</div>
      <div class="gsMsg" id="gsMsg"></div>
+     <button type="button" class="gsRotBtn" aria-label="Girar el campo">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
     </div>
     ${done ? `<div class="gsEnd gsCard"><h3>${spectating ? (M.winner ? '🏁 Gana ' + E(M.winner === 'a' ? M.a.name : M.b.name) : '🤝 Empate') : M.winner === mine ? '🏆 ¡Victoria!' : M.winner ? '😬 Derrota' : '🤝 Empate'}</h3><p style="margin:0">${M.byTime ? '⏱️ Tiempo agotado · ' : ''}${E(M.a.name)} ${M.goalsA} - ${M.goalsB} ${E(M.b.name)}${M.payouts ? ' · ' + (mine === 'a' ? fmtDelta(M.payouts.deltaA) : fmtDelta(M.payouts.deltaB)) : ''}</p></div>
-    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button><button type="button" class="ghost gsRotBtn">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>` :
-      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button><button type="button" class="ghost gsRotBtn">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button><button type="button" class="ghost gsRotBtn">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>`}
+    <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
+      spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v5</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v6</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -477,7 +492,7 @@
   const onRotate = () => { horizPref = null; if (M && matchId && !drag) drawMatch(); }; // al girar el móvil manda la orientación del móvil
   if (mqLand) { if (mqLand.addEventListener) mqLand.addEventListener('change', onRotate); else if (mqLand.addListener) mqLand.addListener(onRotate); }
   addEventListener('orientationchange', () => setTimeout(onRotate, 250));
-  addEventListener('hashchange', () => { if (here()) load(true); });
+  addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else if (r) r.classList.remove('gsFull'); });
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
     setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
   })();
