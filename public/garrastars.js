@@ -88,15 +88,19 @@
 
   async function load(force) {
     if (!here() && !force) return;
-    try { GS = await api('/api/stars?d=' + encodeURIComponent(dev)); } catch (e) { $('#gsRoot').innerHTML = '<p>' + E(e.message) + '</p>'; return; }
-    if (ai) return; // no pisar el entrenamiento en curso
-    if (GS.activeId && GS.activeId !== matchId) { matchId = GS.activeId; await loadMatch(true); return; }
-    if (!matchId) draw();
+    try {
+      GS = await api('/api/stars?d=' + encodeURIComponent(dev));
+      for (const k of ['squad', 'ranking', 'monthly', 'champions', 'open']) if (!Array.isArray(GS[k])) GS[k] = []; // si el servidor aún no está actualizado, no se rompe
+      if (ai) return; // no pisar el entrenamiento en curso
+      if (GS.activeId && GS.activeId !== matchId) { matchId = GS.activeId; await loadMatch(true); return; }
+      if (!matchId) draw();
+    } catch (e) { console.error(e); const r = $('#gsRoot'); if (r) r.innerHTML = '<p>' + E(e.message || 'Error') + '</p><div class="row"><button type="button" onclick="location.reload()">Reintentar</button></div>'; }
   }
 
   async function loadMatch(force) {
     if (!matchId || matchId === 'ai') return;
     let d; try { d = await api('/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev)); } catch (e) { matchId = null; M = null; await load(true); return; }
+    if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { matchId = null; M = null; await load(true); return; }
     const stamp = stampOf(d);
     const isNew = stamp !== lastMatchStamp || force;
     if (!isNew) { setClock(d.timeLeftMs, d.pauseMs); return; } // nada ha cambiado: solo se reajusta el reloj y no se repinta
