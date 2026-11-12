@@ -65,7 +65,7 @@
 .gsAim{position:absolute;height:3px;background:var(--gold);transform-origin:0 50%;pointer-events:none;z-index:5;border-radius:3px}
 .gsLbl{position:absolute;left:8px;z-index:3;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 14px "Barlow Condensed",sans-serif;text-transform:uppercase;padding:1px 9px;border-radius:99px;background:rgba(13,11,9,.78);pointer-events:none;border:1px solid var(--gold);color:var(--gold)}
 .gsLbl.t{top:7px}.gsLbl.b{bottom:7px}
-#gsField.land{aspect-ratio:140/100;max-width:680px}
+#gsField.land{aspect-ratio:140/100;max-width:none;width:min(100%,106vh)}
 #gsField.land .gsGoal.l,#gsField.land .gsGoal.r{top:35%;width:7.5%;height:30%}
 #gsField.land .gsGoal.l{left:0;right:auto;bottom:auto;border:4px solid #f4f4f4;border-left:0;border-radius:0 6px 6px 0}
 #gsField.land .gsGoal.r{right:0;left:auto;bottom:auto;border:4px solid #f4f4f4;border-right:0;border-radius:6px 0 0 6px}
@@ -228,10 +228,11 @@
   // ---- Partida ----
   // Cada jugador se ve SIEMPRE abajo: si soy el equipo B se gira el campo 180° solo en mi pantalla (la física no cambia)
   const FLIP = () => !!(M && M.mine === 'b');
-  let horizPref = null; // null = automático (quien mira: horizontal; quien juega: vertical); true/false = lo que elija con el botón 🔄
-  try { const v = localStorage.gsHoriz; if (v === '1' || v === '0') horizPref = v === '1'; } catch { }
-  // Horizontal: yo (o el equipo A si solo miro) a la izquierda atacando hacia la derecha
-  const LAND = () => !M ? false : horizPref !== null ? horizPref : (!M.mine && spectating && matchId !== 'ai');
+  // Orientación AUTOMÁTICA: si el móvil está en horizontal el campo se pone horizontal; en vertical, vertical.
+  // (en ordenador, con ventana alta, se queda vertical). El botón 🔄 la cambia a mano solo hasta que gires el móvil.
+  let horizPref = null;
+  const mqLand = window.matchMedia ? matchMedia('(orientation: landscape) and (max-height: 620px)') : null;
+  const LAND = () => !M ? false : horizPref !== null ? horizPref : !!(mqLand && mqLand.matches);
   const FWW = PH.FW || 100;
   const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
   const vpos = (x, y) => LAND() ? (FLIP() ? { x: y, y: FWW - x } : { x: PH.FH - y, y: x }) : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
@@ -248,10 +249,10 @@
     const mine = M.mine, myTurn = mine && M.turn === mine;
     const done = M.status === 'done';
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
-    el.style.maxWidth = LAND() ? '680px' : '';
+    el.style.maxWidth = LAND() ? '100%' : '';
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
-    <div class="gsHud" style="${LAND() ? 'max-width:680px' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
+    <div class="gsHud" style="${LAND() ? 'max-width:min(100%,106vh)' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
     <div id="gsField" class="${myTurn && !done ? 'mine' : ''}${LAND() ? ' land' : ''}" role="application" aria-label="Campo de Garra Stars">
      <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
@@ -265,7 +266,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button><button type="button" class="ghost gsRotBtn">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button><button type="button" class="ghost gsRotBtn">🔄 ${LAND() ? 'Poner vertical' : 'Poner horizontal'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v4</p>');
+    el.insertAdjacentHTML('beforeend', '<p style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v5</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -406,7 +407,7 @@
     }
     if (e.target.closest('.gsRotBtn')) {
       if (drag) return;
-      horizPref = !LAND(); try { localStorage.gsHoriz = horizPref ? '1' : '0'; } catch { }
+      horizPref = !LAND();
       drawMatch(); return;
     }
     if (e.target.closest('#gsBack')) { matchId = null; spectating = false; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
@@ -473,6 +474,9 @@
     await aiShot(shooter.id, Math.cos(ang) * power, Math.sin(ang) * power, 'b');
   }
 
+  const onRotate = () => { horizPref = null; if (M && matchId && !drag) drawMatch(); }; // al girar el móvil manda la orientación del móvil
+  if (mqLand) { if (mqLand.addEventListener) mqLand.addEventListener('change', onRotate); else if (mqLand.addListener) mqLand.addListener(onRotate); }
+  addEventListener('orientationchange', () => setTimeout(onRotate, 250));
   addEventListener('hashchange', () => { if (here()) load(true); });
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
     setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
