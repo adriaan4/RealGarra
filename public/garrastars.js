@@ -244,7 +244,8 @@
   // (en ordenador, con ventana alta, se queda vertical). El botón 🔄 la cambia a mano solo hasta que gires el móvil.
   let horizPref = null;
   const mqLand = window.matchMedia ? matchMedia('(orientation: landscape) and (max-height: 620px)') : null;
-  const LAND = () => !M ? false : horizPref !== null ? horizPref : !!(mqLand && mqLand.matches);
+  const autoLand = () => (innerWidth > innerHeight && innerHeight <= 700) || !!(mqLand && mqLand.matches); // móvil en horizontal (por tamaño de ventana o por orientación)
+  const LAND = () => !M ? false : horizPref !== null ? horizPref : autoLand();
   const FULL = () => LAND() && innerWidth > innerHeight; // móvil realmente en horizontal: el juego ocupa TODA la pantalla (sin cabecera ni pestañas)
   const FWW = PH.FW || 100;
   const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
@@ -281,7 +282,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v7</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v8</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -492,6 +493,11 @@
   const onRotate = () => { horizPref = null; if (M && matchId && !drag) drawMatch(); }; // al girar el móvil manda la orientación del móvil
   if (mqLand) { if (mqLand.addEventListener) mqLand.addEventListener('change', onRotate); else if (mqLand.addListener) mqLand.addListener(onRotate); }
   addEventListener('orientationchange', () => setTimeout(onRotate, 250));
+  // Red de seguridad: algunos móviles/apps instaladas no avisan bien al girar, así que también se vigila el tamaño de la ventana
+  let lastAuto = autoLand();
+  const checkRot = () => { const a = autoLand(); if (a !== lastAuto) { lastAuto = a; onRotate(); } };
+  addEventListener('resize', () => setTimeout(checkRot, 120));
+  if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', () => setTimeout(checkRot, 250));
   addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else if (r) r.classList.remove('gsFull'); });
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
     setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
