@@ -221,7 +221,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const waiting = me ? all.find(m => m.status === 'open' && m.a.uid === me.id) : null;
     const now = Date.now();
     const live = all.filter(m => m.status === 'live').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 20)
-      .map(m => ({ id: m.id, a: gbName(m.a.uid) || m.a.name, b: gbName(m.b.uid) || m.b.name, goalsA: m.goalsA, goalsB: m.goalsB, timeLeftMs: timeLeft(m, now), friendly: !!m.friendly }));
+      .filter(m => m.b).map(m => ({ id: m.id, a: gbName(m.a.uid) || m.a.name, b: gbName(m.b.uid) || m.b.name, goalsA: m.goalsA, goalsB: m.goalsB, timeLeftMs: timeLeft(m, now), friendly: !!m.friendly }));
     res.json({
       me: me ? { ...outProfile(me.id), hist: profile(me.id).hist } : null,
       squad: squad().map(p => ({ id: p.id, name: p.name, hasPhoto: !!p.photo, photoV: p.photoV || 0 })),
@@ -243,8 +243,10 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     res.flushHeaders && res.flushHeaders();
     res.write('retry: 1000\n\n');
     const c = { res, uid: me ? me.id : null };
+    res.on('error', () => { });            // un cliente que se corta no tumba el servidor
     let set;
     if (mid) { set = matchStreams.get(mid); if (!set) matchStreams.set(mid, set = new Set()); } else set = lobbyStreams;
+    if (set.size >= 400) { try { res.end(); } catch (e) { } return; } // tope de seguridad por canal
     set.add(c);
     const hb = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) { } }, 15000);
     res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición

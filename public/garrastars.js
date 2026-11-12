@@ -65,6 +65,13 @@
 .gsAim{position:absolute;height:3px;background:var(--gold);transform-origin:0 50%;pointer-events:none;z-index:5;border-radius:3px}
 .gsLbl{position:absolute;left:8px;z-index:3;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 14px "Barlow Condensed",sans-serif;text-transform:uppercase;padding:1px 9px;border-radius:99px;background:rgba(13,11,9,.78);pointer-events:none;border:1px solid var(--gold);color:var(--gold)}
 .gsLbl.t{top:7px}.gsLbl.b{bottom:7px}
+#gsField.land{aspect-ratio:140/100;max-width:680px}
+#gsField.land .gsGoal.l,#gsField.land .gsGoal.r{top:35%;width:7.5%;height:30%}
+#gsField.land .gsGoal.l{left:0;right:auto;bottom:auto;border:4px solid #f4f4f4;border-left:0;border-radius:0 6px 6px 0}
+#gsField.land .gsGoal.r{right:0;left:auto;bottom:auto;border:4px solid #f4f4f4;border-right:0;border-radius:6px 0 0 6px}
+#gsField.land .gsMid{left:50%;right:auto;top:4%;bottom:4%;width:2px;height:auto}
+#gsField.land .gsLbl.t{top:7px;bottom:auto;left:auto;right:8px}
+#gsField.land .gsLbl.b{top:7px;bottom:auto;left:8px}
 .gsLbl.opp{border-color:var(--red);color:#ff9f9d}
 .gsMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);font:800 clamp(24px,8vw,42px)/1 "Barlow Condensed",Impact,sans-serif;color:var(--gold);text-shadow:0 3px 0 #0d0b09,0 0 18px rgba(0,0,0,.8);opacity:0;pointer-events:none;z-index:6;white-space:nowrap;text-transform:uppercase;transition:opacity .2s,transform .25s}
 .gsMsg.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -76,7 +83,7 @@
   document.head.appendChild(css);
 
   let spectating = false, GS = null, pane = { tab: 'rank' }, matchId = null, M = null, busy = false, lastMatchStamp = '', liveTimer = null;
-  let pendingQ = [], es = null, esKey = '', esOpen = false; // cola de tiros que llegan mientras animo + canal en directo (SSE)
+  let fails = 0, animStart = 0, lastLobbyLoad = 0, pendingQ = [], es = null, esKey = '', esOpen = false; // cola de tiros que llegan mientras animo + canal en directo (SSE)
   let ai = null; // modo entrenamiento contra la IA (nunca toca el servidor)
   const MATCH_MS = 3 * 60 * 1000, CELEB_MS = 1000, FRAME_MS = 16; // mismas cifras que el servidor (garrastars.js)
   let animating = 0, clock = null, timeUpAt = 0;
@@ -104,12 +111,23 @@
   async function loadMatch(force) {
     if (!matchId || matchId === 'ai') return;
     const since = M && !force ? (M.updatedAt || 0) : 0;
-    let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) { matchId = null; spectating = false; M = null; await load(true); return; }
-    if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { matchId = null; spectating = false; M = null; await load(true); return; }
+    let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) {
+      fails++; // un fallo de red suelto ya no echa a nadie del partido: solo si la partida ya no existe o falla varias veces seguidas
+      if (/ya no|no encontrada/i.test(e.message || '') || fails >= 4) { fails = 0; recover(); }
+      return;
+    }
+    fails = 0;
+    if (!d || !d.a || !d.b || !Array.isArray(d.bodies)) { recover(); return; }
     applyMatch(d, force);
   }
   // Recibe el estado de la partida (por el canal en directo o por consulta). Si estoy animando un tiro, se guarda en cola y se enseña justo después.
-  function applyMatch(d, force) {
+  function recover() { // salida limpia al lobby si algo va mal: nunca se queda la web colgada
+    matchId = null; spectating = false; M = null; ai = null; pendingQ = []; animating = 0; busy = false; drag = null; clock = null; lastMatchStamp = '';
+    matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) r.style.maxWidth = '';
+    load(true);
+  }
+  function applyMatch(d, force) { try { applyMatch_(d, force); } catch (x) { console.error('Garra Stars:', x); recover(); } }
+  function applyMatch_(d, force) {
     if (!d || !d.a || !d.b || !Array.isArray(d.bodies) || !matchId || matchId === 'ai' || (d.id && d.id !== matchId)) return;
     const stamp = stampOf(d);
     if (!force && M && (d.updatedAt || 0) < (M.updatedAt || 0)) return; // dato más viejo que lo que ya tengo
@@ -145,7 +163,7 @@
     const e = es = new EventSource('/api/stars/stream?d=' + encodeURIComponent(dev) + (want === 'lobby' ? '' : '&match=' + matchId));
     e.onopen = () => { esOpen = true; if (want === 'lobby') { if (here() && !matchId && !ai) load(); } else loadMatch(); }; // al (re)conectar se pone al día
     e.onerror = () => { esOpen = false; }; // el navegador reconecta solo
-    e.addEventListener('lobby', () => { if (here() && !matchId && !ai) load(); });
+    e.addEventListener('lobby', () => { if (here() && !matchId && !ai && Date.now() - lastLobbyLoad > 1500) { lastLobbyLoad = Date.now(); load(); } }); // como mucho 1 refresco cada 1,5 s
     e.addEventListener('match', ev => { try { applyMatch(JSON.parse(ev.data)); } catch (x) { console.error(x); } });
   }
   (function matchPoll() { // red de seguridad: con el canal abierto basta cada 2 s; sin él, cada 0,7 s
@@ -156,6 +174,7 @@
     const el = $('#gsRoot'); if (!el) return;
     if (!GS) { el.innerHTML = '<p>Cargando…</p>'; return; }
     if (matchId && M) { drawMatch(); return; }
+    el.style.maxWidth = '';
     if (!GS.me) {
       el.innerHTML = `<p class="sub">Para jugar usa el mismo nombre de GarraBet/Porra. Si no tienes, ponlo aquí:</p>
       <div class="row"><input id="gsNameIn" maxlength="18" placeholder="Tu nombre"><button id="gsNameBtn" type="button">Guardar</button></div>` + liveHtml();
@@ -209,15 +228,16 @@
   // ---- Partida ----
   // Cada jugador se ve SIEMPRE abajo: si soy el equipo B se gira el campo 180° solo en mi pantalla (la física no cambia)
   const FLIP = () => !!(M && M.mine === 'b');
+  const LAND = () => !!(M && !M.mine && spectating && matchId !== 'ai'); // quien solo mira ve el campo en HORIZONTAL: equipo A a la izquierda (ataca a la derecha), B a la derecha
   const FWW = PH.FW || 100;
-  const vpos = (x, y) => FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
+  const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
+  const vpos = (x, y) => LAND() ? { x: PH.FH - y, y: x } : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
   function bodyStyle(b) {
-    const v = vpos(b.x, b.y), left = v.x, top = v.y / PH.FH * 100;
-    const wd = (b.isBall ? PH.R_BALL : PH.R_DISC) * 2, ht = wd / PH.FH * 100;
-    return `left:${left}%;top:${top}%;width:${wd}%;height:${ht}%`;
+    const v = vpos(b.x, b.y), D = VDIM(), dia = (b.isBall ? PH.R_BALL : PH.R_DISC) * 2;
+    return `left:${v.x / D.w * 100}%;top:${v.y / D.h * 100}%;width:${dia / D.w * 100}%;height:${dia / D.h * 100}%`;
   }
   function placeBodies(bodies) {
-    for (const b of bodies) { const n = $('#bd-' + b.id); if (n) { const v = vpos(b.x, b.y); n.style.left = v.x + '%'; n.style.top = (v.y / PH.FH * 100) + '%'; } }
+    for (const b of bodies) { const n = $('#bd-' + b.id); if (n) { const v = vpos(b.x, b.y), D = VDIM(); n.style.left = (v.x / D.w * 100) + '%'; n.style.top = (v.y / D.h * 100) + '%'; } }
   }
   // hold: marcador anterior {a,b}: el gol no se enseña en el marcador hasta que el balón entra en la red
   function drawMatch(hold) {
@@ -225,13 +245,14 @@
     const mine = M.mine, myTurn = mine && M.turn === mine;
     const done = M.status === 'done';
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
+    el.style.maxWidth = LAND() ? '680px' : '';
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
-    <div class="gsHud"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
+    <div class="gsHud" style="${LAND() ? 'max-width:680px' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
-    <div id="gsField" class="${myTurn && !done ? 'mine' : ''}" role="application" aria-label="Campo de Garra Stars">
-     <div class="gsMid"></div><div class="gsGoal t"></div><div class="gsGoal b"></div>
-     <div class="gsLbl t opp">${mine ? '⬆ Rival · ' : '⬆ '}${nm(top)}</div><div class="gsLbl b">${mine ? '⬇ TÚ · ' : '⬇ '}${nm(bot)}</div>
+    <div id="gsField" class="${myTurn && !done ? 'mine' : ''}${LAND() ? ' land' : ''}" role="application" aria-label="Campo de Garra Stars">
+     <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
+     <div class="gsLbl t opp">${mine ? '⬆ Rival · ' : ''}${nm(top)}</div><div class="gsLbl b">${mine ? '⬇ TÚ · ' : ''}${nm(bot)}</div>
      <div class="gsMsg" id="gsMsg"></div>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
@@ -262,7 +283,7 @@
   // Anima un tiro. Si acaba en gol: se enseña el gol, ~1 s de celebración (el reloj está parado) y entonces todo vuelve a la formación inicial.
   // after() se llama cuando ya está todo colocado con el estado nuevo (M.bodies).
   function playShot(path, result, after) {
-    animating++;
+    animating++; animStart = performance.now();
     const end = () => { if (M) placeBodies(M.bodies); animating--; if (after) after(); setTimeout(drainQ, 0); };
     const fin = () => {
       if (result === 'A' || result === 'B') {
@@ -278,6 +299,7 @@
 
   // Reloj en pantalla (solo cambia el texto, no repinta el campo)
   setInterval(() => {
+    if (animating && performance.now() - animStart > 9000) { animating = 0; if (M) placeBodies(M.bodies); } // por si una animación se quedara colgada
     drainQ(); syncStream();
     if (!M || M.status !== 'live' || !matchId) return;
     const left = clockLeft(), c = $('#gsClock');
@@ -366,7 +388,7 @@
       return;
     }
     const wt = e.target.closest('[data-watch]');
-    if (wt) { spectating = true; matchId = +wt.dataset.watch; lastMatchStamp = ''; M = null; await loadMatch(true); return; }
+    if (wt) { spectating = true; matchId = +wt.dataset.watch; lastMatchStamp = ''; M = null; pendingQ = []; animating = 0; fails = 0; await loadMatch(true); return; }
     const cn = e.target.closest('[data-cancel]');
     if (cn) { try { await api('/api/stars/open/' + cn.dataset.cancel + '/cancel', 'POST', { device: dev }); } catch (x) { toast(x.message); } await load(true); return; }
     if (e.target.closest('#gsResign')) {
