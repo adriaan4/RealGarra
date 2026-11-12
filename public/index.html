@@ -437,7 +437,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#buzon">📮 Buzón</a><a href="#penaltis">🥅 Penaltis</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#buzon">📮 Buzón</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -514,6 +514,8 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
  <div class="pnTabs" id="pnTabs"></div>
  <div id="pnRank"></div>
 </section>
+
+<section id="garrastars" hidden><div id="gsRoot"><p>Cargando…</p></div></section>
 
 <section id="calendario" hidden><h1>Calendario</h1>
  <p>Todos los partidos de la temporada. La hora y el campo se irán confirmando.</p>
@@ -1684,4 +1686,6 @@ setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn(
 <script src="fantasy.js?v=20261109e" defer></script>
 <script src="buzon.js" defer></script>
 <script src="mla-admin.js" defer></script>
+<script src="physics.js" defer></script>
+<script src="garrastars.js" defer></script>
 </body></html>
