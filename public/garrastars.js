@@ -80,17 +80,25 @@
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
 .gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
-#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;background:#0d0b09;display:flex;flex-direction:column;align-items:center;box-sizing:border-box;overflow:hidden;padding:max(4px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
-#gsRoot.gsFull .gsHud{width:100%;max-width:none;margin:0}
-#gsRoot.gsFull .gsClock{font-size:24px}
-#gsRoot.gsFull .gsTurn{margin:0;font-size:14px;line-height:18px}
-#gsRoot.gsFull #gsField.land{margin:2px auto;width:min(100%,calc((100vh - 112px) * 1.4))}
-#gsRoot.gsFull .row{margin:2px 0}
-#gsRoot.gsFull .row button{min-height:34px;padding:4px 12px}
-#gsRoot.gsFull .gsEnd{padding:6px 10px;margin:2px 0}
+#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto auto 1fr auto;column-gap:8px;align-items:start;padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+#gsRoot.gsFull .gsHud{display:contents}
+#gsRoot.gsFull .gsHud>b{display:flex;flex-direction:column;gap:2px;font:800 19px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere;min-width:0}
+#gsRoot.gsFull .gsHud>b>span{order:1;font:800 44px/1 "Barlow Condensed",sans-serif;color:#fff}
+#gsRoot.gsFull .gsHud>b:first-child{grid-column:1;grid-row:1}
+#gsRoot.gsFull .gsHud>b:last-child{grid-column:3;grid-row:1;text-align:right;align-items:flex-end}
+#gsRoot.gsFull .gsHud>.gsClock{grid-column:1;grid-row:2;justify-self:start;font-size:28px;margin-top:6px}
+#gsRoot.gsFull .gsTurn{grid-column:1;grid-row:3;align-self:start;margin:8px 0 0;text-align:left;font-size:15px;line-height:1.2}
+#gsRoot.gsFull #gsField{grid-column:2;grid-row:1 / 5;align-self:center;margin:0}
+#gsRoot.gsFull #gsField.land{width:min(calc((100vh - 14px) * 1.4),calc(100vw - 260px))}
+#gsRoot.gsFull .gsLbl{display:none}
+#gsRoot.gsFull .gsEnd{grid-column:3;grid-row:2 / 4;margin:6px 0 0;padding:8px 10px}
 #gsRoot.gsFull .gsEnd h3{font-size:22px}
+#gsRoot.gsFull .row{grid-column:3;grid-row:4;align-self:end;margin:0}
+#gsRoot.gsFull .row{min-width:0}
+#gsRoot.gsFull .row button{min-height:38px;padding:4px 8px;width:100%;min-width:0;white-space:normal;font-size:15px;line-height:1.1}
+#gsRoot.gsFull .gsEnd,#gsRoot.gsFull .gsTurn{min-width:0}
 #gsRoot.gsFull .gsVer{display:none}
-@supports (height:100dvh){#gsRoot.gsFull #gsField.land{width:min(100%,calc((100dvh - 112px) * 1.4))}}
+@supports (height:100dvh){#gsRoot.gsFull #gsField.land{width:min(calc((100dvh - 14px) * 1.4),calc(100vw - 260px))}}
 `;
   document.head.appendChild(css);
 
@@ -282,7 +290,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v8</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v9</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
