@@ -80,25 +80,24 @@
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
 .gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
-#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto auto 1fr auto;column-gap:8px;align-items:start;padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
-#gsRoot.gsFull .gsHud{display:contents}
-#gsRoot.gsFull .gsHud>b{display:flex;flex-direction:column;gap:2px;font:800 19px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere;min-width:0}
-#gsRoot.gsFull .gsHud>b>span{order:1;font:800 44px/1 "Barlow Condensed",sans-serif;color:#fff}
-#gsRoot.gsFull .gsHud>b:first-child{grid-column:1;grid-row:1}
-#gsRoot.gsFull .gsHud>b:last-child{grid-column:3;grid-row:1;text-align:right;align-items:flex-end}
-#gsRoot.gsFull .gsHud>.gsClock{grid-column:1;grid-row:2;justify-self:start;font-size:28px;margin-top:6px}
-#gsRoot.gsFull .gsTurn{grid-column:1;grid-row:3;align-self:start;margin:8px 0 0;text-align:left;font-size:15px;line-height:1.2}
-#gsRoot.gsFull #gsField{grid-column:2;grid-row:1 / 5;align-self:center;margin:0}
-#gsRoot.gsFull #gsField.land{width:min(calc((100vh - 14px) * 1.4),calc(100vw - 260px))}
+#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;padding:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:block}
+#gsRoot.gsFull #gsField,#gsRoot.gsFull #gsField.land{position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);width:auto;height:auto;max-width:none;aspect-ratio:auto;margin:0;border-radius:0;border-width:2px}
+#gsRoot.gsFull .gsDisc img{object-fit:contain}
 #gsRoot.gsFull .gsLbl{display:none}
-#gsRoot.gsFull .gsEnd{grid-column:3;grid-row:2 / 4;margin:6px 0 0;padding:8px 10px}
-#gsRoot.gsFull .gsEnd h3{font-size:22px}
-#gsRoot.gsFull .row{grid-column:3;grid-row:4;align-self:end;margin:0}
-#gsRoot.gsFull .row{min-width:0}
-#gsRoot.gsFull .row button{min-height:38px;padding:4px 8px;width:100%;min-width:0;white-space:normal;font-size:15px;line-height:1.1}
-#gsRoot.gsFull .gsEnd,#gsRoot.gsFull .gsTurn{min-width:0}
 #gsRoot.gsFull .gsVer{display:none}
-@supports (height:100dvh){#gsRoot.gsFull #gsField.land{width:min(calc((100dvh - 14px) * 1.4),calc(100vw - 260px))}}
+#gsRoot.gsFull .gsHud{display:contents}
+#gsRoot.gsFull .gsHud>b{position:absolute;z-index:8;top:calc(env(safe-area-inset-top,0px) + 8px);display:flex;flex-direction:column;gap:0;max-width:30%;padding:3px 12px 4px;border:1px solid var(--gold);border-radius:12px;background:rgba(13,11,9,.72);font:800 17px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere;pointer-events:none}
+#gsRoot.gsFull .gsHud>b>span{order:1;font:800 34px/1 "Barlow Condensed",sans-serif;color:#fff}
+#gsRoot.gsFull .gsHud>b:first-child{left:calc(env(safe-area-inset-left,0px) + 12px)}
+#gsRoot.gsFull .gsHud>b:last-child{right:calc(env(safe-area-inset-right,0px) + 12px);text-align:right;align-items:flex-end}
+#gsRoot.gsFull .gsHud>.gsClock{position:absolute;z-index:8;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);font-size:26px;line-height:1.15;background:rgba(13,11,9,.8)}
+#gsRoot.gsFull .gsTurn{position:absolute;z-index:8;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);margin:0;max-width:44%;padding:3px 12px;border-radius:99px;background:rgba(13,11,9,.72);font-size:13px;line-height:1.15;text-align:center;pointer-events:none}
+#gsRoot.gsFull .row{position:absolute;z-index:8;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px);margin:0;width:auto;max-width:26%}
+#gsRoot.gsFull .row button{min-height:36px;padding:4px 12px;font-size:15px;line-height:1.1;white-space:normal;opacity:.92}
+#gsRoot.gsFull .gsEnd{position:absolute;z-index:9;left:50%;top:32%;transform:translate(-50%,-50%);margin:0;padding:8px 16px;width:max-content;max-width:60%;text-align:center}
+#gsRoot.gsFull .gsEnd h3{font-size:24px}
+#gsRoot.gsFull .gsEnd+.row{left:50%;right:auto;top:calc(32% + 62px);bottom:auto;transform:translateX(-50%);max-width:60%}
+#gsRoot.gsFull .gsRotBtn{bottom:8px;right:10px}
 `;
   document.head.appendChild(css);
 
@@ -290,7 +289,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v9</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v10</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -364,7 +363,8 @@
     const ang = Math.atan2(dy * (field.clientHeight / D.h), dx * (field.clientWidth / D.w));
     line.style.display = 'block';
     line.style.left = leftPct + '%'; line.style.top = topPct + '%';
-    line.style.width = (Math.min(60, dist) / D.w * 100) + '%';
+    const sx = field.clientWidth / D.w, sy = field.clientHeight / D.h;
+    line.style.width = (Math.hypot(dx * sx, dy * sy) * (dist ? Math.min(60, dist) / dist : 0)) + 'px';
     line.style.transform = `rotate(${ang}rad)`;
   });
   document.addEventListener('pointerup', async e => {
