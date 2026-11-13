@@ -174,6 +174,15 @@
   function matchId2Stop() { clearInterval(liveTimer); liveTimer = null; }
 
   // ---- Canal en directo (SSE): el servidor empuja cada tiro al instante. Si no hay SSE, se sigue consultando como antes (más rápido) ----
+  // Antes un aviso que llegaba dentro de los 1,5 s posteriores a otro se TIRABA: si alguien se unía justo entonces (o entraban varios a la vez)
+  // la pantalla se quedaba desfasada hasta el siguiente refresco (3-6 s) y se notaba como una microcaída. Ahora se aplaza y se hace al acabar la espera;
+  // además se reparte con un pequeño retraso al azar para que todos los móviles no pidan el estado en el mismo instante.
+  let lobbyT = null;
+  function lobbyNudge() {
+    if (lobbyT) return; // ya hay un refresco en camino que verá el estado más reciente
+    const wait = Math.max(0, 1500 - (Date.now() - lastLobbyLoad)) + Math.random() * 250;
+    lobbyT = setTimeout(() => { lobbyT = null; if (here() && !matchId && !ai) { lastLobbyLoad = Date.now(); load(); } }, wait);
+  }
   function syncStream() {
     const want = matchId ? (matchId === 'ai' ? '' : 'm' + matchId) : (here() && !ai ? 'lobby' : '');
     if (want === esKey) return;
@@ -183,7 +192,7 @@
     const e = es = new EventSource('/api/stars/stream?d=' + encodeURIComponent(dev) + (want === 'lobby' ? '' : '&match=' + matchId));
     e.onopen = () => { esOpen = true; if (want === 'lobby') { if (here() && !matchId && !ai) load(); } else loadMatch(); }; // al (re)conectar se pone al día
     e.onerror = () => { esOpen = false; }; // el navegador reconecta solo
-    e.addEventListener('lobby', () => { if (here() && !matchId && !ai && Date.now() - lastLobbyLoad > 1500) { lastLobbyLoad = Date.now(); load(); } }); // como mucho 1 refresco cada 1,5 s
+    e.addEventListener('lobby', lobbyNudge); // como mucho 1 refresco cada 1,5 s, pero SIN perder el último aviso
     e.addEventListener('match', ev => { try { applyMatch(JSON.parse(ev.data)); } catch (x) { console.error(x); } });
   }
   (function matchPoll() { // red de seguridad: con el canal abierto basta cada 2 s; sin él, cada 0,7 s

@@ -74,31 +74,56 @@ async function loadRemote() {
 }
 
 let db = empty();
-let dirty = false, pushing = null;
-function saveLocal() {
+let dirty = false, pushing = null, pendingJson = null;
+// ---- Guardado: ANTES se serializaba y escribía toda la base de datos de forma SÍNCRONA en cada voto/partida/unión,
+// bloqueando el servidor entero (y con él las partidas en directo) unos instantes: eran las "microcaídas" cuando entraba gente.
+// AHORA: las peticiones que llegan juntas comparten un solo guardado, el JSON va compacto, se serializa UNA vez
+// (el mismo texto sirve para el disco y para Redis) y el disco se escribe en asíncrono, sin parar el servidor.
+let saveWaiters = [], saveTimer = null, saveRunning = false;
+async function writeLocal(json) {
   try {
     const tmp = FILE + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-    if (fs.existsSync(FILE)) fs.copyFileSync(FILE, FILE + '.bak');
-    fs.renameSync(tmp, FILE);
+    await fs.promises.writeFile(tmp, json);
+    if (fs.existsSync(FILE)) await fs.promises.copyFile(FILE, FILE + '.bak');
+    await fs.promises.rename(tmp, FILE);
   } catch (e) { console.error('No se pudo escribir el archivo local: ' + e.message); }
 }
 function push() { // encola la subida a Redis; siempre sube la última versión
   if (!REMOTE) return Promise.resolve();
+  if (pendingJson === null) pendingJson = JSON.stringify(db);
   dirty = true;
   if (pushing) return pushing;
   pushing = (async () => {
     while (dirty) {
       dirty = false;
-      try { await redis('SET', KEY, JSON.stringify(db)); }
+      const json = pendingJson;
+      try { await redis('SET', KEY, json); }
       catch (e) { dirty = true; console.error('Fallo al guardar en Redis, reintento en 15 s: ' + e.message); break; }
     }
   })().finally(() => { pushing = null; });
   return pushing;
 }
 setInterval(() => { if (dirty && !pushing) push(); }, 15000); // reintento si Redis falló
-
-async function save() { saveLocal(); await push(); }
+async function flushSave() {
+  if (saveRunning) return; // el guardado en curso vuelve a lanzar otro al acabar si ha entrado algo nuevo
+  saveRunning = true;
+  while (saveWaiters.length) {
+    const batch = saveWaiters; saveWaiters = [];
+    try {
+      const json = JSON.stringify(db); // una sola vez por tanda
+      pendingJson = json;
+      await Promise.all([writeLocal(json), push()]);
+    } catch (e) { console.error('Guardado: ' + e.message); }
+    for (const r of batch) r();
+  }
+  saveRunning = false;
+}
+function save() {
+  return new Promise(resolve => {
+    saveWaiters.push(resolve);
+    if (!saveTimer) saveTimer = setTimeout(() => { saveTimer = null; flushSave(); }, 25); // agrupa lo que llegue en 25 ms
+  });
+}
 function snapshot(tag) {
   const at = new Date().toISOString();
   if (fs.existsSync(FILE)) fs.copyFileSync(FILE, path.join(DIR, 'backups', at.replace(/[:.]/g, '-') + '-' + tag + '.json'));
@@ -273,13 +298,19 @@ async function sendPush(list, payload, only) { // list = 'subs' (todos) o 'admin
   if (!PUSH || !(db[list] || []).length) return { sent: 0, removed: 0 };
   let sent = 0;
   const dead = new Set();
-  await Promise.all(db[list].filter(s => !only || only(s)).map(async s => {
+  const targets = db[list].filter(s => !only || only(s));
+  const one = async s => {
     try { await webpush.sendNotification(s, payload, { TTL: 86400 }); sent++; }
     catch (e) {
       if (e.statusCode === 404 || e.statusCode === 410) dead.add(s.endpoint); // suscripción caducada o dada de baja
       else console.error('Fallo al enviar aviso (' + (e.statusCode || e.message) + ')');
     }
-  }));
+  };
+  // De 10 en 10 y cediendo el turno entre tandas: cifrar un aviso por dispositivo de golpe (a todos a la vez) congelaba el servidor unos instantes
+  for (let i = 0; i < targets.length; i += 10) {
+    await Promise.all(targets.slice(i, i + 10).map(one));
+    await new Promise(r => setImmediate(r));
+  }
   if (dead.size) { db[list] = db[list].filter(s => !dead.has(s.endpoint)); await save(); }
   return { sent, removed: dead.size };
 }
@@ -1774,6 +1805,9 @@ if (SELF) {
   setInterval(() => { fetch(SELF.replace(/\/$/, '') + '/healthz').catch(() => {}); }, 4 * 60 * 1000); // cada 4 min
   console.log('Keep-alive activo hacia ' + SELF);
 }
+
+// Al apagar (redeploy/reinicio) se termina el guardado pendiente para no perder el último cambio
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } save().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 4000).unref(); });
 
 const port = process.env.PORT || 3000;
 init().then(() => app.listen(port, () => console.log('Web en http://localhost:' + port + '  |  datos en ' + (REMOTE ? 'Upstash Redis' : FILE))));
