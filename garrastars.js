@@ -24,7 +24,12 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const lobbyStreams = new Set();          // conexiones que están en el lobby (para refrescar partidas abiertas / directos al instante)
   const lastCheer = new Map();             // uid -> instante del último confeti (anti-spam)
   const CHEER_GAP_MS = 2000;               // un confeti cada 2 segundos por persona
-  const viewersOf = id => { const set = matchStreams.get(id); let n = 0; if (set) for (const c of set) if (c.watch) n++; return n; }; // 👁 conexiones que están MIRANDO (no juegan)
+  const pollWatch = new Map();             // id partida -> Map(clave -> último instante en que consultó) : respaldo si el SSE no llega (proxy que lo corta)
+  const WATCH_WIN_MS = 8000;
+  const cheerLog = new Map();              // id partida -> { seq, list:[{n, side, cid, t}] } : el confeti también viaja por consulta, no solo por SSE
+  function touchWatch(id, key) { let w = pollWatch.get(id); if (!w) pollWatch.set(id, w = new Map()); const now = Date.now(); w.set(key, now); if (w.size > 200) for (const [k, t] of w) if (now - t > WATCH_WIN_MS) w.delete(k); }
+  function pollViewers(id) { const w = pollWatch.get(id); if (!w) return 0; const now = Date.now(); let n = 0; for (const [k, t] of w) { if (now - t <= WATCH_WIN_MS) n++; else w.delete(k); } return n; }
+  const viewersOf = id => { const set = matchStreams.get(id); let n = 0; if (set) for (const c of set) if (c.watch) n++; return Math.max(n, pollViewers(id)); }; // 👁 los que MIRAN (SSE o consulta; el mayor de los dos para no contar doble)
   function pushViewers(id) { const set = matchStreams.get(id); if (!set || !set.size) return; const n = String(viewersOf(id)); for (const c of set) sseWrite(c, 'viewers', n); }
   function sseWrite(c, ev, data) { try { c.res.write('event: ' + ev + '\ndata: ' + data + '\n\n'); } catch (e) { /* se limpia en 'close' */ } }
   function pushMatch(m, skipUid) { // manda el estado de la partida a todos los que la siguen (cada uno con su 'mine')
@@ -195,6 +200,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
       timeLeftMs: live ? timeLeft(m, now) : m.status === 'done' ? 0 : MATCH_MS,
       pauseMs: live ? Math.max(0, (m.pausedUntil || 0) - now) : 0, // celebración en curso: el reloj está parado
       viewers: live ? viewersOf(m.id) : 0,
+      cheerSeq: (cheerLog.get(m.id) || { seq: 0 }).seq, cheers: live && cheerLog.get(m.id) ? cheerLog.get(m.id).list.filter(c => now - c.t < 6000) : [],
       a: sideOut(m.a), b: sideOut(m.b),
       mine: m.a.uid === forUid ? 'a' : m.b && m.b.uid === forUid ? 'b' : null,
       winner: m.winner || null, path: m._path || null, result: m._result || null, payouts: m.payouts || null
@@ -345,6 +351,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const m = ST().matches[+req.params.id];
     if (!m || (m.status !== 'live' && m.status !== 'done')) return bad(res, 'Ese partido ya no está');
     if (m.status === 'live' && timeLeft(m, Date.now()) <= 0) { finishByTime(m, Date.now()); await save(); }
+    if (m.status === 'live') { const me = who(req); touchWatch(m.id, me ? 'u' + me.id : 'd' + String(req.query.d || req.ip || '').slice(0, 80)); }
     const out = matchOut(m, null);
     if (+req.query.since === (m.updatedAt || 0)) out.path = null;
     res.json(out);
@@ -362,9 +369,12 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     if (now - (lastCheer.get(me.id) || 0) < CHEER_GAP_MS) return bad(res, '🎉 Espera un par de segundos para el siguiente confeti');
     lastCheer.set(me.id, now);
     if (lastCheer.size > 500) for (const [k, t] of lastCheer) if (now - t > 60000) lastCheer.delete(k);
+    let lg = cheerLog.get(m.id); if (!lg) cheerLog.set(m.id, lg = { seq: 0, list: [] });
+    const cid = String(req.body.cid || '').slice(0, 24), n = ++lg.seq;
+    lg.list.push({ n, side, cid, t: now }); lg.list = lg.list.filter(c => now - c.t < 6000).slice(-20);
     const set = matchStreams.get(m.id);
-    if (set) { const data = JSON.stringify({ side }); for (const c of set) if (c.uid !== me.id) sseWrite(c, 'cheer', data); } // quien lo manda ya lo ve en local
-    res.json({ ok: true });
+    if (set) { const data = JSON.stringify({ side, n, cid }); for (const c of set) if (c.uid !== me.id) sseWrite(c, 'cheer', data); } // quien lo manda ya lo ve en local
+    res.json({ ok: true, n });
   });
 
   // ---- Tirar: el cliente solo manda la ficha y la fuerza del chute; el servidor vuelve a simular él solo ----

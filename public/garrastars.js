@@ -138,7 +138,7 @@
   async function loadMatch(force) {
     if (!matchId || matchId === 'ai') return;
     const since = M && !force ? (M.updatedAt || 0) : 0;
-    let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) {
+    let d; try { d = await api(spectating ? '/api/stars/watch/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since : '/api/stars/match/' + matchId + '?d=' + encodeURIComponent(dev) + '&since=' + since); } catch (e) {
       fails++; // un fallo de red suelto ya no echa a nadie del partido: solo si la partida ya no existe o falla varias veces seguidas
       if (/ya no|no encontrada/i.test(e.message || '') || fails >= 4) { fails = 0; recover(); }
       return;
@@ -157,6 +157,10 @@
   function applyMatch_(d, force) {
     if (!d || !d.a || !d.b || !Array.isArray(d.bodies) || !matchId || matchId === 'ai' || (d.id && d.id !== matchId)) return;
     if (typeof d.viewers === 'number') setEye(d.viewers);
+    if (typeof d.cheerSeq === 'number') { // confeti ajeno por consulta (respaldo si el SSE no llega)
+      if (cheerMatch !== matchId) { cheerMatch = matchId; cheerSeen = d.cheerSeq; }
+      else if (Array.isArray(d.cheers)) for (const c of d.cheers) onCheer(c);
+    }
     const stamp = stampOf(d);
     if (!force && M && (d.updatedAt || 0) < (M.updatedAt || 0)) return; // dato más viejo que lo que ya tengo
     if (!force && (busy || animating)) {
@@ -202,7 +206,7 @@
     e.onerror = () => { esOpen = false; }; // el navegador reconecta solo
     e.addEventListener('lobby', lobbyNudge); // como mucho 1 refresco cada 1,5 s, pero SIN perder el último aviso
     e.addEventListener('viewers', ev => setEye(+ev.data || 0)); // el ojo: cuánta gente está mirando ahora
-    e.addEventListener('cheer', ev => { try { const d = JSON.parse(ev.data); burst(d.side); } catch (x) { console.error(x); } }); // confeti del público
+    e.addEventListener('cheer', ev => { try { onCheer(JSON.parse(ev.data)); } catch (x) { console.error(x); } }); // confeti del público
     e.addEventListener('match', ev => { try { applyMatch(JSON.parse(ev.data)); } catch (x) { console.error(x); } });
   }
   (function matchPoll() { // red de seguridad: con el canal abierto basta cada 2 s; sin él, cada 0,7 s
@@ -321,7 +325,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v13</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v14</p>');
   }
   // ---- Público: el ojo cuenta a los que miran y el confeti anima a un bando (solo se puede lanzar mirando, no jugando) ----
   function setEye(n) { if (M) M.viewers = n; const e = $('#gsEyeN'); if (e) e.textContent = n; }
@@ -344,13 +348,21 @@
       an.onfinish = () => el.remove();
     }
   }
+  let cheerMatch = null, cheerSeen = 0; const myCids = new Set();
+  function onCheer(c) { // llega por SSE o por consulta: se pinta una sola vez (por número) y nunca el propio
+    if (!c || (typeof c.n === 'number' && c.n <= cheerSeen)) return;
+    if (typeof c.n === 'number') cheerSeen = c.n;
+    if (c.cid && myCids.has(c.cid)) return;
+    burst(c.side);
+  }
   let lastCheerAt = 0; const CHEER_MS = 2000; // un confeti cada 2 segundos
   async function cheer(side) {
     if (!spectating || !M || M.status !== 'live' || matchId === 'ai') return;
     const now = Date.now(); if (now - lastCheerAt < CHEER_MS) return; lastCheerAt = now; // el servidor también limita
     document.querySelectorAll('.gsCheer').forEach(b => { b.disabled = true; setTimeout(() => { b.disabled = false; }, CHEER_MS); }); // los botones se apagan 2 s
     burst(side); // se ve al instante en tu pantalla; a los demás les llega por el canal en directo
-    try { const r = await api('/api/stars/match/' + matchId + '/cheer', 'POST', { device: dev, side }); } catch (x) { toast(x.message); }
+    const cid = Math.random().toString(36).slice(2, 10); myCids.add(cid); if (myCids.size > 30) myCids.delete(myCids.values().next().value);
+    try { const r = await api('/api/stars/match/' + matchId + '/cheer', 'POST', { device: dev, side, cid }); } catch (x) { toast(x.message); }
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
