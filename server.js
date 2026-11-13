@@ -37,6 +37,11 @@ const SQUAD_SEED = [
   [1, 'ANTONIO', 50, 94]
 ].map(([n, name, x, y, c]) => ({ n, name, x, y, c: !!c }));
 
+function squadToV3() { // posiciones antiguas (0-100 sobre el césped) -> 0-200 sobre toda la imagen
+  const r1 = v => Math.round(v * 10) / 10;
+  for (const p of db.squad || []) { p.x = r1(32.34 + Number(p.x) * 1.3332); p.y = r1(26.26 + Number(p.y) * 1.47); }
+  db.squadV3 = true;
+}
 const empty = () => ({ nextId: 1, squad: SQUAD_SEED.map(p => ({ ...p })), players: [], next: { date: '', rival: '', crest: '', field: '' }, round: { rival: '', votes: [], played: [], start: '' }, history: [], subs: [], adminSubs: [], reminded: '', garrabet: { odds: {}, users: [], tickets: [] }, calendar: [], calV1: false, calV2: false, calV3: false, crests: [] });
 
 // ---- Almacenamiento externo gratuito (Upstash Redis, vía REST). Sobrevive a reinicios/redeploys de Render free ----
@@ -261,6 +266,12 @@ async function init() {
       if (t) { p.x = t.x; p.y = t.y; }
     }
     db.squadV2 = true;
+  }
+  // Migración de una sola vez: las posiciones pasan de «0-100 sobre el césped» a «0-200 sobre TODA la imagen del estadio» (así se puede poner gente en el banquillo, fuera del césped).
+  // La conversión deja a cada jugador exactamente donde estaba.
+  if (!db.squadV3) {
+    snapshot('antes-de-posiciones-0-200');
+    squadToV3();
   }
   if (!db.mvpSquadV1) { snapshot('antes-de-unir-mvp-y-plantilla'); db.mvpSquadV1 = true; } // una sola vez: la votación MVP pasa a usar toda la plantilla
   syncPlayers();
@@ -521,7 +532,7 @@ app.get('/api/squad-photo/:id', (req, res) => {
 app.put('/api/squad', admin, async (req, res) => {
   const a = req.body && req.body.squad;
   if (!Array.isArray(a) || !a.length || a.length > 30) return bad(res, 'Plantilla no válida');
-  const clamp = (v, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(100, Math.max(0, Math.round(v * 10) / 10)) : d; };
+  const clamp = (v, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(200, Math.max(0, Math.round(v * 10) / 10)) : d; };
   const out = [];
   for (const p of a) {
     const name = String((p && p.name) || '').trim().toUpperCase().slice(0, 14);
@@ -694,6 +705,7 @@ app.post('/api/import', admin, async (req, res) => {
   db = { ...empty(), ...d, teamV2: true, subs: db.subs, adminSubs: db.adminSubs };
   const seeded = !Array.isArray(db.calendar) || !db.calendar.length;
   if (seeded) db.calendar = CAL_SEED.map(m => ({ ...m })); // si el archivo es antiguo y no trae calendario
+  if (!d.squadV3) { db.squadV3 = false; squadToV3(); } // copia antigua: sus posiciones estaban en la escala 0-100
   db.mvpSquadV1 = true; syncPlayers();
   db.calV1 = db.calV2 = true; // se mantienen los dispositivos suscritos a avisos
   if (seeded) db.calV3 = true; else { lgEnsure(); migrateCalV3(); } // una copia hecha antes del calendario nuevo se pasa a él

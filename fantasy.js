@@ -29,7 +29,7 @@ module.exports = function fantasy({ app, getDb, save, admin, bad, norm, crypto, 
     return f;
   };
   // posición según el sitio que ocupa en el campo de la plantilla (portería abajo)
-  const posOf = p => (p.y >= 88 ? 'POR' : p.y >= 62 ? 'DEF' : p.y >= 33 ? 'MED' : 'DEL');
+  const posOf = p => { const y = (p.y - 26.26) / 1.47; /* y de la plantilla (0-200 sobre toda la imagen) -> 0-100 sobre el césped */ return y >= 88 ? 'POR' : y >= 62 ? 'DEF' : y >= 33 ? 'MED' : 'DEL'; };
   const squad = () => getDb().squad || [];
   // Plantilla de cada participante: u.t = titulares (los únicos que puntúan, hasta cfg.max) y u.bn = el jugador del banquillo (0 = vacío; no puntúa)
   const all = u => (u.bn ? [...u.t, u.bn] : u.t.slice());
