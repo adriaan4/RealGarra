@@ -6,7 +6,7 @@
 // Lobby: alguien crea una partida abierta y otra persona se une. Cada partido dura 3 minutos (cuenta atrás en el servidor);
 // tras un gol todo vuelve a la formación inicial, saca quien ha encajado y la celebración no resta tiempo.
 // Las partidas amistosas y contra la IA no puntúan; la IA se juega entera en el navegador (no pasa por aquí).
-module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypto }) {
+module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypto, sendPush }) {
   const PH = require('./public/physics.js');
   const MATCH_MS = 3 * 60 * 1000;          // el partido dura 3 minutos (cuenta atrás); gana quien tenga más goles al acabar
   const CELEB_MS = 1000;                   // pausa de celebración tras un gol: NO se descuenta de la cuenta atrás
@@ -14,6 +14,8 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const OPEN_TTL_MS = 15 * 60 * 1000;      // una partida abierta que nadie coge se borra sola
   const COOLDOWN_MS = 2 * 3600 * 1000;     // entre los mismos dos rivales: si juegan más seguido, la revancha es amistosa (no puntúa)
   const HIST_KEEP = 25;
+  const SEARCH_PUSH_COOLDOWN_MS = 2 * 60 * 1000; // aviso de "busca partida": como mucho 1 cada 2 min por persona (evita spam si crea/cancela sin parar)
+  const lastSearchPush = new Map();        // uid -> instante del último aviso
   const SIM_BAND = 100;                    // diferencia de puntos que se considera "nivel similar"
   const r0 = n => Math.round(n);
 
@@ -260,6 +262,21 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     await save(); res.json({ ok: true });
   });
 
+  // ---- Aviso push a todos los dispositivos suscritos (menos el de quien busca): "X está buscando partida ... en Garra Stars" ----
+  function notifySearching(me, friendly, matchId, device) {
+    if (typeof sendPush !== 'function') return;
+    const now = Date.now();
+    if (now - (lastSearchPush.get(me.id) || 0) < SEARCH_PUSH_COOLDOWN_MS) return;
+    lastSearchPush.set(me.id, now);
+    const payload = JSON.stringify({
+      title: '⭐ Garra Stars',
+      body: me.name + ' está buscando partida ' + (friendly ? 'amistosa' : 'competitiva') + ' en Garra Stars',
+      url: '/#garrastars',
+      tag: 'stars-search-' + me.id
+    });
+    sendPush('subs', payload, s => !device || s.device !== device).catch(e => console.error('Aviso Garra Stars: ' + e.message));
+  }
+
   // ---- Crear una partida abierta (cualquiera puede unirse) ----
   app.post('/api/stars/create', async (req, res) => {
     ensureMonth();
@@ -274,6 +291,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
       friendly: !!req.body.friendly, status: 'open', winner: null, createdAt: Date.now(), updatedAt: Date.now()
     };
     pushLobby(); saveSoon();
+    notifySearching(me, !!req.body.friendly, id, String(req.body.device || '').slice(0, 80));
     res.json({ ok: true, id });
   });
 
