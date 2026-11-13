@@ -80,24 +80,25 @@
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
 .gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
-#gsRoot.gsFull{position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;padding:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:block}
-#gsRoot.gsFull #gsField,#gsRoot.gsFull #gsField.land{position:absolute;top:env(safe-area-inset-top,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);left:env(safe-area-inset-left,0px);width:auto;height:auto;max-width:none;aspect-ratio:auto;margin:0;border-radius:0;border-width:2px}
+#gsRoot.gsFull{--sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);touch-action:none;overscroll-behavior:contain;position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;padding:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:block}
+#gsRoot.gsFull #gsField,#gsRoot.gsFull #gsField.land{position:absolute;top:var(--sat);right:var(--sar);bottom:var(--sab);left:var(--sal);width:auto;height:auto;max-width:none;aspect-ratio:auto;margin:0;border-radius:0;border-width:2px}
 #gsRoot.gsFull .gsDisc img{object-fit:contain}
 #gsRoot.gsFull .gsLbl{display:none}
 #gsRoot.gsFull .gsVer{display:none}
 #gsRoot.gsFull .gsHud{display:contents}
-#gsRoot.gsFull .gsHud>b{position:absolute;z-index:8;top:calc(env(safe-area-inset-top,0px) + 8px);display:flex;flex-direction:column;gap:0;max-width:30%;padding:3px 12px 4px;border:1px solid var(--gold);border-radius:12px;background:rgba(13,11,9,.72);font:800 17px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere;pointer-events:none}
+#gsRoot.gsFull .gsHud>b{position:absolute;z-index:8;top:calc(var(--sat) + 8px);display:flex;flex-direction:column;gap:0;max-width:30%;padding:3px 12px 4px;border:1px solid var(--gold);border-radius:12px;background:rgba(13,11,9,.72);font:800 17px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;overflow-wrap:anywhere;pointer-events:none}
 #gsRoot.gsFull .gsHud>b>span{order:1;font:800 34px/1 "Barlow Condensed",sans-serif;color:#fff}
-#gsRoot.gsFull .gsHud>b:first-child{left:calc(env(safe-area-inset-left,0px) + 12px)}
-#gsRoot.gsFull .gsHud>b:last-child{right:calc(env(safe-area-inset-right,0px) + 12px);text-align:right;align-items:flex-end}
-#gsRoot.gsFull .gsHud>.gsClock{position:absolute;z-index:8;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);font-size:26px;line-height:1.15;background:rgba(13,11,9,.8)}
-#gsRoot.gsFull .gsTurn{position:absolute;z-index:8;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);margin:0;max-width:44%;padding:3px 12px;border-radius:99px;background:rgba(13,11,9,.72);font-size:13px;line-height:1.15;text-align:center;pointer-events:none}
-#gsRoot.gsFull .row{position:absolute;z-index:8;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 8px);margin:0;width:auto;max-width:26%}
+#gsRoot.gsFull .gsHud>b:first-child{left:calc(var(--sal) + 12px)}
+#gsRoot.gsFull .gsHud>b:last-child{right:calc(var(--sar) + 12px);text-align:right;align-items:flex-end}
+#gsRoot.gsFull .gsHud>.gsClock{position:absolute;z-index:8;top:calc(var(--sat) + 8px);left:50%;transform:translateX(-50%);font-size:26px;line-height:1.15;background:rgba(13,11,9,.8)}
+#gsRoot.gsFull .gsTurn{position:absolute;z-index:8;left:50%;bottom:calc(var(--sab) + 8px);transform:translateX(-50%);margin:0;max-width:44%;padding:3px 12px;border-radius:99px;background:rgba(13,11,9,.72);font-size:13px;line-height:1.15;text-align:center;pointer-events:none}
+#gsRoot.gsFull .row{position:absolute;z-index:8;left:calc(var(--sal) + 12px);bottom:calc(var(--sab) + 8px);margin:0;width:auto;max-width:26%}
 #gsRoot.gsFull .row button{min-height:36px;padding:4px 12px;font-size:15px;line-height:1.1;white-space:normal;opacity:.92}
 #gsRoot.gsFull .gsEnd{position:absolute;z-index:9;left:50%;top:32%;transform:translate(-50%,-50%);margin:0;padding:8px 16px;width:max-content;max-width:60%;text-align:center}
 #gsRoot.gsFull .gsEnd h3{font-size:24px}
 #gsRoot.gsFull .gsEnd+.row{left:50%;right:auto;top:calc(32% + 62px);bottom:auto;transform:translateX(-50%);max-width:60%}
 #gsRoot.gsFull .gsRotBtn{bottom:8px;right:10px}
+#gsRoot.gsRot{--sat:env(safe-area-inset-right,0px);--sar:env(safe-area-inset-bottom,0px);--sab:env(safe-area-inset-left,0px);--sal:env(safe-area-inset-top,0px)}
 `;
   document.head.appendChild(css);
 
@@ -142,7 +143,7 @@
   // Recibe el estado de la partida (por el canal en directo o por consulta). Si estoy animando un tiro, se guarda en cola y se enseña justo después.
   function recover() { // salida limpia al lobby si algo va mal: nunca se queda la web colgada
     matchId = null; spectating = false; M = null; ai = null; pendingQ = []; animating = 0; busy = false; drag = null; clock = null; lastMatchStamp = '';
-    matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) { r.style.maxWidth = ''; r.classList.remove('gsFull'); }
+    matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) { r.style.maxWidth = ''; resetRoot(r); }
     load(true);
   }
   function applyMatch(d, force) { try { applyMatch_(d, force); } catch (x) { console.error('Garra Stars:', x); recover(); } }
@@ -193,7 +194,7 @@
     const el = $('#gsRoot'); if (!el) return;
     if (!GS) { el.innerHTML = '<p>Cargando…</p>'; return; }
     if (matchId && M) { drawMatch(); return; }
-    el.style.maxWidth = ''; el.classList.remove('gsFull');
+    el.style.maxWidth = ''; resetRoot(el);
     if (!GS.me) {
       el.innerHTML = `<p class="sub">Para jugar usa el mismo nombre de GarraBet/Porra. Si no tienes, ponlo aquí:</p>
       <div class="row"><input id="gsNameIn" maxlength="18" placeholder="Tu nombre"><button id="gsNameBtn" type="button">Guardar</button></div>` + liveHtml();
@@ -253,7 +254,17 @@
   const mqLand = window.matchMedia ? matchMedia('(orientation: landscape) and (max-height: 620px)') : null;
   const autoLand = () => (innerWidth > innerHeight && innerHeight <= 700) || !!(mqLand && mqLand.matches); // móvil en horizontal (por tamaño de ventana o por orientación)
   const LAND = () => !M ? false : horizPref !== null ? horizPref : autoLand();
-  const FULL = () => LAND() && innerWidth > innerHeight; // móvil realmente en horizontal: el juego ocupa TODA la pantalla (sin cabecera ni pestañas)
+  const coarse = window.matchMedia ? matchMedia('(pointer: coarse)') : null;
+  // ROT: móvil en vertical con el campo en horizontal -> se gira TODA la pantalla de juego 90° (nombres, reloj, botones...) para jugar con el móvil de lado
+  const ROT = () => LAND() && innerWidth <= innerHeight && !!(coarse && coarse.matches);
+  const FULL = () => LAND() && (innerWidth > innerHeight || ROT()); // el juego ocupa TODA la pantalla (sin cabecera ni pestañas)
+  function resetRoot(el) { if (!el) return; el.classList.remove('gsFull', 'gsRot'); for (const k of ['width', 'height', 'right', 'bottom', 'transformOrigin', 'transform']) el.style[k] = ''; }
+  function fitRoot(el) {
+    el.classList.toggle('gsFull', FULL());
+    const rot = ROT(); el.classList.toggle('gsRot', rot);
+    if (rot) { el.style.maxWidth = 'none'; el.style.width = innerHeight + 'px'; el.style.height = innerWidth + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto'; el.style.transformOrigin = '0 0'; el.style.transform = 'translateX(' + innerWidth + 'px) rotate(90deg)'; }
+    else for (const k of ['width', 'height', 'right', 'bottom', 'transformOrigin', 'transform']) el.style[k] = '';
+  }
   const FWW = PH.FW || 100;
   const VDIM = () => LAND() ? { w: PH.FH, h: FWW } : { w: FWW, h: PH.FH };
   const vpos = (x, y) => LAND() ? (FLIP() ? { x: y, y: FWW - x } : { x: PH.FH - y, y: x }) : FLIP() ? { x: FWW - x, y: PH.FH - y } : { x, y };
@@ -271,7 +282,7 @@
     const done = M.status === 'done';
     const ga = hold ? hold.a : M.goalsA, gb = hold ? hold.b : M.goalsB;
     el.style.maxWidth = LAND() ? '100%' : '';
-    el.classList.toggle('gsFull', FULL());
+    fitRoot(el);
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
     el.innerHTML = `
     <div class="gsHud" style="${LAND() && !FULL() ? 'max-width:min(100%,106vh)' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
@@ -289,7 +300,7 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v10</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v11</p>');
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -342,6 +353,7 @@
   function fieldPt(e, field) {
     const r = field.getBoundingClientRect();
     const D = VDIM();
+    if (ROT()) return { x: (e.clientY - r.top) / r.height * D.w, y: (r.right - e.clientX) / r.width * D.h }; // pantalla girada: x del campo = y de la pantalla; y del campo = x de la pantalla (al revés)
     return { x: (e.clientX - r.left) / r.width * D.w, y: (e.clientY - r.top) / r.height * D.h }; // coordenadas de PANTALLA en las unidades del campo tal y como se ve (la física las deshace al chutar)
   }
   document.addEventListener('pointerdown', e => {
@@ -504,9 +516,9 @@
   // Red de seguridad: algunos móviles/apps instaladas no avisan bien al girar, así que también se vigila el tamaño de la ventana
   let lastAuto = autoLand();
   const checkRot = () => { const a = autoLand(); if (a !== lastAuto) { lastAuto = a; onRotate(); } };
-  addEventListener('resize', () => setTimeout(checkRot, 120));
+  addEventListener('resize', () => { setTimeout(checkRot, 120); const r = $('#gsRoot'); if (r && M && matchId && r.classList.contains('gsRot')) fitRoot(r); });
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', () => setTimeout(checkRot, 250));
-  addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else if (r) r.classList.remove('gsFull'); });
+  addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else if (r) resetRoot(r); });
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
     setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
   })();
