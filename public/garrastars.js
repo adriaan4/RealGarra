@@ -148,7 +148,14 @@
     applyMatch(d, force);
   }
   // Recibe el estado de la partida (por el canal en directo o por consulta). Si estoy animando un tiro, se guarda en cola y se enseña justo después.
-  function recover() { // salida limpia al lobby si algo va mal: nunca se queda la web colgada
+  function leaveWatch() { // avisa al servidor de que dejo de mirar (sendBeacon sobrevive a cerrar la pestaña)
+    if (!spectating || !matchId || matchId === 'ai') return;
+    const url = '/api/stars/watch/' + matchId + '/leave?d=' + encodeURIComponent(dev);
+    try { if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob(['{}'], { type: 'application/json' })); else fetch(url, { method: 'POST', keepalive: true }); } catch { }
+  }
+  addEventListener('pagehide', leaveWatch);
+  function recover() {
+    leaveWatch(); // salida limpia al lobby si algo va mal: nunca se queda la web colgada
     matchId = null; spectating = false; M = null; ai = null; pendingQ = []; animating = 0; busy = false; drag = null; clock = null; lastMatchStamp = '';
     matchId2Stop(); syncStream(); const r = $('#gsRoot'); if (r) { r.style.maxWidth = ''; resetRoot(r); }
     load(true);
@@ -307,6 +314,7 @@
     el.style.maxWidth = LAND() ? '100%' : '';
     fitRoot(el);
     const bot = FLIP() ? 'b' : 'a', top = bot === 'a' ? 'b' : 'a', G = { a: ga, b: gb }, nm = t => E(t === 'a' ? M.a.name : M.b.name); // abajo = yo (o el equipo A si solo miro)
+    const keepCf = [...el.querySelectorAll('.gsCf')]; // confeti en vuelo: sobrevive al repintado
     el.innerHTML = `
     <div class="gsHud" style="${LAND() && !FULL() ? 'max-width:min(100%,106vh)' : ''}"><b>${nm(bot)}${mine ? ' (tú)' : ''} <span id="gs${bot === 'a' ? 'SA' : 'SB'}">${G[bot]}</span></b><span class="gsClock" id="gsClock">${fmtClock(done ? 0 : clockLeft())}</span><b><span id="gs${top === 'a' ? 'SA' : 'SB'}">${G[top]}</span> ${nm(top)}</b></div>
     <p class="gsTurn">${done ? '' : spectating ? '👀 En directo · turno de ' + E(M.turn === 'a' ? M.a.name : M.b.name) : (M.friendly ? '🙂 Amistoso: no puntúa · ' : '') + (myTurn ? '🎯 ¡Tu turno! Arrastra una ficha hacia atrás y suelta' : '⌛ Turno de ' + E(mine === 'a' ? M.b.name : M.a.name))}</p>
@@ -324,19 +332,25 @@
     <div class="row"><button type="button" id="gsBack">👈 Volver al lobby</button></div>` :
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
+    { const nf = $('#gsField'); if (nf) for (const c of keepCf) nf.appendChild(c); }
     syncStream();
     el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v14</p>');
   }
   // ---- Público: el ojo cuenta a los que miran y el confeti anima a un bando (solo se puede lanzar mirando, no jugando) ----
   function setEye(n) { if (M) M.viewers = n; const e = $('#gsEyeN'); if (e) e.textContent = n; }
+  function cheerAnchor(t) { // punto (en unidades del campo) donde vive el botón 🎉 de cada bando; si la física no trae kickoff(), se usa el reparto estándar
+    let cy = t === 'a' ? PH.FH * 0.75 : PH.FH * 0.25;
+    try { const k = PH.kickoff && PH.kickoff()[t]; if (k && k.length) { const m = k.reduce((q, o) => q + o.y, 0) / k.length; if (Number.isFinite(m)) cy = m; } } catch { }
+    return vpos(91, cy);
+  }
   function cheerBtn(t) { // botón 🎉 pegado al lado del campo del bando al que anima (la posición ya tiene en cuenta giros y horizontal)
-    const k = PH.kickoff()[t], cy = k.reduce((q, o) => q + o.y, 0) / k.length, v = vpos(91, cy), D = VDIM(), who_ = t === 'a' ? M.a.name : M.b.name;
+    const v = cheerAnchor(t), D = VDIM(), who_ = t === 'a' ? M.a.name : M.b.name;
     return `<button type="button" class="gsCheer ${t}" data-cheer="${t}" aria-label="Animar a ${E(who_)} con confeti" title="Animar a ${E(who_)}" style="left:${v.x / D.w * 100}%;top:${v.y / D.h * 100}%"${Date.now() - lastCheerAt < CHEER_MS ? ' disabled' : ''}>🎉</button>`;
   }
   function burst(side) { // confeti que sale del lado del bando y vuela hacia el campo
     const f = $('#gsField'); if (!f || !M || (side !== 'a' && side !== 'b')) return;
     if (f.querySelectorAll('.gsCf').length > 140) return;
-    const k = PH.kickoff()[side], cy = k.reduce((q, o) => q + o.y, 0) / k.length, v = vpos(91, cy), D = VDIM();
+    const v = cheerAnchor(side), D = VDIM();
     const ox = v.x / D.w * 100, oy = v.y / D.h * 100, W = f.clientWidth, H = f.clientHeight;
     const base = Math.atan2((50 - oy) / 100 * H, (50 - ox) / 100 * W), cols = ['#e2ab2c', '#ffffff', '#d24fe0', '#5fd4c6', '#ff6b6b', '#6fb3ff'];
     for (let i = 0; i < 18; i++) {
@@ -510,7 +524,7 @@
       horizPref = !LAND();
       drawMatch(); return;
     }
-    if (e.target.closest('#gsBack')) { matchId = null; spectating = false; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
+    if (e.target.closest('#gsBack')) { leaveWatch(); matchId = null; spectating = false; M = null; ai = null; clock = null; matchId2Stop(); await load(true); return; }
     if (e.target.closest('#gsAI')) { startAI(); return; }
   });
 
@@ -582,7 +596,7 @@
   const checkRot = () => { const a = autoLand(); if (a !== lastAuto) { lastAuto = a; onRotate(); } };
   addEventListener('resize', () => { setTimeout(checkRot, 120); const r = $('#gsRoot'); if (r && M && matchId && r.classList.contains('gsRot')) fitRoot(r); });
   if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', () => setTimeout(checkRot, 250));
-  addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else if (r) resetRoot(r); });
+  addEventListener('hashchange', () => { const r = $('#gsRoot'); if (here()) { load(true); if (M && matchId) drawMatch(); } else { if (spectating && matchId) { leaveWatch(); matchId = null; spectating = false; M = null; pendingQ = []; animating = 0; matchId2Stop(); syncStream(); } if (r) resetRoot(r); } }); // al irme a otra pestaña, dejo de contar como espectador
   (function lobbyLoop() { // en el lobby se refresca solo; más rápido mientras espero a que alguien se una a mi partida
     setTimeout(async () => { if (here() && !matchId && !ai) await load(); lobbyLoop(); }, GS && GS.waiting ? 3000 : 6000);
   })();

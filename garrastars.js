@@ -25,9 +25,31 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const lastCheer = new Map();             // uid -> instante del último confeti (anti-spam)
   const CHEER_GAP_MS = 2000;               // un confeti cada 2 segundos por persona
   const pollWatch = new Map();             // id partida -> Map(clave -> último instante en que consultó) : respaldo si el SSE no llega (proxy que lo corta)
-  const WATCH_WIN_MS = 8000;
+  const WATCH_WIN_MS = 5000;
+  const leftAt = new Map();                // 'id|clave' -> instante en que salió (un sondeo en vuelo no lo vuelve a contar)
+  const expiryT = new Map();               // id partida -> temporizador que refresca el 👁 cuando caduca un sondeo
   const cheerLog = new Map();              // id partida -> { seq, list:[{n, side, cid, t}] } : el confeti también viaja por consulta, no solo por SSE
-  function touchWatch(id, key) { let w = pollWatch.get(id); if (!w) pollWatch.set(id, w = new Map()); const now = Date.now(); w.set(key, now); if (w.size > 200) for (const [k, t] of w) if (now - t > WATCH_WIN_MS) w.delete(k); }
+  const lastN = new Map();                 // id partida -> último nº de espectadores que se empujó (para no avisar si no ha cambiado)
+  function armExpiry(id) { // si alguien se va sin avisar (cierra la pestaña, se queda sin red), el ojo baja solo en cuanto caduca su último sondeo
+    if (expiryT.has(id)) return;
+    expiryT.set(id, setTimeout(() => {
+      expiryT.delete(id);
+      const n = viewersOf(id);
+      if (lastN.get(id) !== n) { lastN.set(id, n); pushViewers(id); pushLobby(); }
+      const w = pollWatch.get(id); if (w && w.size) armExpiry(id); else { pollWatch.delete(id); lastN.delete(id); }
+    }, 1500));
+  }
+  function dropWatch(id, key) { // alguien deja de mirar: fuera del ojo YA (sin esperar a que caduque el sondeo)
+    const w = pollWatch.get(id); if (w) { w.delete(key); if (!w.size) pollWatch.delete(id); }
+    leftAt.set(id + '|' + key, Date.now());
+  }
+  function touchWatch(id, key) {
+    const now = Date.now(), lk = id + '|' + key;
+    if (now - (leftAt.get(lk) || 0) < 3000) return; // acaba de salir: una consulta que iba de camino no lo cuenta otra vez
+    let w = pollWatch.get(id); if (!w) pollWatch.set(id, w = new Map()); w.set(key, now);
+    armExpiry(id);
+    if (leftAt.size > 300) for (const [k, t] of leftAt) if (now - t > 10000) leftAt.delete(k);
+    if (w.size > 200) for (const [k, t] of w) if (now - t > WATCH_WIN_MS) w.delete(k); }
   function pollViewers(id) { const w = pollWatch.get(id); if (!w) return 0; const now = Date.now(); let n = 0; for (const [k, t] of w) { if (now - t <= WATCH_WIN_MS) n++; else w.delete(k); } return n; }
   const viewersOf = id => { const set = matchStreams.get(id); let n = 0; if (set) for (const c of set) if (c.watch) n++; return Math.max(n, pollViewers(id)); }; // 👁 los que MIRAN (SSE o consulta; el mayor de los dos para no contar doble)
   function pushViewers(id) { const set = matchStreams.get(id); if (!set || !set.size) return; const n = String(viewersOf(id)); for (const c of set) sseWrite(c, 'viewers', n); }
@@ -256,6 +278,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     res.flushHeaders && res.flushHeaders();
     res.write('retry: 1000\n\n');
     const c = { res, uid: me ? me.id : null, watch: !!mid && String(req.query.watch || '') === '1' };
+    c.pk = me ? 'u' + me.id : 'd' + String(req.query.d || req.ip || '').slice(0, 80); // misma clave que usa la consulta de /watch
     res.on('error', () => { });            // un cliente que se corta no tumba el servidor
     let set;
     if (mid) { set = matchStreams.get(mid); if (!set) matchStreams.set(mid, set = new Set()); } else set = lobbyStreams;
@@ -263,7 +286,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     set.add(c);
     if (c.watch) { pushViewers(mid); pushLobby(); } // alguien se ha puesto a mirar: el ojo sube para todos
     const hb = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) { } }, 15000);
-    res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); if (c.watch) { pushViewers(mid); pushLobby(); } }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición
+    res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); if (c.watch) { let otra = false; for (const o of set) if (o.watch && o.pk === c.pk) otra = true; if (!otra) dropWatch(mid, c.pk); pushViewers(mid); pushLobby(); } }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición
   });
 
   app.post('/api/stars/ficha', async (req, res) => {
@@ -355,6 +378,17 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const out = matchOut(m, null);
     if (+req.query.since === (m.updatedAt || 0)) out.path = null;
     res.json(out);
+  });
+
+  // ---- Dejar de mirar: el espectador sale del 👁 al instante (el cliente avisa con sendBeacon al salir/cerrar) ----
+  app.post('/api/stars/watch/:id/leave', (req, res) => {
+    const id = +req.params.id, me = who(req), d = String(req.query.d || req.ip || '').slice(0, 80);
+    if (me) dropWatch(id, 'u' + me.id);
+    dropWatch(id, 'd' + d);
+    const set = matchStreams.get(id); // y sus conexiones en directo de ese partido
+    if (set) for (const c of set) if (c.watch && (c.pk === 'd' + d || (me && c.pk === 'u' + me.id))) c.watch = false;
+    lastN.set(id, viewersOf(id)); pushViewers(id); pushLobby();
+    res.json({ ok: true });
   });
 
   // ---- Confeti: solo el PÚBLICO (quien mira, no quien juega) anima a un bando; lo ven los dos jugadores y todos los espectadores ----
