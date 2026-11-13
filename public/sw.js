@@ -1,5 +1,5 @@
 // Service worker: app instalable + avisos push (Android, iPhone y ordenador)
-const CACHE = 'garra-v11';
+const CACHE = 'garra-v12';
 const SHELL = ['/', '/escudo.png', '/icon-192.png', '/icon-512.png', '/badge.png', '/manifest.json'];
 
 self.addEventListener('install', e => {
