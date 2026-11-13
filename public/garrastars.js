@@ -80,10 +80,11 @@
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
 .gsEye{position:absolute;left:50%;top:6px;transform:translateX(-50%);z-index:7;font:800 15px "Barlow Condensed",sans-serif;padding:1px 10px;border-radius:99px;background:rgba(13,11,9,.78);border:1px solid var(--gold);color:var(--gold);pointer-events:none;white-space:nowrap}
-.gsCheer{position:absolute;z-index:7;transform:translate(-50%,-50%);width:50px;height:50px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:rgba(13,11,9,.85);color:var(--gold);font-size:22px;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer}
-.gsCheer.b{border-color:var(--red)}
+.gsCheer{position:absolute;z-index:12;top:50%;width:52px;height:52px;min-height:0;padding:0;border-radius:50%;border:3px solid var(--gold);background:rgba(13,11,9,.94);color:var(--gold);font-size:25px;line-height:1;display:flex;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer;box-shadow:0 2px 12px #000b}
+.gsCheer.a{left:8px;right:auto;transform:translateY(-50%)}
+.gsCheer.b{right:8px;left:auto;transform:translateY(-50%);border-color:var(--red)}
 .gsCheer:disabled{opacity:.4}
-.gsCheer:active{transform:translate(-50%,-50%) scale(.9)}
+.gsCheer:active{transform:translateY(-50%) scale(.9)}
 .gsCf{position:absolute;z-index:4;pointer-events:none;will-change:transform,opacity}
 #gsRoot.gsFull .gsEye{top:48px}
 .gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
@@ -338,14 +339,12 @@
   }
   // ---- Público: el ojo cuenta a los que miran y el confeti anima a un bando (solo se puede lanzar mirando, no jugando) ----
   function setEye(n) { if (M) M.viewers = n; const e = $('#gsEyeN'); if (e) e.textContent = n; }
-  function cheerAnchor(t) { // punto (en unidades del campo) donde vive el botón 🎉 de cada bando; si la física no trae kickoff(), se usa el reparto estándar
-    let cy = t === 'a' ? PH.FH * 0.75 : PH.FH * 0.25;
-    try { const k = PH.kickoff && PH.kickoff()[t]; if (k && k.length) { const m = k.reduce((q, o) => q + o.y, 0) / k.length; if (Number.isFinite(m)) cy = m; } } catch { }
-    return vpos(91, cy);
+  function cheerAnchor(t) { // origen del confeti en el lateral correspondiente del campo
+    return vpos(t === 'a' ? 9 : 91, PH.FH / 2);
   }
   function cheerBtn(t) { // botón 🎉 pegado al lado del campo del bando al que anima (la posición ya tiene en cuenta giros y horizontal)
     const v = cheerAnchor(t), D = VDIM(), who_ = t === 'a' ? M.a.name : M.b.name;
-    return `<button type="button" class="gsCheer ${t}" data-cheer="${t}" aria-label="Animar a ${E(who_)} con confeti" title="Animar a ${E(who_)}" style="left:${v.x / D.w * 100}%;top:${v.y / D.h * 100}%"${Date.now() - lastCheerAt < CHEER_MS ? ' disabled' : ''}>🎉</button>`;
+    return `<button type="button" class="gsCheer ${t}" data-cheer="${t}" aria-label="Lanzar confeti a ${E(who_)}" title="Animar a ${E(who_)}"${Date.now() - lastCheerAt < CHEER_MS ? ' disabled' : ''}>🎉</button>`;
   }
   function burst(side) { // confeti que sale del lado del bando y vuela hacia el campo
     const f = $('#gsField'); if (!f || !M || (side !== 'a' && side !== 'b')) return;
