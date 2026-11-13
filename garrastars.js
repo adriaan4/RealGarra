@@ -22,6 +22,10 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   // ---- Tiempo real (SSE): el servidor EMPUJA cada tiro a los dos jugadores y a quien mira, sin esperar a que pregunten ----
   const matchStreams = new Map();          // id de partida -> Set de conexiones {res, uid}
   const lobbyStreams = new Set();          // conexiones que están en el lobby (para refrescar partidas abiertas / directos al instante)
+  const lastCheer = new Map();             // uid -> instante del último confeti (anti-spam)
+  const CHEER_GAP_MS = 2000;               // un confeti cada 2 segundos por persona
+  const viewersOf = id => { const set = matchStreams.get(id); let n = 0; if (set) for (const c of set) if (c.watch) n++; return n; }; // 👁 conexiones que están MIRANDO (no juegan)
+  function pushViewers(id) { const set = matchStreams.get(id); if (!set || !set.size) return; const n = String(viewersOf(id)); for (const c of set) sseWrite(c, 'viewers', n); }
   function sseWrite(c, ev, data) { try { c.res.write('event: ' + ev + '\ndata: ' + data + '\n\n'); } catch (e) { /* se limpia en 'close' */ } }
   function pushMatch(m, skipUid) { // manda el estado de la partida a todos los que la siguen (cada uno con su 'mine')
     const set = matchStreams.get(m.id); if (!set || !set.size) return;
@@ -190,6 +194,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
       goalsA: m.goalsA, goalsB: m.goalsB, bodies: m.bodies,
       timeLeftMs: live ? timeLeft(m, now) : m.status === 'done' ? 0 : MATCH_MS,
       pauseMs: live ? Math.max(0, (m.pausedUntil || 0) - now) : 0, // celebración en curso: el reloj está parado
+      viewers: live ? viewersOf(m.id) : 0,
       a: sideOut(m.a), b: sideOut(m.b),
       mine: m.a.uid === forUid ? 'a' : m.b && m.b.uid === forUid ? 'b' : null,
       winner: m.winner || null, path: m._path || null, result: m._result || null, payouts: m.payouts || null
@@ -223,7 +228,7 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const waiting = me ? all.find(m => m.status === 'open' && m.a.uid === me.id) : null;
     const now = Date.now();
     const live = all.filter(m => m.status === 'live').sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 20)
-      .filter(m => m.b).map(m => ({ id: m.id, a: gbName(m.a.uid) || m.a.name, b: gbName(m.b.uid) || m.b.name, goalsA: m.goalsA, goalsB: m.goalsB, timeLeftMs: timeLeft(m, now), friendly: !!m.friendly }));
+      .filter(m => m.b).map(m => ({ id: m.id, a: gbName(m.a.uid) || m.a.name, b: gbName(m.b.uid) || m.b.name, goalsA: m.goalsA, goalsB: m.goalsB, timeLeftMs: timeLeft(m, now), friendly: !!m.friendly, viewers: viewersOf(m.id) }));
     res.json({
       me: me ? { ...outProfile(me.id), hist: profile(me.id).hist } : null,
       squad: squad().map(p => ({ id: p.id, name: p.name, hasPhoto: !!p.photo, photoV: p.photoV || 0 })),
@@ -244,14 +249,15 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     if (req.socket) { req.socket.setTimeout(0); req.socket.setNoDelay(true); req.socket.setKeepAlive(true); }
     res.flushHeaders && res.flushHeaders();
     res.write('retry: 1000\n\n');
-    const c = { res, uid: me ? me.id : null };
+    const c = { res, uid: me ? me.id : null, watch: !!mid && String(req.query.watch || '') === '1' };
     res.on('error', () => { });            // un cliente que se corta no tumba el servidor
     let set;
     if (mid) { set = matchStreams.get(mid); if (!set) matchStreams.set(mid, set = new Set()); } else set = lobbyStreams;
     if (set.size >= 400) { try { res.end(); } catch (e) { } return; } // tope de seguridad por canal
     set.add(c);
+    if (c.watch) { pushViewers(mid); pushLobby(); } // alguien se ha puesto a mirar: el ojo sube para todos
     const hb = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) { } }, 15000);
-    res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición
+    res.on('close', () => { clearInterval(hb); set.delete(c); if (mid && !set.size) matchStreams.delete(mid); if (c.watch) { pushViewers(mid); pushLobby(); } }); // res (no req): en Node moderno req 'close' salta al acabar de leer la petición
   });
 
   app.post('/api/stars/ficha', async (req, res) => {
@@ -342,6 +348,23 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const out = matchOut(m, null);
     if (+req.query.since === (m.updatedAt || 0)) out.path = null;
     res.json(out);
+  });
+
+  // ---- Confeti: solo el PÚBLICO (quien mira, no quien juega) anima a un bando; lo ven los dos jugadores y todos los espectadores ----
+  app.post('/api/stars/match/:id/cheer', (req, res) => {
+    const me = who(req); if (!me) return bad(res, 'Pon tu nombre para animar');
+    const m = ST().matches[+req.params.id];
+    if (!m || m.status !== 'live' || !m.b) return bad(res, 'Ese partido ya no está en directo');
+    if (isMine(m, me.id)) return bad(res, 'El confeti es para el público: tú estás jugando');
+    const side = req.body.side === 'a' ? 'a' : req.body.side === 'b' ? 'b' : null;
+    if (!side) return bad(res, 'Elige a quién animar');
+    const now = Date.now();
+    if (now - (lastCheer.get(me.id) || 0) < CHEER_GAP_MS) return bad(res, '🎉 Espera un par de segundos para el siguiente confeti');
+    lastCheer.set(me.id, now);
+    if (lastCheer.size > 500) for (const [k, t] of lastCheer) if (now - t > 60000) lastCheer.delete(k);
+    const set = matchStreams.get(m.id);
+    if (set) { const data = JSON.stringify({ side }); for (const c of set) if (c.uid !== me.id) sseWrite(c, 'cheer', data); } // quien lo manda ya lo ve en local
+    res.json({ ok: true });
   });
 
   // ---- Tirar: el cliente solo manda la ficha y la fuerza del chute; el servidor vuelve a simular él solo ----

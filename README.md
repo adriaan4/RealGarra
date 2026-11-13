@@ -159,3 +159,9 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - **Espectadores en horizontal:** quien solo mira ve el campo apaisado (equipo A a la izquierda atacando a la derecha, B a la derecha). Los jugadores siguen viendo sus fichas abajo.
 - **Anti-cuelgues:** un fallo de red suelto ya no echa a nadie del partido; si algo falla al pintar o una animación se queda colgada, la web vuelve sola al lobby; los avisos del lobby se limitan a 1 refresco cada 1,5 s; los canales SSE tienen tope y control de errores en el servidor.
 - **Orientación automática:** si el móvil está en horizontal (pantalla baja y apaisada) el campo se pone horizontal solo, y vertical si está en vertical; al girar el móvil se recoloca. El botón 🔄 junto a Rendirse la cambia a mano hasta el siguiente giro. En horizontal tú estás a la izquierda atacando hacia la derecha.
+
+## Garra Stars: 👁 espectadores y 🎉 confeti del público
+- Dentro de un partido en juego sale un **👁 N** con la gente que lo está mirando en directo (se ve jugando y mirando). En el lobby, la lista «🔴 Directo» también muestra el 👁 de cada partido.
+- Quien **mira** un partido (👀 Ver) tiene dos botones 🎉, uno en el lado de cada jugador. Al pulsarlos sale confeti en ese lado para los dos jugadores y para todo el público; se puede lanzar un confeti cada 2 segundos (los botones se apagan ese rato).
+- Los jugadores **no pueden** lanzar confeti (solo el público), hace falta tener nombre de GarraBet, y el servidor también limita a 1 confeti cada 2 s por persona.
+- Ficheros: `garrastars.js` (servidor: conteo por SSE `?watch=1`, evento `viewers`, `POST /api/stars/match/:id/cheer`, evento `cheer`) y `public/garrastars.js` (cliente). Versión visible: «Garra Stars v13».

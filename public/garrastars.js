@@ -79,6 +79,13 @@
 .gsHist{font-size:14px;opacity:.9}
 .gsHistRow{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
 .gsHistRow .w{color:#3fae55}.gsHistRow .l{color:#d8615f}.gsHistRow .d{color:var(--ink)}
+.gsEye{position:absolute;left:50%;top:6px;transform:translateX(-50%);z-index:7;font:800 15px "Barlow Condensed",sans-serif;padding:1px 10px;border-radius:99px;background:rgba(13,11,9,.78);border:1px solid var(--gold);color:var(--gold);pointer-events:none;white-space:nowrap}
+.gsCheer{position:absolute;z-index:7;transform:translate(-50%,-50%);width:50px;height:50px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:rgba(13,11,9,.85);color:var(--gold);font-size:22px;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer}
+.gsCheer.b{border-color:var(--red)}
+.gsCheer:disabled{opacity:.4}
+.gsCheer:active{transform:translate(-50%,-50%) scale(.9)}
+.gsCf{position:absolute;z-index:4;pointer-events:none;will-change:transform,opacity}
+#gsRoot.gsFull .gsEye{top:48px}
 .gsRotBtn{position:absolute;right:6px;bottom:6px;z-index:7;min-height:34px;padding:4px 10px;border-radius:99px;border:2px solid var(--gold);background:rgba(13,11,9,.82);color:var(--gold);font:800 15px "Barlow Condensed",sans-serif;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
 #gsRoot.gsFull{--sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);touch-action:none;overscroll-behavior:contain;position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;max-width:none;margin:0;padding:0;background:#0d0b09;box-sizing:border-box;overflow:hidden;display:block}
 #gsRoot.gsFull #gsField,#gsRoot.gsFull #gsField.land{position:absolute;top:var(--sat);right:var(--sar);bottom:var(--sab);left:var(--sal);width:auto;height:auto;max-width:none;aspect-ratio:auto;margin:0;border-radius:0;border-width:2px}
@@ -149,6 +156,7 @@
   function applyMatch(d, force) { try { applyMatch_(d, force); } catch (x) { console.error('Garra Stars:', x); recover(); } }
   function applyMatch_(d, force) {
     if (!d || !d.a || !d.b || !Array.isArray(d.bodies) || !matchId || matchId === 'ai' || (d.id && d.id !== matchId)) return;
+    if (typeof d.viewers === 'number') setEye(d.viewers);
     const stamp = stampOf(d);
     if (!force && M && (d.updatedAt || 0) < (M.updatedAt || 0)) return; // dato más viejo que lo que ya tengo
     if (!force && (busy || animating)) {
@@ -184,15 +192,17 @@
     lobbyT = setTimeout(() => { lobbyT = null; if (here() && !matchId && !ai) { lastLobbyLoad = Date.now(); load(); } }, wait);
   }
   function syncStream() {
-    const want = matchId ? (matchId === 'ai' ? '' : 'm' + matchId) : (here() && !ai ? 'lobby' : '');
+    const want = matchId ? (matchId === 'ai' ? '' : 'm' + matchId + (spectating ? 's' : '')) : (here() && !ai ? 'lobby' : '');
     if (want === esKey) return;
     if (es) { try { es.close(); } catch { } es = null; }
     esOpen = false; esKey = want;
     if (!want || typeof EventSource === 'undefined') return;
-    const e = es = new EventSource('/api/stars/stream?d=' + encodeURIComponent(dev) + (want === 'lobby' ? '' : '&match=' + matchId));
+    const e = es = new EventSource('/api/stars/stream?d=' + encodeURIComponent(dev) + (want === 'lobby' ? '' : '&match=' + matchId + (spectating ? '&watch=1' : '')));
     e.onopen = () => { esOpen = true; if (want === 'lobby') { if (here() && !matchId && !ai) load(); } else loadMatch(); }; // al (re)conectar se pone al día
     e.onerror = () => { esOpen = false; }; // el navegador reconecta solo
     e.addEventListener('lobby', lobbyNudge); // como mucho 1 refresco cada 1,5 s, pero SIN perder el último aviso
+    e.addEventListener('viewers', ev => setEye(+ev.data || 0)); // el ojo: cuánta gente está mirando ahora
+    e.addEventListener('cheer', ev => { try { const d = JSON.parse(ev.data); burst(d.side); } catch (x) { console.error(x); } }); // confeti del público
     e.addEventListener('match', ev => { try { applyMatch(JSON.parse(ev.data)); } catch (x) { console.error(x); } });
   }
   (function matchPoll() { // red de seguridad: con el canal abierto basta cada 2 s; sin él, cada 0,7 s
@@ -240,7 +250,7 @@
 
   function liveHtml() {
     const L = GS.live || [];
-    return `<h2 style="margin-top:18px">🔴 Directo</h2><div class="gsPeers">${L.length ? L.map(m => `<div class="gsOpen"><b>${E(m.a)} ${m.goalsA} - ${m.goalsB} ${E(m.b)}</b><span class="gsTag">⏱️ ${fmtClock(m.timeLeftMs)}${m.friendly ? ' · 🙂' : ''}</span><button type="button" data-watch="${m.id}">👀 Ver</button></div>`).join('') : '<p class="sub" style="font-size:15px">Ahora mismo no hay ningún partido en juego.</p>'}</div>`;
+    return `<h2 style="margin-top:18px">🔴 Directo</h2><div class="gsPeers">${L.length ? L.map(m => `<div class="gsOpen"><b>${E(m.a)} ${m.goalsA} - ${m.goalsB} ${E(m.b)}</b><span class="gsTag">${m.viewers ? '👁 ' + m.viewers + ' · ' : ''}⏱️ ${fmtClock(m.timeLeftMs)}${m.friendly ? ' · 🙂' : ''}</span><button type="button" data-watch="${m.id}">👀 Ver</button></div>`).join('') : '<p class="sub" style="font-size:15px">Ahora mismo no hay ningún partido en juego.</p>'}</div>`;
   }
   function rankRows(list, meId) {
     if (!list.length) return '<p class="sub" style="font-size:15px">Todavía no hay partidas puntuables.</p>';
@@ -300,6 +310,8 @@
      <div class="gsMid"></div>${LAND() ? '<div class="gsGoal l"></div><div class="gsGoal r"></div>' : '<div class="gsGoal t"></div><div class="gsGoal b"></div>'}
      <div class="gsLbl t opp">${mine ? (LAND() ? '▶ Rival · ' : '⬆ Rival · ') : ''}${nm(top)}</div><div class="gsLbl b">${mine ? (LAND() ? '◀ TÚ · ' : '⬇ TÚ · ') : ''}${nm(bot)}</div>
      <div class="gsMsg" id="gsMsg"></div>
+     ${M.status === 'live' && matchId !== 'ai' ? `<div class="gsEye" title="Gente mirando en directo" aria-label="Espectadores en directo">👁 <span id="gsEyeN">${M.viewers || 0}</span></div>` : ''}
+     ${spectating && !done ? cheerBtn('a') + cheerBtn('b') : ''}
      <button type="button" class="gsRotBtn" aria-label="Girar el campo">🔄 ${LAND() ? 'Vertical' : 'Horizontal'}</button>
      <i class="gsAim" id="gsAimLine" style="display:none"></i>
      ${M.bodies.map(b => b.isBall ? `<div class="gsBall" id="bd-${b.id}" style="${bodyStyle(b)}"></div>` : `<div class="gsDisc ${mine ? (b.team === mine ? 'us' : 'them') : b.team}${b.team === mine ? ' mine' : ''}" id="bd-${b.id}" data-id="${b.id}" style="${bodyStyle(b)}"><img src="${img(squadFor(b.team))}" alt="" onerror="this.onerror=null;this.src='escudo.png'"></div>`).join('')}
@@ -309,7 +321,36 @@
       spectating ? `<div class="row"><button type="button" class="ghost" id="gsBack">👈 Salir del directo</button></div>` : `<div class="row"><button type="button" class="ghost" id="gsResign">${matchId === 'ai' ? '👈 Salir del entrenamiento' : '🏳️ Rendirse'}</button></div>`}
     `;
     syncStream();
-    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v11</p>');
+    el.insertAdjacentHTML('beforeend', '<p class="gsVer" style="font-size:11px;opacity:.45;text-align:center;margin:4px 0">Garra Stars v13</p>');
+  }
+  // ---- Público: el ojo cuenta a los que miran y el confeti anima a un bando (solo se puede lanzar mirando, no jugando) ----
+  function setEye(n) { if (M) M.viewers = n; const e = $('#gsEyeN'); if (e) e.textContent = n; }
+  function cheerBtn(t) { // botón 🎉 pegado al lado del campo del bando al que anima (la posición ya tiene en cuenta giros y horizontal)
+    const k = PH.kickoff()[t], cy = k.reduce((q, o) => q + o.y, 0) / k.length, v = vpos(91, cy), D = VDIM(), who_ = t === 'a' ? M.a.name : M.b.name;
+    return `<button type="button" class="gsCheer ${t}" data-cheer="${t}" aria-label="Animar a ${E(who_)} con confeti" title="Animar a ${E(who_)}" style="left:${v.x / D.w * 100}%;top:${v.y / D.h * 100}%"${Date.now() - lastCheerAt < CHEER_MS ? ' disabled' : ''}>🎉</button>`;
+  }
+  function burst(side) { // confeti que sale del lado del bando y vuela hacia el campo
+    const f = $('#gsField'); if (!f || !M || (side !== 'a' && side !== 'b')) return;
+    if (f.querySelectorAll('.gsCf').length > 140) return;
+    const k = PH.kickoff()[side], cy = k.reduce((q, o) => q + o.y, 0) / k.length, v = vpos(91, cy), D = VDIM();
+    const ox = v.x / D.w * 100, oy = v.y / D.h * 100, W = f.clientWidth, H = f.clientHeight;
+    const base = Math.atan2((50 - oy) / 100 * H, (50 - ox) / 100 * W), cols = ['#e2ab2c', '#ffffff', '#d24fe0', '#5fd4c6', '#ff6b6b', '#6fb3ff'];
+    for (let i = 0; i < 18; i++) {
+      const el = document.createElement('i'); el.className = 'gsCf';
+      const sz = 6 + Math.random() * 6; el.style.cssText = `left:${ox}%;top:${oy}%;width:${sz}px;height:${sz * (.5 + Math.random() * .6)}px;background:${cols[i % cols.length]};border-radius:${Math.random() < .35 ? '50%' : '1px'}`;
+      f.appendChild(el);
+      const a = base + (Math.random() - .5) * 1.5, sp = 70 + Math.random() * 150, dx = Math.cos(a) * sp, dy = Math.sin(a) * sp - 50, rot = (Math.random() - .5) * 720;
+      const an = el.animate([{ transform: 'translate(-50%,-50%) rotate(0)', opacity: 1 }, { transform: `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px)) rotate(${rot / 2}deg)`, opacity: 1, offset: .5 }, { transform: `translate(calc(-50% + ${dx * 1.15}px),calc(-50% + ${dy + 120}px)) rotate(${rot}deg)`, opacity: 0 }], { duration: 1000 + Math.random() * 600, easing: 'cubic-bezier(.2,.7,.4,1)' });
+      an.onfinish = () => el.remove();
+    }
+  }
+  let lastCheerAt = 0; const CHEER_MS = 2000; // un confeti cada 2 segundos
+  async function cheer(side) {
+    if (!spectating || !M || M.status !== 'live' || matchId === 'ai') return;
+    const now = Date.now(); if (now - lastCheerAt < CHEER_MS) return; lastCheerAt = now; // el servidor también limita
+    document.querySelectorAll('.gsCheer').forEach(b => { b.disabled = true; setTimeout(() => { b.disabled = false; }, CHEER_MS); }); // los botones se apagan 2 s
+    burst(side); // se ve al instante en tu pantalla; a los demás les llega por el canal en directo
+    try { const r = await api('/api/stars/match/' + matchId + '/cheer', 'POST', { device: dev, side }); } catch (x) { toast(x.message); }
   }
   function fmtDelta(n) { return (n >= 0 ? '+' : '') + n + ' pts'; }
   function squadFor(team) { return M ? (team === 'a' ? M.a.ficha : M.b.ficha) : null; }
@@ -440,6 +481,8 @@
       catch (x) { toast(x.message); await load(true); }
       return;
     }
+    const ch = e.target.closest('[data-cheer]');
+    if (ch) { cheer(ch.dataset.cheer); return; }
     const wt = e.target.closest('[data-watch]');
     if (wt) { spectating = true; matchId = +wt.dataset.watch; lastMatchStamp = ''; M = null; pendingQ = []; animating = 0; fails = 0; await loadMatch(true); return; }
     const cn = e.target.closest('[data-cancel]');
