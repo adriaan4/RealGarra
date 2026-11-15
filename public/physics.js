@@ -12,6 +12,16 @@
   const MAX_SPEED = 5.4;             // tope de velocidad de un chut (tope de potencia)
   const REST = 0.88;                 // "rebote" en choques y paredes
   const MAX_STEPS = 1100;            // red de seguridad para que la simulación siempre acabe
+  const GOAL_DEPTH = FH * 0.075;     // fondo de la portería tal y como se DIBUJA (.gsGoal height:7.5%): 10,5 unidades desde la línea de fondo
+  const POST_R = 1.3;                // grosor físico de cada poste (antes no existía: nada impedía "colarse" justo por el borde)
+  // Los 4 postes como obstáculos fijos. Sin ellos, cuando el balón cruzaba x=GOAL_L/GOAL_R casi al mismo tiempo que
+  // entraba en la zona de gol, un paso de simulación podía dejarlo justo al otro lado del poste (ya fuera de la boca,
+  // inGap=false) pegado a la línea de fondo (y clampa a su radio, ~4), una zona a la que ninguna ficha llega porque
+  // su radio (6.2) no le deja acercarse tanto: el balón quedaba "un pelin fuera" de la portería y no se podía tocar.
+  const POSTS = [
+    { x: GOAL_L, y: 0 }, { x: GOAL_R, y: 0 },
+    { x: GOAL_L, y: FH }, { x: GOAL_R, y: FH }
+  ];
 
   function clampPower(vx, vy) {
     const sp = Math.hypot(vx, vy);
@@ -36,16 +46,31 @@
         const r = b.isBall ? R_BALL : R_DISC;
         if (b.x < r) { b.x = r; b.vx = Math.abs(b.vx) * REST; }
         if (b.x > FW - r) { b.x = FW - r; b.vx = -Math.abs(b.vx) * REST; }
-        const inGap = b.x > GOAL_L + r * 0.4 && b.x < GOAL_R - r * 0.4;
+        const inGap = b.x > GOAL_L && b.x < GOAL_R; // el centro del balón está entre los dos postes
         if (b.isBall && inGap) {
-          if (b.y < -R_BALL * 1.6) { scored = 'A'; break; }   // entra por arriba: gol del equipo A (ataca hacia arriba)
-          if (b.y > FH + R_BALL * 1.6) { scored = 'B'; break; } // entra por abajo: gol del equipo B
+          // GOL en cuanto el CENTRO del balón cruza la línea blanca de la portería dibujada (entre los postes). Antes había que
+          // salirse del campo (y < -6,4): si el balón se quedaba parado en la red o se desviaba hacia un poste, se veía dentro pero no contaba
+          if (b.y < GOAL_DEPTH) { scored = 'A'; break; }          // entra por arriba: gol del equipo A (ataca hacia arriba)
+          if (b.y > FH - GOAL_DEPTH) { scored = 'B'; break; }     // entra por abajo: gol del equipo B
         } else {
           if (b.y < r) { b.y = r; b.vy = Math.abs(b.vy) * REST; }
           if (b.y > FH - r) { b.y = FH - r; b.vy = -Math.abs(b.vy) * REST; }
         }
       }
       if (scored) break;
+      for (const b of bodies) {                 // colisión con los postes (frena el "colarse" por el borde de la boca)
+        const r = b.isBall ? R_BALL : R_DISC;
+        for (const p of POSTS) {
+          const dx = b.x - p.x, dy = b.y - p.y, dist = Math.hypot(dx, dy) || 0.0001;
+          const minD = r + POST_R;
+          if (dist < minD) {
+            const nx = dx / dist, ny = dy / dist, overlap = minD - dist;
+            b.x += nx * overlap; b.y += ny * overlap;
+            const vn = b.vx * nx + b.vy * ny;
+            if (vn < 0) { const imp = -(1 + REST) * vn; b.vx += imp * nx; b.vy += imp * ny; }
+          }
+        }
+      }
       for (let i = 0; i < bodies.length; i++) for (let j = i + 1; j < bodies.length; j++) {
         const a = bodies[i], c = bodies[j];
         const dx = c.x - a.x, dy = c.y - a.y, dist = Math.hypot(dx, dy) || 0.0001;
@@ -63,6 +88,12 @@
       if (snapshot && step % 4 === 0 && path.length < 150) path.push(bodies.map(b => ({ id: b.id, x: b.x, y: b.y })));
       if (!moving) break;
     }
+    if (!scored) { // por si un choque con una ficha ha empujado el balón dentro justo en el último paso
+      const ball = bodies.find(b => b.isBall);
+      if (ball && ball.x > GOAL_L && ball.x < GOAL_R) {
+        if (ball.y < GOAL_DEPTH) scored = 'A'; else if (ball.y > FH - GOAL_DEPTH) scored = 'B';
+      }
+    }
     if (snapshot) path.push(bodies.map(b => ({ id: b.id, x: b.x, y: b.y })));
     return { bodies, scored, path };
   }
@@ -76,7 +107,7 @@
     };
   }
 
-  const API = { FW, FH, R_DISC, R_BALL, GOAL_L, GOAL_R, MAX_SPEED, clampPower, simulate, kickoff };
+  const API = { FW, FH, R_DISC, R_BALL, GOAL_L, GOAL_R, MAX_SPEED, POST_R, POSTS, clampPower, simulate, kickoff };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.GarraPhysics = API;
 })(typeof window !== 'undefined' ? window : globalThis);
