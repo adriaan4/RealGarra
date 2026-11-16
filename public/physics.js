@@ -1,6 +1,7 @@
+// VERSION gol-solo-entre-postes-v4 (si abres /physics.js en tu web y no ves esta línea arriba, el navegador/servidor sigue con un archivo viejo)
 // ---- GARRA STARS: motor de físicas compartido (mismo código en el navegador y en el servidor) ----
 // El campo es un rectángulo de FW x FH (unidades propias, no píxeles). Portería arriba (equipo B) y abajo (equipo A),
-// con la boca de la portería entre GOAL_L y GOAL_R. Es gol solo cuando el balón entra por la boca de la portería y llega al fondo de la red; fuera de la boca el fondo es pared y todo rebota.
+// con la boca de la portería entre GOAL_L y GOAL_R. Es gol solo cuando el balón entra ENTERO por la boca de la portería y llega al fondo de la red; fuera de la boca el fondo es pared y todo rebota.
 // simulate() es determinista (nada de Math.random): el cliente la corre para animar en vivo y el servidor la vuelve a
 // correr él solo para decidir el resultado real, así nadie puede inventarse un gol manipulando la web.
 (function (root) {
@@ -47,8 +48,10 @@
         const r = b.isBall ? R_BALL : R_DISC;
         if (b.x < r) { b.x = r; b.vx = Math.abs(b.vx) * REST; }
         if (b.x > FW - r) { b.x = FW - r; b.vx = -Math.abs(b.vx) * REST; }
-        const inGap = b.x > GOAL_L && b.x < GOAL_R; // el centro del balón está dentro de la boca de la portería (entre los dos postes)
-        if (b.isBall && inGap) {
+        // El balón tiene que estar ENTERO dentro de la red (sus dos lados entre los postes). Antes bastaba con que su centro estuviera entre los postes,
+        // y un balón rozando un poste (medio fuera de la portería) también marcaba.
+        const inNet = b.isBall && b.x - r >= GOAL_L && b.x + r <= GOAL_R;
+        if (inNet) {
           // Solo la portería es gol: el balón entra por la boca SIN rebotar y marca al llegar al FONDO DE LA RED (la línea de fondo).
           // Se queda pegado al fondo, dentro de la red y a la vista (no se sale del campo ni desaparece).
           if (b.y <= BACK_Y) { b.y = BACK_Y; scored = 'A'; break; }                 // fondo de arriba: gol del equipo A (ataca hacia arriba)
@@ -93,8 +96,8 @@
     if (!scored) { // por si un choque con una ficha ha empujado el balón dentro justo en el último paso
       const ball = bodies.find(b => b.isBall);
       if (ball) {
-        if (ball.x > GOAL_L && ball.x < GOAL_R && ball.y <= BACK_Y) { ball.y = BACK_Y; scored = 'A'; }
-        else if (ball.x > GOAL_L && ball.x < GOAL_R && ball.y >= FH - BACK_Y) { ball.y = FH - BACK_Y; scored = 'B'; }
+        if (ball.x - R_BALL >= GOAL_L && ball.x + R_BALL <= GOAL_R && ball.y <= BACK_Y) { ball.y = BACK_Y; scored = 'A'; }
+        else if (ball.x - R_BALL >= GOAL_L && ball.x + R_BALL <= GOAL_R && ball.y >= FH - BACK_Y) { ball.y = FH - BACK_Y; scored = 'B'; }
       }
     }
     if (snapshot) path.push(bodies.map(b => ({ id: b.id, x: b.x, y: b.y })));
@@ -110,7 +113,7 @@
     };
   }
 
-  const API = { FW, FH, R_DISC, R_BALL, GOAL_L, GOAL_R, MAX_SPEED, POST_R, POSTS, clampPower, simulate, kickoff };
+  const API = { VERSION: 'gol-solo-entre-postes-v4', FW, FH, R_DISC, R_BALL, GOAL_L, GOAL_R, MAX_SPEED, POST_R, POSTS, clampPower, simulate, kickoff };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.GarraPhysics = API;
 })(typeof window !== 'undefined' ? window : globalThis);
