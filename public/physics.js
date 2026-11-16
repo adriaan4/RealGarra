@@ -1,6 +1,6 @@
 // ---- GARRA STARS: motor de físicas compartido (mismo código en el navegador y en el servidor) ----
 // El campo es un rectángulo de FW x FH (unidades propias, no píxeles). Portería arriba (equipo B) y abajo (equipo A),
-// con la boca de la portería entre GOAL_L y GOAL_R. Es gol cuando el balón atraviesa el fondo del campo casi hasta desaparecer (por cualquier punto); las fichas rebotan siempre.
+// con la boca de la portería entre GOAL_L y GOAL_R. Es gol cuando el balón llega al fondo de la red (la línea de fondo del campo, por cualquier punto); las fichas rebotan siempre.
 // simulate() es determinista (nada de Math.random): el cliente la corre para animar en vivo y el servidor la vuelve a
 // correr él solo para decidir el resultado real, así nadie puede inventarse un gol manipulando la web.
 (function (root) {
@@ -13,7 +13,7 @@
   const REST = 0.88;                 // "rebote" en choques y paredes
   const MAX_STEPS = 1100;            // red de seguridad para que la simulación siempre acabe
   const GOAL_DEPTH = FH * 0.075;     // fondo de la portería tal y como se DIBUJA (.gsGoal height:7.5%): 10,5 unidades desde la línea de fondo
-  const SCORE_DEPTH = -3;            // el balón marca al pasar la línea de fondo hasta y < -3 (a -4 ya habría desaparecido del campo). Súbelo (0 = mitad del balón fuera, 4 = apenas toca el fondo) para hacerlo más fácil
+  const BACK_Y = R_BALL;             // fondo de la red = línea de fondo del campo: el balón marca cuando llega hasta ahí (su borde toca el fondo de la red), a la vista y sin salirse del campo
   const POST_R = 1.3;                // grosor físico de cada poste (antes no existía: nada impedía "colarse" justo por el borde)
   // Los 4 postes como obstáculos fijos. Sin ellos, cuando el balón cruzaba x=GOAL_L/GOAL_R casi al mismo tiempo que
   // entraba en la zona de gol, un paso de simulación podía dejarlo justo al otro lado del poste (ya fuera de la boca,
@@ -48,11 +48,10 @@
         if (b.x < r) { b.x = r; b.vx = Math.abs(b.vx) * REST; }
         if (b.x > FW - r) { b.x = FW - r; b.vx = -Math.abs(b.vx) * REST; }
         if (b.isBall) {
-          // El balón NO rebota en el fondo: lo atraviesa y es GOL cuando ya está casi fuera (el campo recorta lo que sale, a y=-4 desaparece
-          // del todo; en -3 aún asoma un poquito). Vale por cualquier punto del fondo, no solo por la boca. Se queda justo en ese punto para
-          // que la animación termine con el balón a la vista (si el último paso lo lanzó más allá, ya habría desaparecido).
-          if (b.y < SCORE_DEPTH) { b.y = SCORE_DEPTH; scored = 'A'; break; }               // fondo de arriba: gol del equipo A (ataca hacia arriba)
-          if (b.y > FH - SCORE_DEPTH) { b.y = FH - SCORE_DEPTH; scored = 'B'; break; }     // fondo de abajo: gol del equipo B
+          // El balón atraviesa la boca/el fondo SIN rebotar y es GOL cuando llega al FONDO DE LA RED (la línea de fondo del campo), por cualquier punto del fondo.
+          // Se queda pegado al fondo, dentro de la red y a la vista (no se sale del campo ni desaparece).
+          if (b.y <= BACK_Y) { b.y = BACK_Y; scored = 'A'; break; }                 // fondo de arriba: gol del equipo A (ataca hacia arriba)
+          if (b.y >= FH - BACK_Y) { b.y = FH - BACK_Y; scored = 'B'; break; }       // fondo de abajo: gol del equipo B
         } else {
           if (b.y < r) { b.y = r; b.vy = Math.abs(b.vy) * REST; }
           if (b.y > FH - r) { b.y = FH - r; b.vy = -Math.abs(b.vy) * REST; }
@@ -93,8 +92,8 @@
     if (!scored) { // por si un choque con una ficha ha empujado el balón dentro justo en el último paso
       const ball = bodies.find(b => b.isBall);
       if (ball) {
-        if (ball.y < SCORE_DEPTH) { ball.y = SCORE_DEPTH; scored = 'A'; }
-        else if (ball.y > FH - SCORE_DEPTH) { ball.y = FH - SCORE_DEPTH; scored = 'B'; }
+        if (ball.y <= BACK_Y) { ball.y = BACK_Y; scored = 'A'; }
+        else if (ball.y >= FH - BACK_Y) { ball.y = FH - BACK_Y; scored = 'B'; }
       }
     }
     if (snapshot) path.push(bodies.map(b => ({ id: b.id, x: b.x, y: b.y })));
