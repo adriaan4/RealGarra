@@ -5,6 +5,17 @@
   const E = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PH = window.GarraPhysics || { FW: 100, FH: 140, R_DISC: 6.2, R_BALL: 4, MAX_SPEED: 5.4, GOAL_L: 35, GOAL_R: 65 };
   const here = () => (location.hash || '#inicio').slice(1) === 'garrastars';
+  // Diagnóstico: etiqueta pequeña abajo a la izquierda con la física que usa ESTE navegador y la que usa el SERVIDOR (el que decide los goles).
+  // Si pone "ANTIGUA"/"ANTIGUO" o no coinciden, hay un physics.js/garrastars.js viejo subido en algún sitio.
+  let SRV_PHYS = '…';
+  const verText = () => 'Stars v15 · navegador: ' + (PH.VERSION || 'ANTIGUA') + ' · servidor: ' + SRV_PHYS;
+  fetch('/api/stars/version', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject()).then(j => { SRV_PHYS = j.physics || 'antigua'; }).catch(() => { SRV_PHYS = 'ANTIGUO (sin /api/stars/version)'; });
+  setInterval(() => {
+    let d = document.getElementById('gsDiag');
+    if (!(here() && document.getElementById('gsRoot'))) { if (d) d.remove(); return; }
+    if (!d) { d = document.createElement('div'); d.id = 'gsDiag'; d.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99999;font:600 10px/1.2 sans-serif;color:#fff;background:rgba(0,0,0,.65);padding:2px 6px;border-radius:6px;pointer-events:none'; document.body.appendChild(d); }
+    d.textContent = verText();
+  }, 1000);
   const img = p => p && p.hasPhoto && p.id ? '/api/squad-photo/' + p.id + '?v=' + (p.photoV || 0) : 'escudo.png';
   const DIVC = { Bronce: '#8a5a2e', Plata: '#9aa0a6', Oro: '#e2ab2c', Platino: '#5fd4c6', Diamante: '#6fb3ff', Leyenda: '#d24fe0' };
 
