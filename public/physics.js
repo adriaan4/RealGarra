@@ -1,6 +1,6 @@
 // ---- GARRA STARS: motor de físicas compartido (mismo código en el navegador y en el servidor) ----
 // El campo es un rectángulo de FW x FH (unidades propias, no píxeles). Portería arriba (equipo B) y abajo (equipo A),
-// con la boca de la portería entre GOAL_L y GOAL_R. Solo el balón puede entrar en la portería; las fichas rebotan siempre.
+// con la boca de la portería entre GOAL_L y GOAL_R. Es gol en cuanto el balón toca el fondo del campo (por cualquier punto); las fichas rebotan siempre.
 // simulate() es determinista (nada de Math.random): el cliente la corre para animar en vivo y el servidor la vuelve a
 // correr él solo para decidir el resultado real, así nadie puede inventarse un gol manipulando la web.
 (function (root) {
@@ -46,6 +46,11 @@
         const r = b.isBall ? R_BALL : R_DISC;
         if (b.x < r) { b.x = r; b.vx = Math.abs(b.vx) * REST; }
         if (b.x > FW - r) { b.x = FW - r; b.vx = -Math.abs(b.vx) * REST; }
+        // GOL en cuanto el balón TOCA el final del campo (la línea de fondo), por cualquier punto, no solo por la boca de la portería
+        if (b.isBall) {
+          if (b.y <= r) { scored = 'A'; break; }            // toca el fondo de arriba: gol del equipo A (ataca hacia arriba)
+          if (b.y >= FH - r) { scored = 'B'; break; }       // toca el fondo de abajo: gol del equipo B
+        }
         const inGap = b.x > GOAL_L && b.x < GOAL_R; // el centro del balón está entre los dos postes
         if (b.isBall && inGap) {
           // GOL en cuanto el CENTRO del balón cruza la línea blanca de la portería dibujada (entre los postes). Antes había que
@@ -58,7 +63,8 @@
         }
       }
       if (scored) break;
-      for (const b of bodies) {                 // colisión con los postes (frena el "colarse" por el borde de la boca)
+      for (const b of bodies) {                 // colisión de las FICHAS con los postes (el balón los atraviesa: todo el fondo es gol)
+        if (b.isBall) continue;
         const r = b.isBall ? R_BALL : R_DISC;
         for (const p of POSTS) {
           const dx = b.x - p.x, dy = b.y - p.y, dist = Math.hypot(dx, dy) || 0.0001;
@@ -90,8 +96,9 @@
     }
     if (!scored) { // por si un choque con una ficha ha empujado el balón dentro justo en el último paso
       const ball = bodies.find(b => b.isBall);
-      if (ball && ball.x > GOAL_L && ball.x < GOAL_R) {
-        if (ball.y < GOAL_DEPTH) scored = 'A'; else if (ball.y > FH - GOAL_DEPTH) scored = 'B';
+      if (ball) {
+        if (ball.y <= R_BALL || (ball.x > GOAL_L && ball.x < GOAL_R && ball.y < GOAL_DEPTH)) scored = 'A';
+        else if (ball.y >= FH - R_BALL || (ball.x > GOAL_L && ball.x < GOAL_R && ball.y > FH - GOAL_DEPTH)) scored = 'B';
       }
     }
     if (snapshot) path.push(bodies.map(b => ({ id: b.id, x: b.x, y: b.y })));
