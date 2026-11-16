@@ -8,6 +8,8 @@
 // Las partidas amistosas y contra la IA no puntúan; la IA se juega entera en el navegador (no pasa por aquí).
 module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypto, sendPush }) {
   const PH = require('./public/physics.js');
+  console.log('[garrastars] física cargada:', PH.VERSION || 'ANTIGUA (sin versión)'); // si aquí no sale gol-solo-entre-postes-v4, el servidor está usando un physics.js viejo
+  app.get('/api/stars/version', (req, res) => res.json({ physics: PH.VERSION || 'antigua' })); // abre /api/stars/version en tu web para ver qué física usa el SERVIDOR (la que decide los goles)
   const MATCH_MS = 3 * 60 * 1000;          // el partido dura 3 minutos (cuenta atrás); gana quien tenga más goles al acabar
   const CELEB_MS = 1000;                   // pausa de celebración tras un gol: NO se descuenta de la cuenta atrás
   const FRAME_MS = 16;                     // ms por fotograma al animar un tiro (igual que en el navegador)
