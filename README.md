@@ -135,7 +135,7 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - Se guarda en `db.buzon` (`buzon.js` + `public/buzon.js`). Al pasar de 400 mensajes se borra el más viejo ya resuelto.
 
 ## Garra Stars: lobby, partidos de 3 minutos y saque
-- Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (puntuable o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
+- Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (competitiva o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
 - Una partida abierta que nadie coge se borra sola a los 15 min (o se cancela desde el lobby). La cuenta atrás empieza cuando alguien se une.
 - Cada partido dura **3 minutos con cuenta atrás**; al llegar a 0 gana quien tenga más goles (si hay empate, empate). El reloj lo lleva el servidor, así que aunque nadie esté mirando el partido se cierra solo y se aplican los puntos.
 - **Tras un gol**: se ve la celebración (~1 s) y todo vuelve a la formación inicial (3 fichas por equipo y balón al centro). Esa celebración y el vuelo del balón hasta la red **no se descuentan de la cuenta atrás**. **Saca quien ha encajado el gol.**
@@ -143,7 +143,7 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (sin cambios).
 
 ## Garra Stars: lobby, partidos de 3 minutos y saque
-- Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (puntuable o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
+- Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (competitiva o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
 - Una partida abierta que nadie coge se borra sola a los 15 min (o se cancela desde el lobby). La cuenta atrás empieza cuando alguien se une.
 - Cada partido dura **3 minutos con cuenta atrás**; al llegar a 0 gana quien tenga más goles (si hay empate, empate). El reloj lo lleva el servidor, así que aunque nadie esté mirando el partido se cierra solo y se aplican los puntos.
 - **Tras un gol**: se ve la celebración (~1 s) y todo vuelve a la formación inicial (3 fichas por equipo y balón al centro). Esa celebración y el vuelo del balón hasta la red **no se descuentan de la cuenta atrás**. **Saca quien ha encajado el gol.**

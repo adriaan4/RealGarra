@@ -244,11 +244,11 @@
      <div class="gsStat"><span><b>${me.pts}</b> pts</span><span><b>${me.w}</b>V</span><span><b>${me.l}</b>D</span><span><b>${me.d}</b>E</span><span>🔥 <b>${me.streak}</b></span></div></div></div></div>
     <h2 style="margin-top:18px">🎮 Jugar</h2>
     <p class="sub" style="font-size:15px;margin:0 0 8px">Partidos de 3 minutos: gana quien tenga más goles al acabar la cuenta atrás.</p>
-    ${GS.waiting ? `<div class="gsInv"><span>⌛ Tu partida ${GS.waiting.friendly ? 'amistosa' : 'puntuable'} está abierta. Esperando rival…</span><button type="button" class="ghost" data-cancel="${GS.waiting.id}">Cancelar</button></div>` :
-      `<div class="row"><button type="button" data-create="0">⭐ Crear partida puntuable</button><button type="button" class="ghost" data-create="1">🙂 Crear amistosa</button></div>`}
+    ${GS.waiting ? `<div class="gsInv"><span>⌛ Tu partida ${GS.waiting.friendly ? 'amistosa' : 'competitiva'} está abierta. Esperando rival…</span><button type="button" class="ghost" data-cancel="${GS.waiting.id}">Cancelar</button></div>` :
+      `<div class="row"><button type="button" data-create="0">⭐ Crear partida competitiva</button><button type="button" class="ghost" data-create="1">🙂 Crear amistosa</button></div>`}
     <div class="row"><button type="button" class="ghost" id="gsAI">🤖 Entrenamiento vs IA (no puntúa)</button><button type="button" class="ghost" id="gsChFicha">👤 Cambiar ficha</button></div>
     <h3 style="margin:14px 0 6px;font:800 22px 'Barlow Condensed',sans-serif">🚪 Partidas abiertas</h3>
-    <div class="gsPeers">${GS.open.length ? GS.open.map(o => `<div class="gsOpen"><b>${E(o.name)} <span class="gsDivTag" style="border-color:${DIVC[o.div]};color:${DIVC[o.div]}">${o.div}</span></b><span class="gsTag">${o.friendly ? '🙂 amistosa' : '⭐ puntúa'}</span><button type="button" data-join="${o.id}">Unirme</button></div>`).join('') : '<p class="sub" style="font-size:15px">No hay partidas abiertas ahora mismo. Crea una y espera rival, o entrena contra la IA.</p>'}</div>
+    <div class="gsPeers">${GS.open.length ? GS.open.map(o => `<div class="gsOpen"><b>${E(o.name)} <span class="gsDivTag" style="border-color:${DIVC[o.div]};color:${DIVC[o.div]}">${o.div}</span></b><span class="gsTag">${o.friendly ? '🙂 amistosa' : '⭐ competitiva'}</span><button type="button" data-join="${o.id}">Unirme</button></div>`).join('') : '<p class="sub" style="font-size:15px">No hay partidas abiertas ahora mismo. Crea una y espera rival, o entrena contra la IA.</p>'}</div>
     ${liveHtml()}
     <h2 style="margin-top:22px">🏆 Garra Stars</h2>
     <div class="gsTabs">
@@ -265,7 +265,7 @@
     return `<h2 style="margin-top:18px">🔴 Directo</h2><div class="gsPeers">${L.length ? L.map(m => `<div class="gsOpen"><b>${E(m.a)} ${m.goalsA} - ${m.goalsB} ${E(m.b)}</b><span class="gsTag">${m.viewers ? '👁 ' + m.viewers + ' · ' : ''}⏱️ ${fmtClock(m.timeLeftMs)}${m.friendly ? ' · 🙂' : ''}</span><button type="button" data-watch="${m.id}">👀 Ver</button></div>`).join('') : '<p class="sub" style="font-size:15px">Ahora mismo no hay ningún partido en juego.</p>'}</div>`;
   }
   function rankRows(list, meId) {
-    if (!list.length) return '<p class="sub" style="font-size:15px">Todavía no hay partidas puntuables.</p>';
+    if (!list.length) return '<p class="sub" style="font-size:15px">Todavía no hay partidas competitivas.</p>';
     return list.map((p, i) => `<div class="gsRow${p.id === meId ? ' me' : ''}"><span style="width:22px">${i + 1}</span><b>${E(p.name)}</b><span class="gsDivTag" style="border-color:${DIVC[p.div]};color:${DIVC[p.div]}">${p.div}</span><b>${p.pts}</b></div>`).join('');
   }
   function pane_(t, meId) {

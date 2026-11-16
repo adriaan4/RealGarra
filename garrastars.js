@@ -12,7 +12,6 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
   const CELEB_MS = 1000;                   // pausa de celebración tras un gol: NO se descuenta de la cuenta atrás
   const FRAME_MS = 16;                     // ms por fotograma al animar un tiro (igual que en el navegador)
   const OPEN_TTL_MS = 15 * 60 * 1000;      // una partida abierta que nadie coge se borra sola
-  const COOLDOWN_MS = 2 * 3600 * 1000;     // entre los mismos dos rivales: si juegan más seguido, la revancha es amistosa (no puntúa)
   const HIST_KEEP = 25;
   const SEARCH_PUSH_COOLDOWN_MS = 2 * 60 * 1000; // aviso de "busca partida": como mucho 1 cada 2 min por persona (evita spam si crea/cancela sin parar)
   const lastSearchPush = new Map();        // uid -> instante del último aviso
@@ -173,7 +172,6 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     const s = ST(), ua = profile(match.a.uid), ub = profile(match.b.uid);
     const friendly = !!match.friendly;
     const now = Date.now();
-    ua.lastVs[match.b.uid] = now; ub.lastVs[match.a.uid] = now;
     let resA, resB, deltaA = 0, deltaB = 0;
     if (match.goalsA === match.goalsB) { resA = resB = 'd'; }
     else if (match.goalsA > match.goalsB) { resA = 'w'; resB = 'l'; } else { resA = 'l'; resB = 'w'; }
@@ -339,10 +337,8 @@ module.exports = function garraStars({ app, getDb, save, admin, bad, norm, crypt
     if (!m || m.status !== 'open') return bad(res, 'Esa partida ya no está disponible');
     if (m.a.uid === me.id) return bad(res, 'Esa partida es tuya: espera a que se una alguien');
     if (busyFor(me.id)) return bad(res, 'Ya tienes una partida abierta o en marcha');
-    const host = profile(m.a.uid), now = Date.now();
+    const now = Date.now();
     let note = '';
-    const last = Math.max(host.lastVs[me.id] || 0, mine.lastVs[m.a.uid] || 0);
-    if (!m.friendly && now - last < COOLDOWN_MS) { m.friendly = true; note = 'Habéis jugado hace muy poco: esta va de amistoso y no puntúa (para que nadie se infle el ranking jugando siempre contra el mismo rival)'; }
     m.b = { uid: me.id, ficha: mine.ficha, name: me.name };
     m.status = 'live'; m.turn = 'a'; m.bodies = freshBodies();
     m.endsAt = now + MATCH_MS; m.pausedUntil = 0; m.updatedAt = now;
