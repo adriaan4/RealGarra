@@ -137,21 +137,11 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 ## Garra Stars: lobby, partidos de 3 minutos y saque
 - Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (competitiva o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
 - Una partida abierta que nadie coge se borra sola a los 15 min (o se cancela desde el lobby). La cuenta atrás empieza cuando alguien se une.
-- **Gol**: cuenta en cuanto el balón toca el final del campo (la línea de fondo), por cualquier punto, no hace falta meterlo por la portería.
+- **Gol**: solo cuenta si el balón entra **entero por la boca de la portería** (entre los postes) y llega al fondo de la red. En el resto de la línea de fondo es pared y el balón rebota. Los postes son obstáculos físicos.
 - Cada partido dura **3 minutos con cuenta atrás**; al llegar a 0 gana quien tenga más goles (si hay empate, empate). El reloj lo lleva el servidor, así que aunque nadie esté mirando el partido se cierra solo y se aplican los puntos.
 - **Tras un gol**: se ve la celebración (~1 s) y todo vuelve a la formación inicial (3 fichas por equipo y balón al centro). Esa celebración y el vuelo del balón hasta la red **no se descuentan de la cuenta atrás**. **Saca quien ha encajado el gol.**
 - El entrenamiento vs IA también dura 3 minutos y sigue las mismas reglas; no puntúa ni toca el servidor.
-- Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (sin cambios).
-
-## Garra Stars: lobby, partidos de 3 minutos y saque
-- Ya no sale la lista de toda la gente de GarraBet. En **⭐ Garra Stars → 🎮 Jugar** hay tres opciones: **crear partida** (competitiva o amistosa), **unirse** a una partida abierta de otra persona (lista «🚪 Partidas abiertas») o **🤖 entrenamiento vs IA**.
-- Una partida abierta que nadie coge se borra sola a los 15 min (o se cancela desde el lobby). La cuenta atrás empieza cuando alguien se une.
-- Cada partido dura **3 minutos con cuenta atrás**; al llegar a 0 gana quien tenga más goles (si hay empate, empate). El reloj lo lleva el servidor, así que aunque nadie esté mirando el partido se cierra solo y se aplican los puntos.
-- **Tras un gol**: se ve la celebración (~1 s) y todo vuelve a la formación inicial (3 fichas por equipo y balón al centro). Esa celebración y el vuelo del balón hasta la red **no se descuentan de la cuenta atrás**. **Saca quien ha encajado el gol.**
-- El entrenamiento vs IA también dura 3 minutos y sigue las mismas reglas; no puntúa ni toca el servidor.
-- Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (sin cambios).
-- **🔴 Directo**: en el lobby aparece la lista de partidos en juego (marcador y tiempo); con «👀 Ver» se mira el partido en vivo (solo mirar, sin poder tocar nada). Los tiros del rival se ven casi al momento (se consulta cada segundo).
-- El tiro propio es instantáneo: al soltar, el navegador ya anima el chute con la misma simulación que el servidor y el servidor solo lo confirma.
+- Ficheros: servidor en `garrastars.js` (raíz), cliente en `public/garrastars.js`, físicas compartidas en `public/physics.js` (versión `gol-solo-entre-postes-v4`; comprueba la del servidor en `/api/stars/version`).
 
 ## Garra Stars: tiempo real y «tú siempre abajo»
 - **Sin retraso:** el servidor empuja cada tiro por SSE (`GET /api/stars/stream`, `?match=ID` para una partida o sin `match` para el lobby) al rival y a quien mira, en cuanto se chuta. Antes se enteraban preguntando cada 1 s y el servidor esperaba a guardar en Redis antes de contestar; ahora el guardado va en segundo plano (`saveSoon`, salvo al acabar la partida, que sí se espera porque cambia el ranking). Si el navegador/proxy no admite SSE, se vuelve a consultar cada 0,7 s. Los tiros que llegan mientras se anima otro se ponen en cola y se enseñan en orden.
