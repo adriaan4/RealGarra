@@ -53,14 +53,14 @@ function create(name){const g={id:Date.now().toString(36),name:name||'Mi carrera
   const sq=REAL.squad,want=['ANTONIO','JIMÉNEZ','MARIO','ADRI','DODU','CARLOS','PABLO','DAVID'];
   const t=mkTeam(g,5,REAL.garra,61,{gar:1,real:1,c:REAL.colors});g.me=t.id;t.st='Campo de Garra';
   t.pl.forEach(i=>delete g.P[i]);t.pl=[];
-  for(const nm of want){const s=sq.find(x=>x.name===nm);t.pl.push(mk(g,s.pos,63+ri(g,-4,5),s.name,s.n,t.id).id)}
+  for(const nm of want){const s=sq.find(x=>x.name===nm);{const q=mk(g,s.pos,63+ri(g,-4,5),s.name,s.n,t.id);q.real=1;t.pl.push(q.id)}}
   for(const s of sq)if(!want.includes(s.name)){const p=mk(g,s.pos,61+ri(g,-4,4),s.name,s.n,null);p.real=1}
   const by=n=>t.pl.find(i=>g.P[i].name===n);t.lu=['ANTONIO','JIMÉNEZ','MARIO','ADRI','CARLOS'].map(by);t.bn=['DODU','PABLO','DAVID'].map(by);t.cap=by('CARLOS');
   for(const r of REAL.teams){const ppg=r.pj?r.pts/r.pj:1.2;mkTeam(g,5,r.name,cl(61+(ppg-1.2)*3,58,66),{real:1})}
   const used=new Set([...g.divs[5].map(i=>g.T[i].name)]);
   for(let d=1;d<=4;d++)for(const n of LIGAS[d].split('|'))mkTeam(g,d,n,BASE[d-1]+ri(g,-2,2));
   for(let i=0;i<8;i++)mk(g,pick(g,['GK','DEF','MID','FWD']),60+ri(g,0,10),pick(g,FN)+' '+pick(g,SN),ri(g,2,60),null);
-  for(const x of Object.values(g.T))if(!x.gar)auto(g,x);
+  placeReal(g);g.rl=1;for(const x of Object.values(g.T))if(!x.gar)auto(g,x);
   setup(g);news(g,'Comienza DEL BARRO AL GARRO. ¡Garra FC empieza desde abajo!','season');return g}
 function side(g,t,home){const S=slots(t.fm),L=t.lu.map((id,i)=>{const p=g.P[id],sl=S[i];let e=p.ovr*(1-p.fat*.0015)+p.form+((p.mo==null?60:p.mo)-60)/20;if(p.pos!==sl)e*=(sl==='GK'||p.pos==='GK')?.7:.93;const f=e/p.ovr;return{p,sl,a:k=>p[k]*f}});
   const mean=(w,f)=>{let s=0,c=0;L.forEach(l=>{if(l.sl==='GK')return;const x=w[l.sl];s+=x*f(l);c+=x});return s/c},h=home?1.03:1;
@@ -111,6 +111,11 @@ function endSeason(g){const rec={s:g.season,ch:{},pro:[],rel:[],gp:null},tb={},m
   for(let i=0;i<4;i++)mk(g,pick(g,['GK','DEF','MID','FWD']),60+ri(g,0,12),pick(g,FN)+' '+pick(g,SN),ri(g,2,60),null);
   g.hist.push(rec);news(g,`Fin de temporada: Garra FC ${gp+1}º en ${gd}ª. ${rec.gp.ok?'¡Objetivo cumplido!':'Objetivo no cumplido.'}${rec.pro.includes(g.me)?' ¡ASCENSO!':rec.rel.includes(g.me)?' Descenso.':''}`,'season');
   g.season++;setup(g);if(g.T[g.me].div===1)news(g,'¡Garra FC está en Primera División! Del barro al Garro.','season');return rec}
+// Los jugadores del Real Garra que no están en tu equipo aparecen en el mercado: unos fichados por equipos de 4ª/5ª y otros como agentes libres
+function placeReal(g){const me=g.T[g.me],rl=Object.values(g.P).filter(p=>p.real&&!p.t&&!me.pl.includes(p.id)),ts=shuf(g,Object.values(g.T).filter(t=>!t.gar&&t.div>=4&&t.id!==g.me));
+  rl.forEach((p,k)=>{if(k%2||!ts.length)return;const O=ts.pop(),w=O.pl.map(i=>g.P[i]).filter(q=>q.pos===p.pos||q.pos!=='GK').sort((a,b)=>a.ovr-b.ovr)[0];if(!w)return;
+    O.pl=O.pl.map(i=>i===w.id?p.id:i);w.t=null;p.t=O.id;if(O.pl.some(i=>i!==p.id&&g.P[i].n===p.n))p.n=freeN(g,O);if(O.cap===w.id)O.cap=p.id;auto(g,O)})}
+function fixReal(g){const nm=new Set(REAL.squad.map(s=>s.name));Object.values(g.P).forEach(p=>{if(nm.has(p.name))p.real=1});placeReal(g);g.rl=1}
 const err=m=>({err:m});
 // ===== VESTUARIO: mensajes de los jugadores al mister (se guardan en g.msgs, dentro de la carrera) =====
 const DNm=['','Primera','Segunda','Tercera','Cuarta','Quinta'],MO=p=>p.mo==null?60:p.mo,mood=(p,d)=>{p.mo=cl(MO(p)+d,0,100)},eu=n=>Math.round(n).toLocaleString('es-ES')+' €';
@@ -214,7 +219,7 @@ function init(){return ready||(ready=(async()=>{const local=readDisk();
   let up=0;for(const [id,g] of Object.entries(local))if(!C[id]){C[id]=g;up++;await flush(id)} // primera vez: sube las carreras que hubiera en disco
   console.log('Barro: '+Object.keys(C).length+' carreras cargadas desde Upstash'+(up?' (+'+up+' subidas desde disco)':''))})().catch(e=>{ready=null;console.error('Barro: init falló: '+e.message);throw e}))}
 init().catch(()=>{});
-const load=id=>C[idOf(id)]||null;
+const load=id=>{const g=C[idOf(id)];if(g&&!g.rl){fixReal(g);save(g)}return g||null};
 const save=g=>{C[g.id]=g;try{fs.writeFileSync(file(g.id),JSON.stringify(g))}catch(e){}return REMOTE?flush(g.id):Promise.resolve()};
 const del=id=>{id=idOf(id);delete C[id];try{fs.unlinkSync(file(id))}catch(e){}return REMOTE?flush(id):Promise.resolve()};
 const list=uid=>Object.values(C).filter(g=>g&&g.owner===uid).map(g=>({id:g.id,name:g.name,season:g.season,round:g.round,div:g.T[g.me].div})).sort((a,b)=>b.id.localeCompare(a.id));
