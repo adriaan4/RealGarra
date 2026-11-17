@@ -439,6 +439,8 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 #top{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:3px solid var(--gold)}
 #top nav{position:static;border-bottom:0;z-index:auto}
 #top nav a[data-g]{font-size:22px;text-transform:uppercase;letter-spacing:.5px}
+#top nav a.adm{margin-left:auto;border:1px solid var(--line)}
+@media(max-width:520px){#top nav a.adm{flex:none;margin-left:0;padding:6px 9px}.adT{display:none}}
 #subnav{display:flex;gap:6px;padding:7px 18px 9px;background:#14100c;border-top:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 #subnav::-webkit-scrollbar{display:none}
 #subnav[hidden]{display:none}
@@ -446,7 +448,7 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 #subnav .sg[hidden]{display:none}
 #subnav a{flex:none;white-space:nowrap;color:var(--ink);text-decoration:none;font:600 18px "Barlow Condensed",sans-serif;padding:4px 14px;border-radius:99px;border:1px solid var(--line)}
 #subnav a.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
-@media(max-width:520px){#top nav a[data-g]{font-size:17px;padding:6px 5px;letter-spacing:0;text-transform:none;flex:1 1 auto;text-align:center}#top nav{gap:2px}#subnav{padding-left:12px;padding-right:12px}}
+@media(max-width:520px){#top nav img{height:30px;margin-right:0}#top nav a[data-g]{font-size:16px;padding:6px 4px;letter-spacing:0;text-transform:none;flex:1 1 auto;text-align:center}#top nav{gap:2px}#subnav{padding-left:12px;padding-right:12px}}
 @media(max-width:360px){#top nav a[data-g]{font-size:16px;padding:6px 4px}}
 .fbGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:26px;align-items:start}
 @media(max-width:780px){.fbGrid{grid-template-columns:1fr}}
@@ -475,16 +477,86 @@ a.qt{display:flex;flex-direction:column;gap:2px;background:var(--card);border:1p
 a.qt:hover{border-color:var(--gold);transform:translateY(-2px)}
 a.qt b{overflow-wrap:anywhere;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);line-height:1.1}
 a.qt span{font-size:14px;opacity:.7}
+
+/* ===== Rediseño v3: estilo "app de fútbol" (tarjetas, botones grandes, GarraBet claro en móvil) ===== */
+:root{--r:18px;--glass:linear-gradient(180deg,#201912,#16110c)}
+html{scroll-behavior:smooth}
+body{font-size:16.5px;background:#0d0b09}
+body::before{background:radial-gradient(900px 420px at 50% -80px,#3a2a10,transparent 70%),repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 56px,transparent 56px 112px),var(--bg)}
+input,select,textarea{font-size:16px}
+select{width:100%;min-height:54px;padding:10px 44px 10px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--glass) no-repeat right 14px center/14px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e2ab2c' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");-webkit-appearance:none;appearance:none;color:var(--ink);font-weight:600}
+main>section>h1{display:flex;align-items:center;gap:12px;font-size:clamp(34px,9vw,50px);text-transform:uppercase;letter-spacing:.5px;line-height:1;margin-bottom:12px}
+main>section>h1::after{content:"";flex:1;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--gold),transparent)}
+#top{background:rgba(13,11,9,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+#top nav a[data-g]{border:1px solid transparent}
+#top nav a[data-g].on,#subnav a.on{background:linear-gradient(180deg,#f2c34d,#d9a01f);box-shadow:0 2px 10px #e2ab2c44}
+.salon,.pv,.juegan,.gbtk{border-radius:var(--r);background:var(--glass);box-shadow:0 6px 20px #0006}
+.salon{border-top-width:3px}
+.hero{background:radial-gradient(420px 260px at 50% 30%,#e2ab2c1c,transparent 70%);border-radius:24px;padding:18px 6px}
+.units>div{background:#ffffff0a;border:1px solid var(--line);border-radius:16px;padding:8px 4px;min-width:clamp(58px,17vw,96px)}
+.units .big{font-size:clamp(40px,11vw,84px)}
+.fbM,.fbTb td,.fbTb th{border-color:#ffffff12}
+a.qt,.cand,.p{border-radius:14px;background:var(--glass)}
+a.qt{min-height:72px;justify-content:center}
+button{border-radius:12px;min-height:46px;font-weight:600}
+button:active,.gbb:active,a.qt:active{transform:scale(.97)}
+.tw{border-radius:14px}
+/* --- GarraBet --- */
+#gbName>.sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;background:linear-gradient(135deg,#3b2a0e,#1a130b);border:1.5px solid var(--gold);border-radius:var(--r);padding:12px 16px;margin:6px 0 12px;font-size:16px}
+#gbName>.sub b:first-of-type{font:800 24px "Barlow Condensed",sans-serif;text-transform:uppercase;color:var(--ink)}
+#gbBal{font:800 32px/1 "Barlow Condensed",sans-serif;color:var(--gold)}
+#gbMatch{font-size:17px;border-color:var(--gold)}
+.gbm{background:var(--glass);border:1px solid var(--line);border-radius:20px;padding:14px;margin:12px 0;box-shadow:0 6px 20px #0006}
+.gbm h3{display:flex;align-items:center;gap:8px;margin:0 0 12px;font:800 19px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--gold)}
+.gbm h3::before{content:"";width:5px;height:20px;border-radius:3px;background:var(--red);flex:none}
+.gbbtns{gap:8px}
+.gbb{background:#2a2016;color:var(--ink);border:1.5px solid #4a3822;border-radius:14px;padding:8px 6px;min-height:64px;justify-content:center;gap:2px;transition:transform .1s,background .15s}
+.gbb small{font:600 14px/1.15 Barlow,sans-serif;opacity:.85;text-align:center;overflow-wrap:anywhere}
+.gbb b{font:800 26px/1 "Barlow Condensed",sans-serif;color:var(--gold)}
+.gbb:hover:not(:disabled){border-color:var(--gold)}
+.gbb.on{background:linear-gradient(180deg,#f2c34d,#d9a01f);border-color:#fff3;color:#0d0b09;box-shadow:0 0 0 3px #e2ab2c44}
+.gbb.on b,.gbb.on small{color:#0d0b09;opacity:1}
+.gbb i{background:var(--red);color:#fff;top:-8px;right:6px;border-radius:99px;letter-spacing:.5px}
+.gbb.win{background:#14391f;border-color:#2fa24f}.gbb.win b{color:#6fe08a}
+.gbb.lose{background:#3a1717;border-color:#7a2a2a;opacity:.75}.gbb.lose b{color:#e58a8a}
+.gbb:disabled{opacity:.5}
+.gbbtns.three .gbb small{font-size:13px}
+.gbs::-webkit-slider-runnable-track{height:6px;background:linear-gradient(90deg,var(--gold) var(--p),#ffffff26 var(--p))}
+.gbs::-moz-range-track{background:#ffffff26}.gbs::-moz-range-progress{background:var(--gold)}
+.gbs::-webkit-slider-thumb{width:30px;height:30px;margin-top:-12px;background:var(--gold);border:3px solid #0d0b09;box-shadow:0 2px 8px #000a}
+.gbs::-moz-range-thumb{width:26px;height:26px;background:var(--gold);border:3px solid #0d0b09}
+.gbexg .gbb{min-height:46px;border-radius:10px}.gbexg .gbb b{font-size:17px}
+.gbslip{background:rgba(22,17,12,.96);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1.5px solid var(--gold);border-radius:22px;padding:14px;box-shadow:0 -6px 30px #000c}
+.gbslip h3{font-size:24px;text-transform:uppercase}
+.gbsl{border-color:#ffffff14}
+.gbsl button{width:36px;min-height:36px;padding:0;border-radius:50%}
+.gbtot{font-size:20px}.gbtot b{font-size:32px}
+.gbtk{border:1px solid var(--line);border-left:4px solid var(--gold);padding:12px 14px;margin:10px 0}
+.gbtk ul{list-style:none;padding-left:0;margin:8px 0 0}.gbtk li{padding:5px 0;border-top:1px solid #ffffff12}
+.gbchip{padding:3px 12px;font-size:14px;text-transform:uppercase;letter-spacing:.5px}
+.gbr li{border-radius:14px;background:var(--glass)}
+.gbr li:nth-child(1){border-left:4px solid #f2c34d}.gbr li:nth-child(2){border-left:4px solid #c9ced6}.gbr li:nth-child(3){border-left:4px solid #c8814a}
+#garrabet h2{font-size:28px;text-transform:uppercase}
+@media(max-width:520px){
+ main{padding:16px 12px 70px}
+ .gbm{padding:12px;border-radius:18px}
+ .gbb b{font-size:24px}
+ .gbbtns.three{gap:6px}
+ .gbslip{margin:14px -4px}
+ #gbMatch{font-size:15px;padding-left:12px}
+ .gbexg{min-width:0;grid-template-columns:18px repeat(6,minmax(0,1fr));gap:4px}
+ .gbexg .gbb{min-width:0;padding:2px 0;min-height:42px}.gbexg .gbb b{font-size:14px}
+}
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
 <header id="top">
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio" data-g="inicio">Inicio</a><a href="#plantilla" data-g="equipo">Equipo</a><a href="#mvp" data-g="aficion">Afición</a><a href="#garrabet" data-g="juegos">Juegos</a><a href="#patrocinadores" data-g="club">Club</a></nav>
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio" data-g="inicio">Inicio</a><a href="#plantilla" data-g="equipo">Equipo</a><a href="#mvp" data-g="aficion">Afición</a><a href="#garrabet" data-g="juegos">Juegos</a><a href="#patrocinadores" data-g="club">Club</a><a href="#admin" data-g="admin" class="adm" aria-label="Admin" title="Admin">⚙️<span class="adT"> Admin</span></a></nav>
 <div id="subnav" hidden>
  <div class="sg" data-g="equipo"><a href="#plantilla">Plantilla</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a></div>
  <div class="sg" data-g="aficion"><a href="#mvp">MVP</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#buzon">📮 Buzón</a></div>
  <div class="sg" data-g="juegos"><a href="#garrabet">GarraBet</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a></div>
- <div class="sg" data-g="club"><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></div>
+ <div class="sg" data-g="club"><a href="#patrocinadores">Patrocinadores</a></div>
 </div>
 </header>
 <main>
@@ -1753,8 +1825,8 @@ setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn(
 </script>
 <script>
 // Menú por grupos: marca el grupo activo y enseña su submenú (todas las secciones siguen igual, solo cambia cómo se llega a ellas)
-(()=>{const G={equipo:['plantilla','calendario','clasificacion','cronicas'],aficion:['mvp','porra','fantasy','buzon'],juegos:['garrabet','penaltis','garrastars'],club:['patrocinadores','admin']};
-function sync(){const h=(location.hash||'#inicio').slice(1);let g=h==='inicio'?'inicio':'';for(const k in G)if(G[k].includes(h))g=k;
+(()=>{const G={equipo:['plantilla','calendario','clasificacion','cronicas'],aficion:['mvp','porra','fantasy','buzon'],juegos:['garrabet','penaltis','garrastars'],club:['patrocinadores']};
+function sync(){const h=(location.hash||'#inicio').slice(1);let g=h==='inicio'||h==='admin'?h:'';for(const k in G)if(G[k].includes(h))g=k;
  document.querySelectorAll('nav a[data-g]').forEach(a=>a.classList.toggle('on',a.dataset.g===g));
  document.querySelectorAll('#subnav .sg').forEach(x=>x.hidden=x.dataset.g!==g);
  const sn=document.getElementById('subnav');sn.hidden=!G[g];
