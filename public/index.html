@@ -625,7 +625,7 @@ dialog button{min-height:48px}
 <div class="dHead"><img src="escudo.png" alt=""><div><b>REAL GARRA</b><small>BALONPIÉ</small></div></div>
 <a href="#inicio">🏠 Inicio</a>
 <p class="dG">Equipo</p><a href="#plantilla">👕 Plantilla</a><a href="#calendario">📅 Calendario</a><a href="#clasificacion">📊 Clasificación</a><a href="#cronicas">📰 Crónicas</a>
-<p class="dG">Afición</p><a href="#mvp">⭐ MVP</a><a href="#porra">🦁 Porra</a><a href="#fantasy">🏆 Fantasy</a><a href="#buzon">📮 Buzón</a>
+<p class="dG">Afición</p><a href="#mvp">⭐ MVP</a><a href="#porra">🦁 Porra</a><a href="#fantasy">🏆 Fantasy</a><a href="#buzon">📮 Buzón</a><a href="#prensa">🎙️ Rueda de prensa</a>
 <p class="dG">Juegos</p><a href="#garrabet">🎰 GarraBet</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a><a href="/barro/">🏟️ Del Barro al Garro</a>
 <p class="dG">Club</p><a href="#patrocinadores">🤝 Patrocinadores</a><a href="#admin">⚙️ Admin</a>
 </nav>
@@ -674,6 +674,7 @@ dialog button{min-height:48px}
 
 <section id="fantasy" class="fx" hidden><div id="fxRoot"></div><div id="fxBar" role="tablist" aria-label="Fantasy"></div></section>
 <section id="vestuario" hidden><h1>🗣️ Vestuario</h1><div id="vsRoot"><p>Cargando…</p></div></section>
+<section id="prensa" hidden><h1>🎙️ Rueda de Prensa</h1><div id="prsRoot"><p>Cargando…</p></div></section>
 <section id="buzon" hidden><div id="bzRoot"><p>Cargando…</p></div></section>
 <section id="porra" hidden><h1>🦁 PORRA GARRA</h1>
  <p class="sub">Adivina los resultados del Garra y suma puntos. Entras con tu mismo nombre de GarraBet: sin registros ni contraseñas.</p>
@@ -766,6 +767,7 @@ dialog button{min-height:48px}
    <button type="button" class="atab" data-at="porra" role="tab">🦁 Porra</button>
    <button type="button" class="atab" data-at="fantasy" role="tab">🏆 Fantasy</button>
    <button type="button" class="atab" data-at="vestuario" role="tab">🗣️ Vestuario</button>
+   <button type="button" class="atab" data-at="prensa" role="tab">🎙️ Rueda de prensa</button>
    <button type="button" class="atab" data-at="buzon" role="tab">📮 Buzón</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
    <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/<wbr>Nombres</button>
@@ -853,6 +855,7 @@ dialog button{min-height:48px}
   <details class="ad"><summary>🏆 Porra final de temporada</summary><div class="adb"><div id="prAFinal"><p>Cargando…</p></div></div></details>
   </div>
   <div class="apane vAd" data-ap="vestuario" hidden><div id="vsAdmin"><p>Cargando…</p></div></div>
+  <div class="apane prsAd" data-ap="prensa" hidden><div id="prsAdmin"><p>Cargando…</p></div></div>
   <div class="apane bzAd" data-ap="buzon" hidden><h3>📮 Sugerencias y quejas</h3><div id="bzAdmin"><p>Cargando…</p></div></div>
   <div class="apane" data-ap="fantasy" hidden><div id="fxAdmin"><p>Cargando…</p></div></div>
   <div class="apane" data-ap="eco" hidden>
@@ -1918,6 +1921,7 @@ addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.c
 <script src="insta.js?v=20261110b" defer></script>
 <script src="fantasy.js?v=20261109e" defer></script>
 <script src="vestuario.js" defer></script>
+<script src="prensa.js" defer></script>
 <script src="buzon.js" defer></script>
 <script src="mla-admin.js" defer></script>
 <script src="physics.js?v=gol-v4" defer></script>
