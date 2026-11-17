@@ -802,7 +802,7 @@ dialog button{min-height:48px}
   <details class="ad" open><summary>🗳️ Votación MVP</summary><div class="adb">
    <p class="sub" style="font-size:15px">La votación se abre <b>1 hora después</b> del inicio del partido y el MVP se da solo <b>al día siguiente a las 20:00</b> (hora de Madrid).</p>
    <div class="row"><input id="roundRival" placeholder="Rival del partido votado"><input id="roundStart" type="datetime-local" aria-label="Inicio del partido votado"></div>
-   <h3>Quién juega <small>(solo ellos salen para votar; si no marcas a nadie salen todos)</small></h3><div class="row"><button type="button" class="ghost" id="playAll">Marcar toda la plantilla</button><button type="button" class="ghost" id="playNone">Quitar todos</button></div><div class="grid" id="playedBox"></div>
+   <h3>Convocados <small>(solo ellos salen para votar; toca un nombre para ponerlo o quitarlo, se guarda solo)</small></h3><div class="row"><button type="button" class="ghost" id="playAll">Marcar todos</button><button type="button" class="ghost" id="playNone">Desmarcar todos</button><b id="playCount" style="margin-left:auto"></b></div><div class="grid" id="playedBox"></div>
    <div class="row"><button id="saveRound">Guardar partido votado</button><button id="closeRound">Cerrar votación y mostrar MVP ya</button></div>
    <p class="msg" id="roundInfo"></p>
    <h3>Votos de esta votación <small>(quitar un voto deja votar otra vez a esa persona)</small></h3><div id="adminVotes"></div>
@@ -941,7 +941,7 @@ function render(){
  $('#adminList').innerHTML=S.players.map(p=>`<div class="p"><b>${esc(plNum(p.id))}${esc(p.name)}</b></div>`).join('')||'<p>No hay jugadores.</p>';
  const psig=S.players.map(p=>p.id).join(',')+'|'+(S.round.played||[]).join(',');
  if(psig!==playedSig&&!$('#playedBox').contains(document.activeElement)){playedSig=psig;
-  $('#playedBox').innerHTML=S.players.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}"${(S.round.played||[]).includes(p.id)?' checked':''}> ${esc(plNum(p.id)+p.name)}</label>`).join('')||'<p>No hay jugadores.</p>'}
+  $('#playedBox').innerHTML=S.players.map(p=>`<label class="pchk"><input type="checkbox" value="${p.id}"${(!(S.round.played||[]).length||(S.round.played||[]).includes(p.id))?' checked':''}> ${esc(plNum(p.id)+p.name)}</label>`).join('')||'<p>No hay jugadores.</p>';playCount()}
  $('#roundInfo').textContent=S.round.opens?'Se abre: '+mvpDt(S.round.opens)+' · Se cierra y da el MVP: '+mvpDt(S.round.closes)+' · Ahora: '+({wait:'aún sin abrir',open:'abierta',closed:'cerrada'}[S.round.phase]||''):'Sin hora de inicio: la votación está siempre abierta. Pon el inicio del partido para programarla.';
  $('#adminVotes').innerHTML=S.round.votes.map((v,i)=>`<div class="pv vh"><span>Voto ${i+1} → <b>${esc(v.playerName)}</b>${v.name?' <small>('+esc(v.name)+')</small>':''}</span><button class="ghost" data-rv="${v.id}">Quitar voto</button></div>`).join('')||'<p>Todavía no hay votos.</p>';
  $('#adminHist').innerHTML=S.history.map(h=>`<div class="pv vh"><span><b>${names(h)}</b> · Garra vs ${esc(h.rival)} (${top1(h)} de ${h.totalVotes||0} votos)</span><button class="ghost" data-h="${h.id}">Borrar MVP</button></div>`).join('')||'<p>No hay MVPs guardados.</p>';
@@ -1089,8 +1089,12 @@ $('#delMatch').onclick=async()=>{if(!confirm('¿Borrar el próximo partido (fech
 act('#saveRound',()=>adm('/api/round','PUT',{rival:$('#roundRival').value,start:$('#roundStart').value?new Date($('#roundStart').value).toISOString():'',played:[...document.querySelectorAll('#playedBox input:checked')].map(i=>+i.value)}).then(()=>{playedSig=''}),'Partido votado guardado');
 $('#closeRound').onclick=async()=>{if(!confirm('¿Cerrar la votación y mostrar el MVP?'))return;
  try{const e=await adm('/api/round/close','POST');filled=false;await load();$('#dlgRival').textContent=e.rival;$('#dlgTxt').innerHTML=names(e);$('#dlg').showModal()}catch(err){$('#amsg').textContent=err.message}};
-$('#playAll').onclick=()=>document.querySelectorAll('#playedBox input').forEach(i=>i.checked=true);
-$('#playNone').onclick=()=>document.querySelectorAll('#playedBox input').forEach(i=>i.checked=false);
+const playCount=()=>{const all=document.querySelectorAll('#playedBox input'),on=document.querySelectorAll('#playedBox input:checked');$('#playCount').textContent=all.length?(on.length?'Convocados: '+on.length+' de '+all.length:'Marca a quien juega'):''};
+let playT;const playSave=()=>{clearTimeout(playT);playT=setTimeout(async()=>{const ids=[...document.querySelectorAll('#playedBox input:checked')].map(i=>+i.value);if(!ids.length)return; // sin nadie marcado no se guarda: vacío significaría «salen todos»
+ try{await adm('/api/round','PUT',{played:ids});playedSig=S.players.map(p=>p.id).join(',')+'|'+ids.join(',');$('#amsg').textContent='Convocados guardados ('+ids.length+')';await load()}catch(e){$('#amsg').textContent=e.message}},350)};
+$('#playedBox').addEventListener('change',()=>{playCount();playSave()});
+$('#playAll').onclick=()=>{document.querySelectorAll('#playedBox input').forEach(i=>i.checked=true);playCount();playSave()};
+$('#playNone').onclick=()=>{document.querySelectorAll('#playedBox input').forEach(i=>i.checked=false);playCount()}; // se desmarca para ir eligiendo uno a uno; se guarda al marcar al primero
 $('#dlgOk').onclick=()=>$('#dlg').close();
 $('#exportBtn').onclick=async()=>{const r=await fetch('/api/export',{headers:{'x-admin':pw}});const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='garra-datos.json';a.click()};
 $('#importFile').onchange=async e=>{const f=e.target.files[0];if(!f||!confirm('Esto reemplaza todos los datos actuales por los del archivo. ¿Seguro?'))return;

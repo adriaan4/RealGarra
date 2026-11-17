@@ -630,7 +630,7 @@ app.delete('/api/cronica/:j', admin, async (req, res) => {
   res.json({ ok: true });
 });
 app.put('/api/round', admin, async (req, res) => {
-  db.round.rival = String(req.body.rival || '').trim();
+  if (typeof req.body.rival === 'string') db.round.rival = req.body.rival.trim();
   if (Array.isArray(req.body.played)) { // quién juega: solo ellos salen para votar (lista vacía = todos)
     const ids = new Set(db.players.map(p => p.id));
     db.round.played = [...new Set(req.body.played.map(Number))].filter(id => ids.has(id));
