@@ -401,7 +401,8 @@ app.post('/api/vote', async (req, res) => {
   const w = roundWindow();
   if (w && w.phase === 'wait') return bad(res, 'La votación se abre ' + fmtDate(w.opens) + ' (1 hora después de empezar el partido)');
   if (w && w.phase === 'closed') return bad(res, 'La votación ya está cerrada');
-  if (roundPlayed().length && !roundPlayed().includes(pl.id)) return bad(res, 'Ese jugador no ha jugado este partido');
+  if (!roundPlayed().length) return bad(res, 'Todavía no hay convocados para votar');
+  if (!roundPlayed().includes(pl.id)) return bad(res, 'Ese jugador no ha jugado este partido');
   if (db.round.votes.some(v => v.device === device)) return bad(res, 'Ya has votado en esta votación');
   db.round.votes.push({ id: db.nextId++, playerId: pl.id, playerName: pl.name, device });
   await save();
@@ -631,7 +632,7 @@ app.delete('/api/cronica/:j', admin, async (req, res) => {
 });
 app.put('/api/round', admin, async (req, res) => {
   if (typeof req.body.rival === 'string') db.round.rival = req.body.rival.trim();
-  if (Array.isArray(req.body.played)) { // quién juega: solo ellos salen para votar (lista vacía = todos)
+  if (Array.isArray(req.body.played)) { // quién juega: solo ellos salen para votar (lista vacía = nadie)
     const ids = new Set(db.players.map(p => p.id));
     db.round.played = [...new Set(req.body.played.map(Number))].filter(id => ids.has(id));
     if (db.round.played.length) db.round.votes = db.round.votes.filter(v => db.round.played.includes(v.playerId));
