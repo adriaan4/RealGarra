@@ -170,3 +170,8 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 - Porteros: SAL · PAR · SAQ · REF · VEL · POS (en lugar de RIT/TIR/PAS/REG/DEF/FIS), también en Entrenamiento. Pesan en su media y en las paradas; el equilibrio de goles se mantiene. Las carreras antiguas convierten sus porteros solas al abrirse.
 - Potencial: los jugadores del Garra (y cualquiera que esté en tu plantilla) no tienen techo (POT 99). Los demás siguen con su potencial.
 - Al acabar el partido sale «FINAL» con el marcador en medio del campo. La media con un decimal (p. ej. 67,2) solo se ve en el resumen final, dentro de «Evolución tras el partido»; en el resto de la app sale la media entera.
+
+### Barro: rueda de prensa, saque de centro
+- **Rueda de prensa** (tras cada jornada: botón en el resumen final, tarjeta en Inicio y pestaña «Prensa»): 3 preguntas de periodistas (SER, TVE, TV) y respondes con texto libre. Lo que dices cambia la moral: elogiar a un jugador le sube, criticarle le baja, ser evasivo enfada al vestuario. Foto de fondo: `barro/public/rueda.jpg`.
+- **IA:** pon la variable `ANTHROPIC_API_KEY` en Render para que la IA invente las preguntas y valore las respuestas (modelo por defecto `claude-haiku-5-5`, cámbialo con `PRENSA_MODEL`). Sin clave funciona en «modo básico» (preguntas con plantillas y valoración por palabras). La IA solo puede mover la moral dentro de límites (±12 un jugador, ±6 el equipo) y solo de jugadores de tu plantilla.
+- **Partido:** tras un gol todos vuelven a sus posiciones y saca de centro el equipo que lo ha encajado. Las bolitas de los jugadores con foto son algo más pequeñas.
