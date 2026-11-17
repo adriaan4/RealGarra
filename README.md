@@ -164,3 +164,7 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 ### Barro: fotos, movimiento y jugadores del Garra en el mercado
 - En el partido los jugadores siguen al balón por todo el campo (delanteros más, defensas menos) y los de Garra salen con su foto de la Plantilla (se piden a `/api/squad-photo/:id` de la web principal y se casan por nombre; sin foto, el dorsal de siempre). Las fotos también salen en las tarjetas y en los mensajes.
 - Al crear la carrera, los jugadores del Garra que no empiezan en tu once se reparten: unos fichados por equipos de 4ª/5ª y otros agentes libres. Salen en Mercado → «Jugadores del Real Garra». Las carreras ya empezadas se ajustan solas la primera vez que se abren.
+
+### Barro: evolución tras el partido y porteros
+- Al terminar cada partido, el resumen muestra «📈 Evolución tras el partido»: según la valoración y el resultado cada jugador suma o resta décimas; al llegar a ±1 sube o baja 1 un atributo (goleadores → TIR, asistentes → PAS, porteros con paradas → PAR/REF). Muy lento y nunca por encima del potencial. Se aplica a todos los equipos. Los cambios reales salen en Noticias.
+- Porteros: SAL · PAR · SAQ · REF · VEL · POS (en lugar de RIT/TIR/PAS/REG/DEF/FIS), también en Entrenamiento. Pesan en su media y en las paradas; el equilibrio de goles se mantiene. Las carreras antiguas convierten sus porteros solas al abrirse.

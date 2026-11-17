@@ -4,8 +4,8 @@ const REAL=JSON.parse(fs.readFileSync(path.join(__dirname,'real.json'),'utf8'));
 const FM={'1-2-1':[1,2,1],'2-1-1':[2,1,1],'1-1-2':[1,1,2],'2-2':[2,2,0]};
 const slots=f=>['GK',...Array(FM[f][0]).fill('DEF'),...Array(FM[f][1]).fill('MID'),...Array(FM[f][2]).fill('FWD')];
 const K=['pace','shoot','pass','drib','def','phys'];
-const WT={GK:[0,0,.15,0,.65,.2],DEF:[.1,.05,.15,.1,.4,.2],MID:[.15,.15,.3,.25,.05,.1],FWD:[.25,.35,.1,.2,0,.1]};
-const BI={GK:[-12,-25,-5,-18,8,0],DEF:[-4,-14,-2,-8,10,6],MID:[0,-2,8,6,-6,-2],FWD:[6,10,-4,4,-18,0]};
+const WT={GK:[.05,.1,.1,.25,.35,.15],DEF:[.1,.05,.15,.1,.4,.2],MID:[.15,.15,.3,.25,.05,.1],FWD:[.25,.35,.1,.2,0,.1]};
+const BI={GK:[-4,2,-2,4,6,2],DEF:[-4,-14,-2,-8,10,6],MID:[0,-2,8,6,-6,-2],FWD:[6,10,-4,4,-18,0]};
 const GATE=[5000,3200,1800,1000,600],SPON=[6000,4000,2200,1200,600],BUD=[400000,200000,100000,50000,30000],BASE=[80,74,69,65,61];
 const LIGAS={1:'Bayern de los Caídos|Inter Mitente|AC Milaness|Manchester Piti|Paris San Germán|Borussia Dormund|Liverpool de Janeiro|Juventus de Turín y Tónica|Arsenal de Copas|Chelsea Pensioners|Tottenham Hotspurs|Manchester Unitedos',2:'Schalke Temeto|Ajax Tú|Atleti Coño|Real Suciedad|Bayer Leverkusen y Coca-Cola|Nápoles de Copas|Roma Imperiale|Lazio de la Droga|Fiorentina de la Vega|Atalanta de Copas|Newcastle United Kingdom|PSV Eindhoven de la Borrachera',3:'Real Pagaygoza|Celta de Vino|Vodka Juniors|Oseasuna|Real Fachadolida|Deportivo Alcohólico|Getafe de Copas|Eintracht de Resaca|Rayo Vallecanabis|Sporting de Gijón Tonic|Nottingham Forest Gump|Club Brujas de Copas',4:'Mallorca de Noche|Espanyol de Bar|Elche\'s|Cádiz Club de Fútbol y Birras|Granada Mecánica|Almería de Servicio|Leganés de la Frontera|Girona\'t|Racing de Santander y Gin|Huesca la Vista|Numancia de Copas|Atlético Garrafón'};
 const P1=['Atlético','Real','Deportivo','Racing','Unión','Sporting','Athletic','CD','Club','Juventud'];
@@ -18,9 +18,11 @@ const shuf=(g,a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(g,0,i);[
 const wpick=(g,a,f)=>{const w=a.map(f),s=w.reduce((x,y)=>x+y,0);let r=rnd(g)*s;for(let i=0;i<a.length;i++){if((r-=w[i])<=0)return a[i]}return a[a.length-1]};
 const val=o=>Math.round((o-52)**3*6/100)*100;
 const raw=p=>K.reduce((s,k,i)=>s+p[k]*WT[p.pos][i],0),ovrOf=p=>cl(Math.round(raw(p)),60,99);
+const LBL=p=>p.pos==='GK'?{pace:'VEL',shoot:'SAL',pass:'SAQ',drib:'REF',def:'PAR',phys:'POS'}:{pace:'RIT',shoot:'TIR',pass:'PAS',drib:'REG',def:'DEF',phys:'FIS'};
+const gkq=p=>(p.def*.45+p.drib*.25+p.phys*.15+p.shoot*.15)+2.5; // calidad del portero en el motor: paradas, reflejos, posicionamiento y salidas (+2.5 mantiene el equilibrio de antes)
 const refresh=p=>{p.ovr=ovrOf(p);if(p.ovr>p.pot)p.pot=p.ovr;p.val=val(p.ovr);p.sal=Math.round(p.val/150*(p.sx||1))};
-function mk(g,pos,base,name,n,t){const p={id:g.pid++,name,pos,n,t,fat:0,form:0,inj:0,tr:0,gr:+(.8+rnd(g)*.5).toFixed(2),ct:ri(g,1,3),s:{g:0,a:0,app:0,rt:0,yc:0}};
-  BI[pos].forEach((b,i)=>p[K[i]]=cl(base+b+ri(g,-5,5),30,99));const d=Math.round(base-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));
+function mk(g,pos,base,name,n,t){const p={id:g.pid++,name,pos,n,t,gk:1,fat:0,form:0,inj:0,tr:0,gr:+(.8+rnd(g)*.5).toFixed(2),ct:ri(g,1,3),s:{g:0,a:0,app:0,rt:0,yc:0}};
+  BI[pos].forEach((b,i)=>p[K[i]]=cl(Math.round(base+b+ri(g,-5,5)),30,99));const d=Math.round(base-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));
   p.ovr=ovrOf(p);p.pot=cl(p.ovr+ri(g,0,12),60,99);p.val=val(p.ovr);p.sal=Math.round(p.val/150);g.P[p.id]=p;return p}
 const freeN=(g,t)=>{const u=new Set(t.pl.map(i=>g.P[i].n));let n=2;while(u.has(n))n++;return n};
 function mkTeam(g,div,name,base,o={}){const id='t'+g.tid++,h=ri(g,0,359);
@@ -60,13 +62,13 @@ function create(name){const g={id:Date.now().toString(36),name:name||'Mi carrera
   const used=new Set([...g.divs[5].map(i=>g.T[i].name)]);
   for(let d=1;d<=4;d++)for(const n of LIGAS[d].split('|'))mkTeam(g,d,n,BASE[d-1]+ri(g,-2,2));
   for(let i=0;i<8;i++)mk(g,pick(g,['GK','DEF','MID','FWD']),60+ri(g,0,10),pick(g,FN)+' '+pick(g,SN),ri(g,2,60),null);
-  placeReal(g);g.rl=1;for(const x of Object.values(g.T))if(!x.gar)auto(g,x);
+  placeReal(g);g.rl=1;g.gkv=1;for(const x of Object.values(g.T))if(!x.gar)auto(g,x);
   setup(g);news(g,'Comienza DEL BARRO AL GARRO. ¡Garra FC empieza desde abajo!','season');return g}
-function side(g,t,home){const S=slots(t.fm),L=t.lu.map((id,i)=>{const p=g.P[id],sl=S[i];let e=p.ovr*(1-p.fat*.0015)+p.form+((p.mo==null?60:p.mo)-60)/20;if(p.pos!==sl)e*=(sl==='GK'||p.pos==='GK')?.7:.93;const f=e/p.ovr;return{p,sl,a:k=>p[k]*f}});
+function side(g,t,home){const S=slots(t.fm),L=t.lu.map((id,i)=>{const p=g.P[id],sl=S[i];let e=p.ovr*(1-p.fat*.0015)+p.form+((p.mo==null?60:p.mo)-60)/20;if(p.pos!==sl)e*=(sl==='GK'||p.pos==='GK')?.7:.93;const f=e/p.ovr;return{p,sl,f,a:k=>p[k]*f}});
   const mean=(w,f)=>{let s=0,c=0;L.forEach(l=>{if(l.sl==='GK')return;const x=w[l.sl];s+=x*f(l);c+=x});return s/c},h=home?1.03:1;
-  return{L,A:h*mean({FWD:1.4,MID:1,DEF:.5},l=>l.a('shoot')*.4+l.a('drib')*.3+l.a('pace')*.3),C:h*mean({MID:1.5,FWD:.8,DEF:.8},l=>l.a('pass')),D:h*mean({DEF:1.4,MID:.8,FWD:.3},l=>l.a('def')*.7+l.a('phys')*.3),GK:L[0].a('def')}}
+  return{L,A:h*mean({FWD:1.4,MID:1,DEF:.5},l=>l.a('shoot')*.4+l.a('drib')*.3+l.a('pace')*.3),C:h*mean({MID:1.5,FWD:.8,DEF:.8},l=>l.a('pass')),D:h*mean({DEF:1.4,MID:.8,FWD:.3},l=>l.a('def')*.7+l.a('phys')*.3),GK:gkq(L[0].p)*L[0].f}}
 function sim(g,H,A){const s=[side(g,H,1),side(g,A,0)],day=[1+(rnd(g)-.5)*.1,1+(rnd(g)-.5)*.1],tm=[H,A];
-  const r={sc:[0,0],p:[0,0],sh:[0,0],so:[0,0],sv:[0,0],fo:[0,0],yc:[0,0],ev:[],rt:{},g:{},a:{},sv_:{},tl:[]};
+  const r={sc:[0,0],p:[0,0],sh:[0,0],so:[0,0],sv:[0,0],fo:[0,0],yc:[0,0],ev:[],rt:{},g:{},a:{},sv_:{},tl:[],pg:{}};
   for(let m=0;m<34;m++){const c0=s[0].C*day[0],c1=s[1].C*day[1],i=rnd(g)<c0/(c0+c1)?0:1,o=1-i,at=s[i],df=s[o],min=Math.ceil((m+1)*40/34);r.p[i]++;
     if(rnd(g)<.12){r.fo[o]++;let cd='f';const fi=ri(g,1,4);if(rnd(g)<.15){const f=df.L[fi].p;r.yc[o]++;f.s.yc++;cd='y';r.ev.push({m:min,t:'Y',i:o,x:`${f.name} ve la amarilla`})}r.tl.push([min,o,fi,-1,cd])}
     if(rnd(g)>cl(.55+(at.A*day[i]-df.D)*.012,.2,.85)){r.tl.push([min,i,-1,-1,'p']);continue}r.sh[i]++;
@@ -78,7 +80,7 @@ function sim(g,H,A){const s=[side(g,H,1),side(g,A,0)],day=[1+(rnd(g)-.5)*.1,1+(r
     else{r.sv[o]++;r.tl.push([min,i,si,-1,'s']);const k=df.L[0].p.id;r.sv_[k]=(r.sv_[k]||0)+1}}
   const res=[r.sc[0]-r.sc[1],r.sc[1]-r.sc[0]];r.pos=Math.round(r.p[0]/34*100);
   s.forEach((x,i)=>{x.L.forEach(l=>{const p=l.p;let v=6+(r.g[p.id]||0)+.6*(r.a[p.id]||0)+.15*(r.sv_[p.id]||0)+(res[i]>0?.3:res[i]<0?-.2:0)+(rnd(g)-.5)*.8;v=+cl(v,3,10).toFixed(1);r.rt[p.id]=v;
-      p.s.app++;p.s.rt+=v;p.s.g+=r.g[p.id]||0;p.s.a+=r.a[p.id]||0;p.fat=Math.min(100,p.fat+16);p.form=v>7.5?Math.min(5,p.form+1):v<5.5?Math.max(-5,p.form-1):p.form-Math.sign(p.form);
+      r.pg[p.id]=prog(g,p,v,res[i],r,r.sc[1-i]);p.s.app++;p.s.rt+=v;p.s.g+=r.g[p.id]||0;p.s.a+=r.a[p.id]||0;p.fat=Math.min(100,p.fat+16);p.form=v>7.5?Math.min(5,p.form+1):v<5.5?Math.max(-5,p.form-1):p.form-Math.sign(p.form);
       if(rnd(g)<.008){p.inj=ri(g,1,4)+1;r.ev.push({m:ri(g,1,40),t:'I',i,x:`🩹 ${p.name} se lesiona (${p.inj-1} jornadas)`})}});
     tm[i].bn.forEach(id=>g.P[id].fat=Math.min(100,g.P[id].fat+5))});
   r.lu=[H.lu.slice(),A.lu.slice()];r.fm=[H.fm,A.fm];r.ev.sort((a,b)=>a.m-b.m);r.mvp=Object.keys(r.rt).sort((a,b)=>r.rt[b]-r.rt[a])[0];return r}
@@ -116,6 +118,16 @@ function placeReal(g){const me=g.T[g.me],rl=Object.values(g.P).filter(p=>p.real&
   rl.forEach((p,k)=>{if(k%2||!ts.length)return;const O=ts.pop(),w=O.pl.map(i=>g.P[i]).filter(q=>q.pos===p.pos||q.pos!=='GK').sort((a,b)=>a.ovr-b.ovr)[0];if(!w)return;
     O.pl=O.pl.map(i=>i===w.id?p.id:i);w.t=null;p.t=O.id;if(O.pl.some(i=>i!==p.id&&g.P[i].n===p.n))p.n=freeN(g,O);if(O.cap===w.id)O.cap=p.id;auto(g,O)})}
 function fixReal(g){const nm=new Set(REAL.squad.map(s=>s.name));Object.values(g.P).forEach(p=>{if(nm.has(p.name))p.real=1});placeReal(g);g.rl=1}
+// Progresión muy lenta tras cada partido: la valoración suma/resta décimas de punto; al llegar a ±1 un atributo sube/baja 1 (nunca pasa del potencial)
+function prog(g,p,v,res,r,ga){let d=(v-6)*(v>6?.035:.025)+(res>0?.01:res<0?-.01:0);if(p.pos==='GK')d+=ga===0?.012:ga>=3?-.02:0;
+  p.pg=p.pg||0;if(p.ovr>=p.pot){if(d>0)d=0;if(p.pg>0)p.pg=0}
+  p.pg=cl(p.pg+d,-1.5,1.5);let k=-1,dir=0;
+  if(Math.abs(p.pg)>=1){dir=Math.sign(p.pg);const w=WT[p.pos].map(x=>x+.04);if(dir>0){if(r.g[p.id])w[1]*=4;if(r.a[p.id])w[2]*=3;if(p.pos==='GK'&&r.sv_[p.id]){w[4]*=3;w[3]*=3}}
+    const i=wpick(g,K.map((_,j)=>j),j=>w[j]),key=K[i],old=p[key],nv=cl(old+dir,30,99);p.pg-=dir;
+    if(nv!==old){p[key]=nv;refresh(p);k=i;if(p.t===g.me)news(g,`${p.name} ${dir>0?'mejora':'empeora'}: ${LBL(p)[key]} ${old}→${nv}`,'progress')}else dir=0}
+  return[+d.toFixed(3),k,dir]}
+function fixGK(g){for(const p of Object.values(g.P))if(p.pos==='GK'&&!p.gk){BI.GK.forEach((b,i)=>p[K[i]]=cl(p.ovr+b+ri(g,-4,4),30,99));const d=Math.round(p.ovr-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));p.gk=1;refresh(p)}
+  for(const p of Object.values(g.P))p.gk=1;g.gkv=1}
 const err=m=>({err:m});
 // ===== VESTUARIO: mensajes de los jugadores al mister (se guardan en g.msgs, dentro de la carrera) =====
 const DNm=['','Primera','Segunda','Tercera','Cuarta','Quinta'],MO=p=>p.mo==null?60:p.mo,mood=(p,d)=>{p.mo=cl(MO(p)+d,0,100)},eu=n=>Math.round(n).toLocaleString('es-ES')+' €';
@@ -185,9 +197,9 @@ function act(g,b){const me=g.T[g.me],P=g.P;
     if(!ids.includes(b.cap))return err('Capitán no válido');me.lu=b.lu;me.bn=b.bn;me.fm=b.fm;me.cap=b.cap;return{}}
   case'setp':{const p=P[b.pid];if(!p||p.t!==g.me||!K||!WT[b.pos])return err('Jugador no válido');const n=+b.n;if(!(n>=1&&n<=99)||me.pl.some(i=>i!==p.id&&P[i].n===n))return err('Dorsal repetido o no válido');p.pos=b.pos;p.n=n;refresh(p);return{}}
   case'train':{const p=P[b.pid];if(!p||p.t!==g.me||!K.includes(b.attr))return err('No válido');if(p.tr)return err('Ya ha entrenado esta semana');if(p.inj)return err('Está lesionado');
-    const cost=1500;if(me.bud<cost)return err('Presupuesto insuficiente');me.bud-=cost;g.fin.push({s:g.season,w:g.round+1,k:'Entrenamiento',t:`${p.name}: ${b.attr}`,a:-cost});p.tr=1;
+    const cost=1500;if(me.bud<cost)return err('Presupuesto insuficiente');me.bud-=cost;g.fin.push({s:g.season,w:g.round+1,k:'Entrenamiento',t:`${p.name}: ${LBL(p)[b.attr]}`,a:-cost});p.tr=1;
     let gain=rnd(g)<cl(.65-p.fat/200,.2,.65)?(rnd(g)<.15?2:1):0,old=p.ovr;const prev=p[b.attr];p[b.attr]=Math.min(99,prev+gain);if(ovrOf(p)>p.pot)p[b.attr]=prev;refresh(p);p.fat=Math.min(100,p.fat+8);
-    return{msg:p[b.attr]>prev?`${p.name}: ${b.attr} ${prev}→${p[b.attr]}${p.ovr>old?` (media ${old}→${p.ovr})`:''}`:`${p.name} no mejora (${p[b.attr]===prev&&ovrOf(p)>=p.pot?'techo de potencial':'sin progreso'})`}}
+    return{msg:p[b.attr]>prev?`${p.name}: ${LBL(p)[b.attr]} ${prev}→${p[b.attr]}${p.ovr>old?` (media ${old}→${p.ovr})`:''}`:`${p.name} no mejora (${p[b.attr]===prev&&ovrOf(p)>=p.pot?'techo de potencial':'sin progreso'})`}}
   case'msg':return answer(g,b);
   case'buy':{const p=P[b.pid],give=P[b.give];if(!p||!give||give.t!==g.me||p.t===g.me)return err('Operación no válida');
     const ask=Math.round(p.val*(p.t?1+.15*p.gr:.8)/100)*100,offer=Math.round(+b.offer);if(!(offer>0))return err('Oferta no válida');
@@ -219,7 +231,7 @@ function init(){return ready||(ready=(async()=>{const local=readDisk();
   let up=0;for(const [id,g] of Object.entries(local))if(!C[id]){C[id]=g;up++;await flush(id)} // primera vez: sube las carreras que hubiera en disco
   console.log('Barro: '+Object.keys(C).length+' carreras cargadas desde Upstash'+(up?' (+'+up+' subidas desde disco)':''))})().catch(e=>{ready=null;console.error('Barro: init falló: '+e.message);throw e}))}
 init().catch(()=>{});
-const load=id=>{const g=C[idOf(id)];if(g&&!g.rl){fixReal(g);save(g)}return g||null};
+const load=id=>{const g=C[idOf(id)];if(g&&(!g.rl||!g.gkv)){if(!g.rl)fixReal(g);if(!g.gkv)fixGK(g);save(g)}return g||null};
 const save=g=>{C[g.id]=g;try{fs.writeFileSync(file(g.id),JSON.stringify(g))}catch(e){}return REMOTE?flush(g.id):Promise.resolve()};
 const del=id=>{id=idOf(id);delete C[id];try{fs.unlinkSync(file(id))}catch(e){}return REMOTE?flush(id):Promise.resolve()};
 const list=uid=>Object.values(C).filter(g=>g&&g.owner===uid).map(g=>({id:g.id,name:g.name,season:g.season,round:g.round,div:g.T[g.me].div})).sort((a,b)=>b.id.localeCompare(a.id));
