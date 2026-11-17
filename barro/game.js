@@ -7,6 +7,7 @@ const K=['pace','shoot','pass','drib','def','phys'];
 const WT={GK:[0,0,.15,0,.65,.2],DEF:[.1,.05,.15,.1,.4,.2],MID:[.15,.15,.3,.25,.05,.1],FWD:[.25,.35,.1,.2,0,.1]};
 const BI={GK:[-12,-25,-5,-18,8,0],DEF:[-4,-14,-2,-8,10,6],MID:[0,-2,8,6,-6,-2],FWD:[6,10,-4,4,-18,0]};
 const GATE=[5000,3200,1800,1000,600],SPON=[6000,4000,2200,1200,600],BUD=[400000,200000,100000,50000,30000],BASE=[80,74,69,65,61];
+const LIGAS={1:'Bayern de los Caídos|Inter Mitente|AC Milaness|Manchester Piti|Paris San Germán|Borussia Dormund|Liverpool de Janeiro|Juventus de Turín y Tónica|Arsenal de Copas|Chelsea Pensioners|Tottenham Hotspurs|Manchester Unitedos',2:'Schalke Temeto|Ajax Tú|Atleti Coño|Real Suciedad|Bayer Leverkusen y Coca-Cola|Nápoles de Copas|Roma Imperiale|Lazio de la Droga|Fiorentina de la Vega|Atalanta de Copas|Newcastle United Kingdom|PSV Eindhoven de la Borrachera',3:'Real Pagaygoza|Celta de Vino|Vodka Juniors|Oseasuna|Real Fachadolida|Deportivo Alcohólico|Getafe de Copas|Eintracht de Resaca|Rayo Vallecanabis|Sporting de Gijón Tonic|Nottingham Forest Gump|Club Brujas de Copas',4:'Mallorca de Noche|Espanyol de Bar|Elche\'s|Cádiz Club de Fútbol y Birras|Granada Mecánica|Almería de Servicio|Leganés de la Frontera|Girona\'t|Racing de Santander y Gin|Huesca la Vista|Numancia de Copas|Atlético Garrafón'};
 const P1=['Atlético','Real','Deportivo','Racing','Unión','Sporting','Athletic','CD','Club','Juventud'];
 const P2=['Ribera','Cantera','Norte','Sur','Olmo','Vega','Alameda','Cerro','Puente','Retiro','Barrio','Molino','Estrella','Acacias','Halcón','Bahía','Sierra','Pinar','Lunar','Roble','Mirador','Fortuna','Tormenta','Arrabal','Fragua','Colmena','Delta','Faro'];
 const FN=['Álex','Iván','Rubén','Sergio','Dani','Nico','Raúl','Marcos','Óscar','Leo','Teo','Biel','Gonzalo','Samu','Quique','Edu','Víctor','Aitor','Joel','Mateo','Cris','Fran','Lucas','Rafa'];
@@ -23,7 +24,7 @@ function mk(g,pos,base,name,n,t){const p={id:g.pid++,name,pos,n,t,fat:0,form:0,i
   p.ovr=ovrOf(p);p.pot=cl(p.ovr+ri(g,0,12),60,99);p.val=val(p.ovr);p.sal=Math.round(p.val/150);g.P[p.id]=p;return p}
 const freeN=(g,t)=>{const u=new Set(t.pl.map(i=>g.P[i].n));let n=2;while(u.has(n))n++;return n};
 function mkTeam(g,div,name,base,o={}){const id='t'+g.tid++,h=ri(g,0,359);
-  const t={id,name,div,c:o.c||[`hsl(${h} 70% 42%)`,`hsl(${(h+150+ri(g,0,60))%360} 75% 88%)`],cr:{s:ri(g,0,4),p:ri(g,0,3),i:name.replace(/^(Atlético|Real|Deportivo|Racing|Unión|Sporting|Athletic|CD|Club|Juventud) /,'').slice(0,2).toUpperCase()},st:'Estadio '+pick(g,P2),bud:BUD[div-1],pl:[],lu:[],bn:[],fm:'2-1-1',cap:0,gar:!!o.gar,real:!!o.real};
+  const t={id,name,div,c:o.c||[`hsl(${h} 70% 42%)`,`hsl(${(h+150+ri(g,0,60))%360} 75% 88%)`],cr:{s:ri(g,0,4),p:ri(g,0,3),i:(name.split(' ').filter(w=>!['de','los','la','del','y'].includes(w.toLowerCase())).slice(0,2).map(w=>w[0]).join('')).toUpperCase()},st:'Estadio '+pick(g,P2),bud:BUD[div-1],pl:[],lu:[],bn:[],fm:'2-1-1',cap:0,gar:!!o.gar,real:!!o.real};
   g.T[id]=t;const px=['GK','DEF','DEF','MID','MID','FWD','FWD',pick(g,['DEF','MID','FWD'])],used=new Set();
   px.forEach((pos,i)=>{let n=pos==='GK'?1:ri(g,2,30);while(used.has(n))n=ri(g,2,40);used.add(n);const nm=pick(g,FN)+' '+pick(g,SN);t.pl.push(mk(g,pos,base+ri(g,-6,6),nm,n,id).id)});
   g.divs[div].push(id);return t}
@@ -57,7 +58,7 @@ function create(name){const g={id:Date.now().toString(36),name:name||'Mi carrera
   const by=n=>t.pl.find(i=>g.P[i].name===n);t.lu=['ANTONIO','JIMÉNEZ','MARIO','ADRI','CARLOS'].map(by);t.bn=['DODU','PABLO','DAVID'].map(by);t.cap=by('CARLOS');
   for(const r of REAL.teams){const ppg=r.pj?r.pts/r.pj:1.2;mkTeam(g,5,r.name,cl(61+(ppg-1.2)*3,58,66),{real:1})}
   const used=new Set([...g.divs[5].map(i=>g.T[i].name)]);
-  for(let d=1;d<=4;d++)while(g.divs[d].length<12){const n=pick(g,P1)+' '+pick(g,P2);if(used.has(n))continue;used.add(n);mkTeam(g,d,n,BASE[d-1]+ri(g,-2,2))}
+  for(let d=1;d<=4;d++)for(const n of LIGAS[d].split('|'))mkTeam(g,d,n,BASE[d-1]+ri(g,-2,2));
   for(let i=0;i<8;i++)mk(g,pick(g,['GK','DEF','MID','FWD']),60+ri(g,0,10),pick(g,FN)+' '+pick(g,SN),ri(g,2,60),null);
   for(const x of Object.values(g.T))if(!x.gar)auto(g,x);
   setup(g);news(g,'Comienza DEL BARRO AL GARRO. ¡Garra FC empieza desde abajo!','season');return g}
@@ -65,22 +66,22 @@ function side(g,t,home){const S=slots(t.fm),L=t.lu.map((id,i)=>{const p=g.P[id],
   const mean=(w,f)=>{let s=0,c=0;L.forEach(l=>{if(l.sl==='GK')return;const x=w[l.sl];s+=x*f(l);c+=x});return s/c},h=home?1.03:1;
   return{L,A:h*mean({FWD:1.4,MID:1,DEF:.5},l=>l.a('shoot')*.4+l.a('drib')*.3+l.a('pace')*.3),C:h*mean({MID:1.5,FWD:.8,DEF:.8},l=>l.a('pass')),D:h*mean({DEF:1.4,MID:.8,FWD:.3},l=>l.a('def')*.7+l.a('phys')*.3),GK:L[0].a('def')}}
 function sim(g,H,A){const s=[side(g,H,1),side(g,A,0)],day=[1+(rnd(g)-.5)*.1,1+(rnd(g)-.5)*.1],tm=[H,A];
-  const r={sc:[0,0],p:[0,0],sh:[0,0],so:[0,0],sv:[0,0],fo:[0,0],yc:[0,0],ev:[],rt:{},g:{},a:{},sv_:{}};
+  const r={sc:[0,0],p:[0,0],sh:[0,0],so:[0,0],sv:[0,0],fo:[0,0],yc:[0,0],ev:[],rt:{},g:{},a:{},sv_:{},tl:[]};
   for(let m=0;m<34;m++){const c0=s[0].C*day[0],c1=s[1].C*day[1],i=rnd(g)<c0/(c0+c1)?0:1,o=1-i,at=s[i],df=s[o],min=Math.ceil((m+1)*40/34);r.p[i]++;
-    if(rnd(g)<.12){r.fo[o]++;if(rnd(g)<.15){const f=pick(g,df.L).p;r.yc[o]++;f.s.yc++;r.ev.push({m:min,t:'Y',i:o,x:`${f.name} ve la amarilla`})}}
-    if(rnd(g)>cl(.55+(at.A*day[i]-df.D)*.012,.2,.85))continue;r.sh[i]++;
+    if(rnd(g)<.12){r.fo[o]++;let cd='f';if(rnd(g)<.15){const f=pick(g,df.L).p;r.yc[o]++;f.s.yc++;cd='y';r.ev.push({m:min,t:'Y',i:o,x:`${f.name} ve la amarilla`})}r.tl.push([min,o,ri(g,1,4),-1,cd])}
+    if(rnd(g)>cl(.55+(at.A*day[i]-df.D)*.012,.2,.85)){r.tl.push([min,i,-1,-1,'p']);continue}r.sh[i]++;
     const sh=wpick(g,at.L,l=>({FWD:3,MID:1.5,DEF:.5,GK:.05}[l.sl])*l.p.shoot);
-    if(rnd(g)>cl(.45+(sh.a('shoot')-60)/150,.3,.8))continue;r.so[i]++;
+    const si=at.L.indexOf(sh);if(rnd(g)>cl(.45+(sh.a('shoot')-60)/150,.3,.8)){r.tl.push([min,i,si,-1,'m']);continue}r.so[i]++;
     if(rnd(g)<cl(.36+(sh.a('shoot')-df.GK)*.009,.12,.6)){r.sc[i]++;r.g[sh.p.id]=(r.g[sh.p.id]||0)+1;let as=null;
       if(rnd(g)<.7){as=wpick(g,at.L.filter(l=>l!==sh),l=>({MID:2,FWD:1,DEF:1,GK:.3}[l.sl])*l.p.pass);r.a[as.p.id]=(r.a[as.p.id]||0)+1}
-      r.ev.push({m:min,t:'G',i,x:`⚽ ${sh.p.name}${as?` (asist. ${as.p.name})`:''}  ${r.sc[0]}-${r.sc[1]}`})}
-    else{r.sv[o]++;const k=df.L[0].p.id;r.sv_[k]=(r.sv_[k]||0)+1}}
+      r.tl.push([min,i,si,as?at.L.indexOf(as):-1,'g']);r.ev.push({m:min,t:'G',i,x:`⚽ ${sh.p.name}${as?` (asist. ${as.p.name})`:''}  ${r.sc[0]}-${r.sc[1]}`})}
+    else{r.sv[o]++;r.tl.push([min,i,si,-1,'s']);const k=df.L[0].p.id;r.sv_[k]=(r.sv_[k]||0)+1}}
   const res=[r.sc[0]-r.sc[1],r.sc[1]-r.sc[0]];r.pos=Math.round(r.p[0]/34*100);
   s.forEach((x,i)=>{x.L.forEach(l=>{const p=l.p;let v=6+(r.g[p.id]||0)+.6*(r.a[p.id]||0)+.15*(r.sv_[p.id]||0)+(res[i]>0?.3:res[i]<0?-.2:0)+(rnd(g)-.5)*.8;v=+cl(v,3,10).toFixed(1);r.rt[p.id]=v;
       p.s.app++;p.s.rt+=v;p.s.g+=r.g[p.id]||0;p.s.a+=r.a[p.id]||0;p.fat=Math.min(100,p.fat+16);p.form=v>7.5?Math.min(5,p.form+1):v<5.5?Math.max(-5,p.form-1):p.form-Math.sign(p.form);
       if(rnd(g)<.008){p.inj=ri(g,1,4)+1;r.ev.push({m:ri(g,1,40),t:'I',i,x:`🩹 ${p.name} se lesiona (${p.inj-1} jornadas)`})}});
     tm[i].bn.forEach(id=>g.P[id].fat=Math.min(100,g.P[id].fat+5))});
-  r.ev.sort((a,b)=>a.m-b.m);r.mvp=Object.keys(r.rt).sort((a,b)=>r.rt[b]-r.rt[a])[0];return r}
+  r.lu=[H.lu.slice(),A.lu.slice()];r.fm=[H.fm,A.fm];r.ev.sort((a,b)=>a.m-b.m);r.mvp=Object.keys(r.rt).sort((a,b)=>r.rt[b]-r.rt[a])[0];return r}
 function advance(g){const r=g.round,me=g.T[g.me],out={},fin=(k,a,t)=>{me.bud+=a;g.fin.push({s:g.season,w:r+1,k,t,a});if(g.fin.length>400)g.fin.shift()};
   for(const x of Object.values(g.T))x.gar?fixInj(g,x,(t,k)=>news(g,t,k)):auto(g,x);
   for(let d=1;d<=5;d++)for(const f of g.fx[d].filter(f=>f.r===r)){const H=g.T[f.h],A=g.T[f.a],rep=sim(g,H,A);f.hg=rep.sc[0];f.ag=rep.sc[1];f.done=1;
