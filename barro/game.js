@@ -68,7 +68,7 @@ function side(g,t,home){const S=slots(t.fm),L=t.lu.map((id,i)=>{const p=g.P[id],
 function sim(g,H,A){const s=[side(g,H,1),side(g,A,0)],day=[1+(rnd(g)-.5)*.1,1+(rnd(g)-.5)*.1],tm=[H,A];
   const r={sc:[0,0],p:[0,0],sh:[0,0],so:[0,0],sv:[0,0],fo:[0,0],yc:[0,0],ev:[],rt:{},g:{},a:{},sv_:{},tl:[]};
   for(let m=0;m<34;m++){const c0=s[0].C*day[0],c1=s[1].C*day[1],i=rnd(g)<c0/(c0+c1)?0:1,o=1-i,at=s[i],df=s[o],min=Math.ceil((m+1)*40/34);r.p[i]++;
-    if(rnd(g)<.12){r.fo[o]++;let cd='f';if(rnd(g)<.15){const f=pick(g,df.L).p;r.yc[o]++;f.s.yc++;cd='y';r.ev.push({m:min,t:'Y',i:o,x:`${f.name} ve la amarilla`})}r.tl.push([min,o,ri(g,1,4),-1,cd])}
+    if(rnd(g)<.12){r.fo[o]++;let cd='f';const fi=ri(g,1,4);if(rnd(g)<.15){const f=df.L[fi].p;r.yc[o]++;f.s.yc++;cd='y';r.ev.push({m:min,t:'Y',i:o,x:`${f.name} ve la amarilla`})}r.tl.push([min,o,fi,-1,cd])}
     if(rnd(g)>cl(.55+(at.A*day[i]-df.D)*.012,.2,.85)){r.tl.push([min,i,-1,-1,'p']);continue}r.sh[i]++;
     const sh=wpick(g,at.L,l=>({FWD:3,MID:1.5,DEF:.5,GK:.05}[l.sl])*l.p.shoot);
     const si=at.L.indexOf(sh);if(rnd(g)>cl(.45+(sh.a('shoot')-60)/150,.3,.8)){r.tl.push([min,i,si,-1,'m']);continue}r.so[i]++;
