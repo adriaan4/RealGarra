@@ -434,10 +434,59 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
 #pnEnd h3{margin:0 0 4px;font:800 30px "Barlow Condensed",sans-serif;color:var(--gold);text-transform:uppercase}
 @media(prefers-reduced-motion:reduce){.pnK.idle{animation:none}.pnB,.pnK{transition-duration:.05s}}
 @media(max-width:520px){.pnDots i{width:28px;height:28px}.pnWho b{font-size:21px}}
+
+/* ===== Estructura tipo web de fútbol: menú por grupos + inicio con resultados y clasificación ===== */
+#top{position:sticky;top:0;z-index:2;background:var(--bg);border-bottom:3px solid var(--gold)}
+#top nav{position:static;border-bottom:0;z-index:auto}
+#top nav a[data-g]{font-size:22px;text-transform:uppercase;letter-spacing:.5px}
+#subnav{display:flex;gap:6px;padding:7px 18px 9px;background:#14100c;border-top:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#subnav::-webkit-scrollbar{display:none}
+#subnav[hidden]{display:none}
+#subnav .sg{display:flex;gap:6px;flex-wrap:nowrap}
+#subnav .sg[hidden]{display:none}
+#subnav a{flex:none;white-space:nowrap;color:var(--ink);text-decoration:none;font:600 18px "Barlow Condensed",sans-serif;padding:4px 14px;border-radius:99px;border:1px solid var(--line)}
+#subnav a.on{background:var(--gold);color:#0d0b09;border-color:var(--gold)}
+@media(max-width:520px){#top nav a[data-g]{font-size:17px;padding:6px 5px;letter-spacing:0;text-transform:none;flex:1 1 auto;text-align:center}#top nav{gap:2px}#subnav{padding-left:12px;padding-right:12px}}
+@media(max-width:360px){#top nav a[data-g]{font-size:16px;padding:6px 4px}}
+.fbGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:26px;align-items:start}
+@media(max-width:780px){.fbGrid{grid-template-columns:1fr}}
+.fbGrid h2,.fbH{margin:0 0 8px}
+.fbH{margin-top:30px}
+.fbSub{font:600 13px Barlow,sans-serif;opacity:.6;letter-spacing:1px;text-transform:uppercase;margin:12px 0 2px}
+.fbM{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.fbM:last-child{border-bottom:0}
+.fbJ{font:800 20px "Barlow Condensed",sans-serif;color:var(--gold);min-width:34px}
+.fbT{flex:1;min-width:0;overflow-wrap:anywhere}
+.fbT b{font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);padding:0 4px}
+.fbR{font:800 15px "Barlow Condensed",sans-serif;font-style:normal;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0d0b09;flex:none}
+.fbR.w{background:#3fae5a}.fbR.d{background:var(--gold)}.fbR.l{background:var(--red);color:var(--ink)}
+.fbMore{display:inline-block;margin-top:10px;color:var(--gold);font:600 19px "Barlow Condensed",sans-serif;text-decoration:none}
+.fbTb{width:100%;border-collapse:collapse}
+.fbTb th,.fbTb td{padding:6px 3px;text-align:center;border-bottom:1px solid var(--line);font-size:16px}
+.fbTb th{font:800 15px "Barlow Condensed",sans-serif;color:var(--gold)}
+.fbTb td:first-child{font:800 20px "Barlow Condensed",sans-serif;color:var(--gold);width:28px}
+.fbTb td.n{text-align:left;font-weight:600;line-height:1.15}
+.fbTb td.fbPt{font-weight:700;color:var(--gold)}
+.fbTb tr.g td{background:#2a1d0c}
+.fbTb tr.g td:first-child{border-left:4px solid var(--red)}
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:6px 0 4px}
+@media(max-width:640px){.qa{grid-template-columns:repeat(2,1fr)}}
+a.qt{display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:10px;padding:12px 14px;color:var(--ink);text-decoration:none;transition:transform .15s,border-color .15s}
+a.qt:hover{border-color:var(--gold);transform:translateY(-2px)}
+a.qt b{overflow-wrap:anywhere;font:800 22px "Barlow Condensed",sans-serif;color:var(--gold);line-height:1.1}
+a.qt span{font-size:14px;opacity:.7}
 </style>
 </head><body>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio">Inicio</a><a href="#mvp">MVP</a><a href="#garrabet">GarraBet</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#buzon">📮 Buzón</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a><a href="#plantilla">Plantilla</a><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></nav>
+<header id="top">
+<nav><img src="escudo.png" alt="Escudo Real Garra Balonpié"><a href="#inicio" data-g="inicio">Inicio</a><a href="#plantilla" data-g="equipo">Equipo</a><a href="#mvp" data-g="aficion">Afición</a><a href="#garrabet" data-g="juegos">Juegos</a><a href="#patrocinadores" data-g="club">Club</a></nav>
+<div id="subnav" hidden>
+ <div class="sg" data-g="equipo"><a href="#plantilla">Plantilla</a><a href="#calendario">Calendario</a><a href="#clasificacion">Clasificación</a><a href="#cronicas">Crónicas</a></div>
+ <div class="sg" data-g="aficion"><a href="#mvp">MVP</a><a href="#porra">Porra</a><a href="#fantasy">🦁 Fantasy</a><a href="#buzon">📮 Buzón</a></div>
+ <div class="sg" data-g="juegos"><a href="#garrabet">GarraBet</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a></div>
+ <div class="sg" data-g="club"><a href="#patrocinadores">Patrocinadores</a><a href="#admin">Admin</a></div>
+</div>
+</header>
 <main>
 <section id="inicio" hidden><div class="home">
  <div class="hero">
@@ -448,7 +497,17 @@ select{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--li
   <div id="pushBox" hidden style="margin-top:18px"><button id="pushBtn" type="button">🔔 Activar avisos</button><p class="sub" id="pushMsg"></p></div></div>
  <aside class="salon"><h2>Salón del MVP</h2><div id="salon"></div></aside>
 </div>
- <div id="cronHome" hidden></div></section>
+ <div class="fbGrid">
+  <div class="salon"><h2>⚽ Resultados y partidos</h2><div id="fbRes"><p>Cargando…</p></div><a class="fbMore" href="#calendario">Ver calendario completo →</a></div>
+  <div class="salon"><h2>📊 Clasificación</h2><div id="fbTab"><p>Cargando…</p></div><a class="fbMore" href="#clasificacion">Ver clasificación completa →</a></div>
+ </div>
+ <div id="cronHome" hidden></div>
+ <h2 class="fbH">Todo el Real Garra</h2>
+<p class="fbSub">Equipo</p><div class="qa"><a class="qt" href="#plantilla"><b>👕 Plantilla</b><span>Los jugadores</span></a><a class="qt" href="#calendario"><b>📅 Calendario</b><span>Todos los partidos</span></a><a class="qt" href="#clasificacion"><b>📊 Clasificación</b><span>Liga y puntos</span></a><a class="qt" href="#cronicas"><b>📰 Crónicas</b><span>Lo que pasó</span></a></div>
+<p class="fbSub">Afición</p><div class="qa"><a class="qt" href="#mvp"><b>⭐ MVP</b><span>Vota al mejor</span></a><a class="qt" href="#porra"><b>🦁 Porra Garra</b><span>Haz tu porra</span></a><a class="qt" href="#fantasy"><b>🏆 Fantasy</b><span>Tu equipo</span></a><a class="qt" href="#buzon"><b>📮 Buzón</b><span>Escríbenos</span></a></div>
+<p class="fbSub">Juegos</p><div class="qa"><a class="qt" href="#garrabet"><b>🎰 GarraBet</b><span>Apuestas</span></a><a class="qt" href="#penaltis"><b>🥅 Penaltis</b><span>Tanda de penaltis</span></a><a class="qt" href="#garrastars"><b>🌟 Garra Stars</b><span>Minijuego</span></a></div>
+<p class="fbSub">Club</p><div class="qa"><a class="qt" href="#patrocinadores"><b>🤝 Patrocinadores</b><span>Quién nos apoya</span></a></div>
+</section>
 
 <section id="mvp" hidden><h1 id="mvpTitulo">MVP del partido</h1>
  <div id="ultimo"></div>
@@ -732,7 +791,7 @@ function render(){
  if(showVs){$('#rivalCrest').src=rcs;$('#rivalCrest').alt='Escudo de '+(S.next.rival||'el rival')}
  $('#salon').innerHTML=S.history.map(h=>`<div class="hit"><small>MVP del Garra vs ${esc(h.rival)}</small><b>${names(h)}</b><span>${top1(h)} de ${h.totalVotes||0} votos</span></div>`).join('')||'<p>Aún no hay MVPs. Vota en la pestaña MVP.</p>';
  try{renderMvp()}catch(e){console.error(e)}
- try{renderCal()}catch(e){console.error(e)}try{renderClasif()}catch(e){console.error(e)}try{renderCron()}catch(e){console.error(e)}try{renderGBRank()}catch(e){console.error(e)}
+ try{renderCal()}catch(e){console.error(e)}try{renderClasif()}catch(e){console.error(e)}try{renderHomeFut()}catch(e){console.error(e)}try{renderCron()}catch(e){console.error(e)}try{renderGBRank()}catch(e){console.error(e)}
  try{renderGB()}catch(e){console.error(e)}
  try{renderCrests()}catch(e){console.error(e)}
  try{renderSquad()}catch(e){console.error(e)}
@@ -837,6 +896,16 @@ function renderGBRank(){const el=$('#gbRank');if(!el)return;const r=GBS().rankin
 // ---- Calendario ----
 const dmy=d=>d.split('-').reverse().join('/');
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function renderHomeFut(){
+ const cal=S.calendar||[],rx=/(\d+)\s*[-–:]\s*(\d+)/,pl=cal.filter(m=>rx.test(m.result||'')),up=cal.filter(m=>!rx.test(m.result||'')&&m.date>=today());
+ const row=m=>{const r=rx.exec(m.result),a=+r[1],b=+r[2],k=a>b?'w':a<b?'l':'d';return `<div class="fbM"><span class="fbJ">J${m.j}</span><span class="fbT">Real Garra <b>${a}-${b}</b> ${crestImg(m.rival)}${esc(m.rival)}</span><i class="fbR ${k}" title="${k==='w'?'Ganado':k==='l'?'Perdido':'Empatado'}">${k==='w'?'G':k==='l'?'P':'E'}</i></div>`};
+ const nx=m=>`<div class="fbM"><span class="fbJ">J${m.j}</span><span class="fbT">${dmy(m.date)}${m.time?' · '+esc(m.time):''} · vs ${crestImg(m.rival)}${esc(m.rival)}</span></div>`;
+ const a=pl.slice(-3).reverse(),b=up.slice(0,3);
+ $('#fbRes').innerHTML=(a.length?'<p class="fbSub" style="margin-top:0">Últimos resultados</p>'+a.map(row).join(''):'')+(b.length?'<p class="fbSub">Próximos partidos</p>'+b.map(nx).join(''):'')||'<p>Todavía no hay partidos.</p>';
+ const t=(S.clasif&&S.clasif.teams)||[];
+ if(!t.length){$('#fbTab').innerHTML='<p>Todavía no hay clasificación.</p>';return}
+ const gi=t.findIndex(x=>x.garra),idx=t.map((x,i)=>i).filter(i=>i<5||i===gi);
+ $('#fbTab').innerHTML='<table class="fbTb"><thead><tr><th>Pos</th><th style="text-align:left">Equipo</th><th>PJ</th><th>DG</th><th>PTS</th></tr></thead><tbody>'+idx.map(i=>{const x=t[i];return `<tr${x.garra?' class="g"':''}><td>${i+1}</td><td class="n">${crestImg(x.name)}${esc(x.name)}</td><td>${x.PJ}</td><td>${x.DG>0?'+':''}${x.DG}</td><td class="fbPt">${x.Pts}</td></tr>`}).join('')+'</tbody></table>'}
 function renderClasif(){
  const c=S.clasif;if(!c)return;
  $('#clBody').innerHTML=c.teams.map((t,i)=>`<tr${t.garra?' class="next"':''}><td class="cj">${i+1}</td><td class="cn">${crestImg(t.name)}<b>${esc(t.name)}</b></td><td class="cp">${t.Pts}</td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td class="cgf">${t.GF}</td><td class="cgc">${t.GC}</td><td>${t.DG>0?'+':''}${t.DG}</td></tr>`).join('')||'<tr><td colspan="10">Todavía no hay clasificación.</td></tr>';
@@ -1681,6 +1750,17 @@ $('#login').addEventListener('click',()=>setTimeout(()=>{if(sessionStorage.adTab
 if(pw&&sessionStorage.adTab==='porra')prAdmLoad();
 setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn($('#prAHist')))prAdmLoad()},15000);
 })();
+</script>
+<script>
+// Menú por grupos: marca el grupo activo y enseña su submenú (todas las secciones siguen igual, solo cambia cómo se llega a ellas)
+(()=>{const G={equipo:['plantilla','calendario','clasificacion','cronicas'],aficion:['mvp','porra','fantasy','buzon'],juegos:['garrabet','penaltis','garrastars'],club:['patrocinadores','admin']};
+function sync(){const h=(location.hash||'#inicio').slice(1);let g=h==='inicio'?'inicio':'';for(const k in G)if(G[k].includes(h))g=k;
+ document.querySelectorAll('nav a[data-g]').forEach(a=>a.classList.toggle('on',a.dataset.g===g));
+ document.querySelectorAll('#subnav .sg').forEach(x=>x.hidden=x.dataset.g!==g);
+ const sn=document.getElementById('subnav');sn.hidden=!G[g];
+ sn.querySelectorAll('a').forEach(a=>a.classList.toggle('on',a.hash==='#'+h));
+ const on=sn.querySelector('a.on');if(on&&!sn.hidden)sn.scrollTo({left:on.offsetLeft-(sn.clientWidth-on.offsetWidth)/2})}
+addEventListener('hashchange',sync);sync()})();
 </script>
 <script src="insta.js?v=20261110b" defer></script>
 <script src="fantasy.js?v=20261109e" defer></script>
