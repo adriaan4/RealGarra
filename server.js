@@ -292,6 +292,7 @@ const bad = (res, msg) => res.status(400).json({ error: msg });
 const FANTASY = require('./fantasy')({ app, getDb: () => db, save, admin, bad, norm, crypto, snapshot }); // REAL GARRA FANTASY (todo vive en db.fantasy)
 require('./buzon')({ app, getDb: () => db, save, admin, bad, gbUser: d => gbUser(d), notifyAdmin: (...a) => notifyAdmin(...a), sendPush }); // Buzón de sugerencias y quejas (db.buzon)
 require('./garrastars')({ app, getDb: () => db, save, admin, bad, norm, crypto, sendPush }); // GARRA STARS: minijuego 1v1 + ranking (db.stars)
+require('./vestuario')({ app, getDb: () => db, save, admin, bad }); // VESTUARIO: mensajes de jugadores y ofertas de otros equipos (db.vestuario)
 const pub = ({ device, ...v }) => v; // el identificador del dispositivo nunca sale al público
 
 // ---- Avisos push (Android, iPhone y ordenador) con Web Push + VAPID ----

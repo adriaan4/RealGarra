@@ -625,7 +625,7 @@ dialog button{min-height:48px}
 <div class="dHead"><img src="escudo.png" alt=""><div><b>REAL GARRA</b><small>BALONPIÉ</small></div></div>
 <a href="#inicio">🏠 Inicio</a>
 <p class="dG">Equipo</p><a href="#plantilla">👕 Plantilla</a><a href="#calendario">📅 Calendario</a><a href="#clasificacion">📊 Clasificación</a><a href="#cronicas">📰 Crónicas</a>
-<p class="dG">Afición</p><a href="#mvp">⭐ MVP</a><a href="#porra">🦁 Porra</a><a href="#fantasy">🏆 Fantasy</a><a href="#buzon">📮 Buzón</a>
+<p class="dG">Afición</p><a href="#mvp">⭐ MVP</a><a href="#porra">🦁 Porra</a><a href="#fantasy">🏆 Fantasy</a><a href="#vestuario">🗣️ Vestuario</a><a href="#buzon">📮 Buzón</a>
 <p class="dG">Juegos</p><a href="#garrabet">🎰 GarraBet</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a><a href="/barro/">🏟️ Del Barro al Garro</a>
 <p class="dG">Club</p><a href="#patrocinadores">🤝 Patrocinadores</a><a href="#admin">⚙️ Admin</a>
 </nav>
@@ -647,7 +647,7 @@ dialog button{min-height:48px}
  <div id="cronHome" hidden></div>
  <h2 class="fbH">Todo el Real Garra</h2>
 <p class="fbSub">Equipo</p><div class="qa"><a class="qt" href="#plantilla"><b>👕 Plantilla</b><span>Los jugadores</span></a><a class="qt" href="#calendario"><b>📅 Calendario</b><span>Todos los partidos</span></a><a class="qt" href="#clasificacion"><b>📊 Clasificación</b><span>Liga y puntos</span></a><a class="qt" href="#cronicas"><b>📰 Crónicas</b><span>Lo que pasó</span></a></div>
-<p class="fbSub">Afición</p><div class="qa"><a class="qt" href="#mvp"><b>⭐ MVP</b><span>Vota al mejor</span></a><a class="qt" href="#porra"><b>🦁 Porra Garra</b><span>Haz tu porra</span></a><a class="qt" href="#fantasy"><b>🏆 Fantasy</b><span>Tu equipo</span></a><a class="qt" href="#buzon"><b>📮 Buzón</b><span>Escríbenos</span></a><a class="qt" href="/barro/"><b>🏟️ Del Barro al Garro</b><span>Modo carrera</span></a></div>
+<p class="fbSub">Afición</p><div class="qa"><a class="qt" href="#mvp"><b>⭐ MVP</b><span>Vota al mejor</span></a><a class="qt" href="#porra"><b>🦁 Porra Garra</b><span>Haz tu porra</span></a><a class="qt" href="#fantasy"><b>🏆 Fantasy</b><span>Tu equipo</span></a><a class="qt" href="#vestuario"><b>🗣️ Vestuario</b><span>Entre jornadas</span></a><a class="qt" href="#buzon"><b>📮 Buzón</b><span>Escríbenos</span></a><a class="qt" href="/barro/"><b>🏟️ Del Barro al Garro</b><span>Modo carrera</span></a></div>
 <p class="fbSub">Juegos</p><div class="qa"><a class="qt" href="#garrabet"><b>🎰 GarraBet</b><span>Apuestas</span></a><a class="qt" href="#penaltis"><b>🥅 Penaltis</b><span>Tanda de penaltis</span></a><a class="qt" href="#garrastars"><b>🌟 Garra Stars</b><span>Minijuego</span></a></div>
 <p class="fbSub">Club</p><div class="qa"><a class="qt" href="#patrocinadores"><b>🤝 Patrocinadores</b><span>Quién nos apoya</span></a></div>
 </section>
@@ -673,6 +673,7 @@ dialog button{min-height:48px}
 </section>
 
 <section id="fantasy" class="fx" hidden><div id="fxRoot"></div><div id="fxBar" role="tablist" aria-label="Fantasy"></div></section>
+<section id="vestuario" hidden><h1>🗣️ Vestuario</h1><div id="vsRoot"><p>Cargando…</p></div></section>
 <section id="buzon" hidden><div id="bzRoot"><p>Cargando…</p></div></section>
 <section id="porra" hidden><h1>🦁 PORRA GARRA</h1>
  <p class="sub">Adivina los resultados del Garra y suma puntos. Entras con tu mismo nombre de GarraBet: sin registros ni contraseñas.</p>
@@ -764,6 +765,7 @@ dialog button{min-height:48px}
    <button type="button" class="atab" data-at="bet" role="tab">🎲 GarraBet</button>
    <button type="button" class="atab" data-at="porra" role="tab">🦁 Porra</button>
    <button type="button" class="atab" data-at="fantasy" role="tab">🏆 Fantasy</button>
+   <button type="button" class="atab" data-at="vestuario" role="tab">🗣️ Vestuario</button>
    <button type="button" class="atab" data-at="buzon" role="tab">📮 Buzón</button>
    <button type="button" class="atab" data-at="eco" role="tab">💰 Economía del club</button>
    <button type="button" class="atab" data-at="users" role="tab">🪪 Usuarios/<wbr>Nombres</button>
@@ -850,6 +852,7 @@ dialog button{min-height:48px}
   </div></details>
   <details class="ad"><summary>🏆 Porra final de temporada</summary><div class="adb"><div id="prAFinal"><p>Cargando…</p></div></div></details>
   </div>
+  <div class="apane vAd" data-ap="vestuario" hidden><div id="vsAdmin"><p>Cargando…</p></div></div>
   <div class="apane bzAd" data-ap="buzon" hidden><h3>📮 Sugerencias y quejas</h3><div id="bzAdmin"><p>Cargando…</p></div></div>
   <div class="apane" data-ap="fantasy" hidden><div id="fxAdmin"><p>Cargando…</p></div></div>
   <div class="apane" data-ap="eco" hidden>
@@ -1914,6 +1917,7 @@ addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.c
 </script>
 <script src="insta.js?v=20261110b" defer></script>
 <script src="fantasy.js?v=20261109e" defer></script>
+<script src="vestuario.js" defer></script>
 <script src="buzon.js" defer></script>
 <script src="mla-admin.js" defer></script>
 <script src="physics.js?v=gol-v4" defer></script>
