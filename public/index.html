@@ -566,12 +566,62 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
  main{padding-bottom:60px}
  .toast{bottom:20px}.gbslip{bottom:14px}
 }
+
+/* ===== v5: accesibilidad y adaptación máxima a móvil ===== */
+html{color-scheme:dark}
+.skip{position:fixed;left:12px;top:-80px;z-index:300;min-height:48px;padding:10px 18px;border-radius:12px;background:var(--gold);color:#0d0b09;font-weight:700}
+.skip:focus{top:calc(10px + env(safe-area-inset-top,0px))}
+#contenido:focus{outline:none}
+:focus-visible{outline:3px solid #fff;outline-offset:2px;border-radius:6px}
+a,button,summary,label,select,input{touch-action:manipulation}
+button,a.qt,#tabbar a,#drawer a,.gbb{-webkit-user-select:none;user-select:none}
+.sub,.dG,.fbSub,small{opacity:.88}
+.fbSub,.dG{opacity:.78;font-size:13.5px}
+a.fbMore{display:inline-flex;align-items:center;min-height:46px}
+input.gbs{min-height:44px}
+input[type=checkbox],input[type=radio]{width:24px;height:24px;min-height:0;flex:none;accent-color:var(--gold)}
+input:not([type=checkbox]):not([type=radio]):not(.gbs){min-height:48px}
+label{min-height:44px;display:inline-flex;align-items:center;gap:8px}
+dialog{width:min(92vw,520px);max-height:88dvh;max-height:88vh;overflow:auto;padding:20px 16px;border-radius:20px}
+dialog button{min-height:48px}
+#drawer{transition:transform .25s ease,visibility 0s}
+@media(max-width:899px){#drawer:not(.open){visibility:hidden;transition:transform .25s ease,visibility 0s .25s}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(prefers-contrast:more){:root{--line:#5a7566}a.qt,.salon,.gbm,.gbb{border-color:#8fb09c}}
+@media(max-width:899px){
+ #top{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+ main{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+ #tabbar{padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right))}
+ body{font-size:17px}
+ p,li{line-height:1.5}
+ .row{gap:10px}.row>button,.row>input,.row>select{flex:1 1 140px}
+ .tw{margin-left:-4px;margin-right:-4px;-webkit-overflow-scrolling:touch}
+ /* Calendario: cada partido es una tarjeta (sin desplazar de lado) */
+ .tw:has(table.cal){overflow:visible}
+ table.cal{min-width:0;display:block}.cal thead{display:none}.cal tbody{display:grid;gap:10px}
+ .cal tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+ .cal td{padding:0;border:0;background:none}
+ .cal tr.next{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+ .cal tr.next td,.cal tr.next td:first-child{background:none;border-left:0}
+ .cal td:nth-child(1){order:1;font-size:26px}
+ .cal td:nth-child(4){order:2;flex:1 1 0;min-width:0;font-size:18px;overflow-wrap:anywhere}
+ .cal td:nth-child(5){order:3;font:800 24px "Barlow Condensed",sans-serif;color:var(--gold)}
+ .cal tr::after{content:"";order:3;flex-basis:100%;height:0}
+ .cal td:nth-child(2),.cal td:nth-child(3),.cal td:nth-child(6){order:4;font-size:15px;opacity:.9}
+ .cal td:nth-child(2)::before{content:"📅 "}.cal td:nth-child(3)::before{content:"🕙 "}.cal td:nth-child(6)::before{content:"📍 "}
+ .cal td.tbc{opacity:.65}
+ h1{overflow-wrap:anywhere}
+ .gbb{min-height:68px}.gbb small{font-size:14px}
+ .pbtn,.cand button,.pchk{min-height:52px}
+}
+@media(max-width:360px){body{font-size:16.5px}#drawer{width:88vw}.brand b{font-size:21px}}
 </style>
 </head><body>
+<button type="button" class="skip" id="skip">Saltar al contenido</button>
 <div id="splash" aria-hidden="true"><img src="escudo.png" alt=""><b>REAL GARRA BALONPIÉ</b><i></i></div>
-<header id="top"><button id="menuBtn" type="button" aria-label="Abrir menú" aria-expanded="false">☰</button><a class="brand" href="#inicio"><img src="escudo.png" alt="Escudo Real Garra Balonpié"><b>REAL GARRA</b></a><a class="topAdm" href="#admin" aria-label="Admin">⚙️</a></header>
+<header id="top"><button id="menuBtn" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">☰</button><a class="brand" href="#inicio" aria-label="Real Garra Balonpié, ir al inicio"><img src="escudo.png" alt="Escudo Real Garra Balonpié"><b>REAL GARRA</b></a><a class="topAdm" href="#admin" aria-label="Admin">⚙️</a></header>
 <div id="scrim" hidden></div>
-<nav id="drawer" aria-label="Menú">
+<nav id="drawer" aria-label="Menú principal">
 <div class="dHead"><img src="escudo.png" alt=""><div><b>REAL GARRA</b><small>BALONPIÉ</small></div></div>
 <a href="#inicio">🏠 Inicio</a>
 <p class="dG">Equipo</p><a href="#plantilla">👕 Plantilla</a><a href="#calendario">📅 Calendario</a><a href="#clasificacion">📊 Clasificación</a><a href="#cronicas">📰 Crónicas</a>
@@ -579,8 +629,8 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <p class="dG">Juegos</p><a href="#garrabet">🎰 GarraBet</a><a href="#penaltis">🥅 Penaltis</a><a href="#garrastars">⭐ Garra Stars</a>
 <p class="dG">Club</p><a href="#patrocinadores">🤝 Patrocinadores</a><a href="#admin">⚙️ Admin</a>
 </nav>
-<div id="tabbar"><a href="#inicio"><i>🏠</i>Inicio</a><a href="#calendario"><i>📅</i>Partidos</a><a href="#garrabet"><i>🎰</i>GarraBet</a><a href="#mvp"><i>⭐</i>MVP</a><button type="button" id="tabMore"><i>☰</i>Más</button></div>
-<main>
+<div id="tabbar" role="navigation" aria-label="Accesos rápidos"><a href="#inicio"><i aria-hidden="true">🏠</i>Inicio</a><a href="#calendario"><i aria-hidden="true">📅</i>Partidos</a><a href="#garrabet"><i aria-hidden="true">🎰</i>GarraBet</a><a href="#mvp"><i aria-hidden="true">⭐</i>MVP</a><button type="button" id="tabMore" aria-controls="drawer"><i aria-hidden="true">☰</i>Más</button></div>
+<main id="contenido" tabindex="-1">
 <section id="inicio" hidden><div class="home">
  <div class="hero">
   <div class="vs" id="vsBox" hidden><img class="crest" src="escudo.png" alt="Escudo Real Garra Balonpié"><span class="vsTxt">VS</span><img class="crest" id="rivalCrest" alt=""></div>
@@ -1206,7 +1256,7 @@ const gbTot=a=>Math.round(a.reduce((p,x)=>gbNM(a,x)?p:p*x.odd,1)*100)/100;
 function gbWinJ(j,m,l,sd,r){if(m==='yellow'){const y=(GBS().yellows||{})[j];return y?(l==='NINGUNO'?y.length===0:y.includes(l)):null}if(m!=='scorer')return r?gbWin(m,l,sd,r):null;if(r&&r.gf===0)return false;const sc=(GBS().scorers||{})[j];return sc?sc.includes(l):null}
 function gbBtn(j,m,l,sd,label,odd,c0){
  const r0=gbRes(j),pl=m==='scorer'||m==='yellow',w0=pl&&odd?gbWinJ(j,m,l,sd,r0):null,r=r0||(w0!==null?1:null),on=gbInSlip(j,m,l,sd),c=['gbb'];if(c0)c.push(c0);if(on)c.push('on');if(r&&odd){const w=pl?w0:gbWinJ(j,m,l,sd,r0);if(w!==null)c.push(w?'win':'lose')}
- return `<button type="button" class="${c.join(' ')}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r&&gbOpen(j)?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
+ return `<button type="button" class="${c.join(' ')}" aria-pressed="${on?'true':'false'}" data-gb="${j}|${m}|${l}|${sd}" ${odd&&!r&&gbOpen(j)?'':'disabled'}>${on?'<i>EN BOLETO</i>':''}${label?`<small>${label}</small>`:''}<b>${odd?gbO(odd):'—'}</b></button>`}
 function gbMarket(j,k,t){
  const od=gbOdds(j),L=(GBS().lines||{})[k]||[],ok=L.filter(l=>od&&od[k]&&od[k][l]&&(od[k][l].o||od[k][l].u));
  if(!ok.length)return `<div class="gbm"><h3>${t}</h3><p class="gbnone">Sin cuotas todavía.</p></div>`;
@@ -1845,13 +1895,24 @@ setInterval(()=>{if(adOn()&&!isIn($('#prAMatch'))&&!isIn($('#prAFinal'))&&!isIn(
 })();
 </script>
 <script>
-// Panel lateral + barra inferior: abrir/cerrar y marcar la sección activa (las secciones siguen siendo las mismas)
-(()=>{const d=document.getElementById('drawer'),sc=document.getElementById('scrim'),mb=document.getElementById('menuBtn');
-const open=o=>{d.classList.toggle('open',o);sc.hidden=!o;mb.setAttribute('aria-expanded',o);document.body.classList.toggle('noscroll',o)};
-mb.onclick=()=>open(!d.classList.contains('open'));sc.onclick=()=>open(false);document.getElementById('tabMore').onclick=()=>open(true);
-d.addEventListener('click',e=>{if(e.target.closest('a'))open(false)});addEventListener('keydown',e=>{if(e.key==='Escape')open(false)});
-function sync(){const h=location.hash||'#inicio';document.body.dataset.sec=h.slice(1);document.querySelectorAll('#tabbar a').forEach(a=>a.classList.toggle('on',a.hash===h));open(false)}
-addEventListener('hashchange',sync);sync()})();
+// Panel lateral + barra inferior, accesibles: foco, Escape, aria-current, título de página y gesto de deslizar
+(()=>{const d=document.getElementById('drawer'),sc=document.getElementById('scrim'),mb=document.getElementById('menuBtn'),mn=document.getElementById('contenido'),mob=()=>matchMedia('(max-width:899px)').matches;
+const open=(o,back)=>{if(o===d.classList.contains('open'))return;d.classList.toggle('open',o);sc.hidden=!o;mb.setAttribute('aria-expanded',o);document.body.classList.toggle('noscroll',o);
+ if(o&&mob())setTimeout(()=>{const a=d.querySelector('a.on')||d.querySelector('a');a&&a.focus()},60);if(!o&&back&&mob())mb.focus()};
+mb.onclick=()=>open(!d.classList.contains('open'),true);sc.onclick=()=>open(false,true);document.getElementById('tabMore').onclick=()=>open(true);
+document.getElementById('skip').onclick=()=>mn.focus();
+d.addEventListener('click',e=>{if(e.target.closest('a'))open(false)});
+addEventListener('keydown',e=>{if(!d.classList.contains('open')||!mob())return;if(e.key==='Escape'){open(false,true);return}
+ if(e.key==='Tab'){const f=[...d.querySelectorAll('a')],a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}}});
+function sync(first){const h=location.hash||'#inicio';document.body.dataset.sec=h.slice(1);
+ document.querySelectorAll('#tabbar a,#drawer a').forEach(a=>{const on=a.hash===h;if(a.closest('#tabbar'))a.classList.toggle('on',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+ const l=d.querySelector('a[href="'+h+'"]'),n=l?l.textContent.replace(/^\S+\s/,'').trim():'';document.title=(n&&h!=='#inicio'?n+' · ':'')+'Real Garra Balonpié';
+ open(false);if(first!==true&&mn&&!/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement||{}).tagName||''))mn.focus({preventScroll:true})}
+addEventListener('hashchange',()=>sync());sync(true);
+// deslizar desde el borde izquierdo abre el panel; deslizar hacia la izquierda lo cierra
+let t0=null;addEventListener('touchstart',e=>{const t=e.touches[0];t0=(mob()&&(t.clientX<16||d.classList.contains('open')))?{x:t.clientX,y:t.clientY,o:d.classList.contains('open')}:null},{passive:true});
+addEventListener('touchend',e=>{if(!t0)return;const t=e.changedTouches[0],dx=t.clientX-t0.x,dy=Math.abs(t.clientY-t0.y);if(dy<50){if(!t0.o&&dx>70)open(true);else if(t0.o&&dx<-70)open(false,true)}t0=null},{passive:true});
+})();
 </script>
 <script src="insta.js?v=20261110b" defer></script>
 <script src="fantasy.js?v=20261109e" defer></script>
