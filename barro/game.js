@@ -20,6 +20,7 @@ const val=o=>Math.round((o-52)**3*6/100)*100;
 const raw=p=>K.reduce((s,k,i)=>s+p[k]*WT[p.pos][i],0),ovrOf=p=>cl(Math.round(raw(p)),60,99);
 const LBL=p=>p.pos==='GK'?{pace:'VEL',shoot:'SAL',pass:'SAQ',drib:'REF',def:'PAR',phys:'POS'}:{pace:'RIT',shoot:'TIR',pass:'PAS',drib:'REG',def:'DEF',phys:'FIS'};
 const gkq=p=>(p.def*.45+p.drib*.25+p.phys*.15+p.shoot*.15)+2.5; // calidad del portero en el motor: paradas, reflejos, posicionamiento y salidas (+2.5 mantiene el equilibrio de antes)
+const pot=(g,p)=>p.real||p.t===g.me?99:p.pot; // jugadores del Garra (y los de tu plantilla): sin techo de potencial
 const refresh=p=>{p.ovr=ovrOf(p);if(p.ovr>p.pot)p.pot=p.ovr;p.val=val(p.ovr);p.sal=Math.round(p.val/150*(p.sx||1))};
 function mk(g,pos,base,name,n,t){const p={id:g.pid++,name,pos,n,t,gk:1,fat:0,form:0,inj:0,tr:0,gr:+(.8+rnd(g)*.5).toFixed(2),ct:ri(g,1,3),s:{g:0,a:0,app:0,rt:0,yc:0}};
   BI[pos].forEach((b,i)=>p[K[i]]=cl(Math.round(base+b+ri(g,-5,5)),30,99));const d=Math.round(base-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));
@@ -108,7 +109,7 @@ function endSeason(g){const rec={s:g.season,ch:{},pro:[],rel:[],gp:null},tb={},m
       if(d>1&&pos<2)mv.push([t,d-1,1]);if(d<5&&pos>=10)mv.push([t,d+1,0])})}
   const gd=g.T[g.me].div,gp=tb[gd].findIndex(x=>x.id===g.me);rec.gp={d:gd,pos:gp+1,pts:tb[gd][gp].pts,obj:g.obj.t,ok:gp+1<=g.obj.max};
   for(let d=1;d<=5;d++)g.divs[d]=[];Object.values(g.T).forEach(t=>{const m=mv.find(x=>x[0]===t);if(m){t.div=m[1];(m[2]?rec.pro:rec.rel).push(t.id)}g.divs[t.div].push(t.id)});
-  for(const p of Object.values(g.P)){if(p.ovr<p.pot&&rnd(g)<.7){for(let i=0;i<2;i++){const k=pick(g,K);p[k]=Math.min(99,p[k]+ri(g,1,2))}}else if(rnd(g)<.12){const k=pick(g,K);p[k]=Math.max(30,p[k]-1)}
+  for(const p of Object.values(g.P)){if(p.ovr<pot(g,p)&&rnd(g)<.7){for(let i=0;i<2;i++){const k=pick(g,K);p[k]=Math.min(99,p[k]+ri(g,1,2))}}else if(rnd(g)<.12){const k=pick(g,K);p[k]=Math.max(30,p[k]-1)}
     refresh(p);if(--p.ct<=0){p.ct=ri(g,2,3);if(p.t===g.me)news(g,`${p.name} renueva contrato (${p.ct} temporadas)`,'transfer')}}
   for(let i=0;i<4;i++)mk(g,pick(g,['GK','DEF','MID','FWD']),60+ri(g,0,12),pick(g,FN)+' '+pick(g,SN),ri(g,2,60),null);
   g.hist.push(rec);news(g,`Fin de temporada: Garra FC ${gp+1}º en ${gd}ª. ${rec.gp.ok?'¡Objetivo cumplido!':'Objetivo no cumplido.'}${rec.pro.includes(g.me)?' ¡ASCENSO!':rec.rel.includes(g.me)?' Descenso.':''}`,'season');
@@ -120,7 +121,7 @@ function placeReal(g){const me=g.T[g.me],rl=Object.values(g.P).filter(p=>p.real&
 function fixReal(g){const nm=new Set(REAL.squad.map(s=>s.name));Object.values(g.P).forEach(p=>{if(nm.has(p.name))p.real=1});placeReal(g);g.rl=1}
 // Progresión muy lenta tras cada partido: la valoración suma/resta décimas de punto; al llegar a ±1 un atributo sube/baja 1 (nunca pasa del potencial)
 function prog(g,p,v,res,r,ga){let d=(v-6)*(v>6?.035:.025)+(res>0?.01:res<0?-.01:0);if(p.pos==='GK')d+=ga===0?.012:ga>=3?-.02:0;
-  p.pg=p.pg||0;if(p.ovr>=p.pot){if(d>0)d=0;if(p.pg>0)p.pg=0}
+  p.pg=p.pg||0;if(p.ovr>=pot(g,p)){if(d>0)d=0;if(p.pg>0)p.pg=0}
   p.pg=cl(p.pg+d,-1.5,1.5);let k=-1,dir=0;
   if(Math.abs(p.pg)>=1){dir=Math.sign(p.pg);const w=WT[p.pos].map(x=>x+.04);if(dir>0){if(r.g[p.id])w[1]*=4;if(r.a[p.id])w[2]*=3;if(p.pos==='GK'&&r.sv_[p.id]){w[4]*=3;w[3]*=3}}
     const i=wpick(g,K.map((_,j)=>j),j=>w[j]),key=K[i],old=p[key],nv=cl(old+dir,30,99);p.pg-=dir;
@@ -198,8 +199,8 @@ function act(g,b){const me=g.T[g.me],P=g.P;
   case'setp':{const p=P[b.pid];if(!p||p.t!==g.me||!K||!WT[b.pos])return err('Jugador no válido');const n=+b.n;if(!(n>=1&&n<=99)||me.pl.some(i=>i!==p.id&&P[i].n===n))return err('Dorsal repetido o no válido');p.pos=b.pos;p.n=n;refresh(p);return{}}
   case'train':{const p=P[b.pid];if(!p||p.t!==g.me||!K.includes(b.attr))return err('No válido');if(p.tr)return err('Ya ha entrenado esta semana');if(p.inj)return err('Está lesionado');
     const cost=1500;if(me.bud<cost)return err('Presupuesto insuficiente');me.bud-=cost;g.fin.push({s:g.season,w:g.round+1,k:'Entrenamiento',t:`${p.name}: ${LBL(p)[b.attr]}`,a:-cost});p.tr=1;
-    let gain=rnd(g)<cl(.65-p.fat/200,.2,.65)?(rnd(g)<.15?2:1):0,old=p.ovr;const prev=p[b.attr];p[b.attr]=Math.min(99,prev+gain);if(ovrOf(p)>p.pot)p[b.attr]=prev;refresh(p);p.fat=Math.min(100,p.fat+8);
-    return{msg:p[b.attr]>prev?`${p.name}: ${LBL(p)[b.attr]} ${prev}→${p[b.attr]}${p.ovr>old?` (media ${old}→${p.ovr})`:''}`:`${p.name} no mejora (${p[b.attr]===prev&&ovrOf(p)>=p.pot?'techo de potencial':'sin progreso'})`}}
+    let gain=rnd(g)<cl(.65-p.fat/200,.2,.65)?(rnd(g)<.15?2:1):0,old=p.ovr;const prev=p[b.attr];p[b.attr]=Math.min(99,prev+gain);if(ovrOf(p)>pot(g,p))p[b.attr]=prev;refresh(p);p.fat=Math.min(100,p.fat+8);
+    return{msg:p[b.attr]>prev?`${p.name}: ${LBL(p)[b.attr]} ${prev}→${p[b.attr]}${p.ovr>old?` (media ${old}→${p.ovr})`:''}`:`${p.name} no mejora (${p[b.attr]===prev&&ovrOf(p)>=pot(g,p)?'techo de potencial':'sin progreso'})`}}
   case'msg':return answer(g,b);
   case'buy':{const p=P[b.pid],give=P[b.give];if(!p||!give||give.t!==g.me||p.t===g.me)return err('Operación no válida');
     const ask=Math.round(p.val*(p.t?1+.15*p.gr:.8)/100)*100,offer=Math.round(+b.offer);if(!(offer>0))return err('Oferta no válida');

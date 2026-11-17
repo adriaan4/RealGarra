@@ -168,3 +168,5 @@ Modo privado y ligero: todo vive en `db.fantasy` (la misma base de datos: Upstas
 ### Barro: evolución tras el partido y porteros
 - Al terminar cada partido, el resumen muestra «📈 Evolución tras el partido»: según la valoración y el resultado cada jugador suma o resta décimas; al llegar a ±1 sube o baja 1 un atributo (goleadores → TIR, asistentes → PAS, porteros con paradas → PAR/REF). Muy lento y nunca por encima del potencial. Se aplica a todos los equipos. Los cambios reales salen en Noticias.
 - Porteros: SAL · PAR · SAQ · REF · VEL · POS (en lugar de RIT/TIR/PAS/REG/DEF/FIS), también en Entrenamiento. Pesan en su media y en las paradas; el equilibrio de goles se mantiene. Las carreras antiguas convierten sus porteros solas al abrirse.
+- Potencial: los jugadores del Garra (y cualquiera que esté en tu plantilla) no tienen techo (POT 99). Los demás siguen con su potencial.
+- Al acabar el partido sale «FINAL» con el marcador en medio del campo. La media con un decimal (p. ej. 67,2) solo se ve en el resumen final, dentro de «Evolución tras el partido»; en el resto de la app sale la media entera.
