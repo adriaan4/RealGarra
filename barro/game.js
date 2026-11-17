@@ -273,14 +273,20 @@ function act(g,b){const me=g.T[g.me],P=g.P;
     let gain=rnd(g)<cl(.65-p.fat/200,.2,.65)?(rnd(g)<.15?2:1):0,old=p.ovr;const prev=p[b.attr];p[b.attr]=Math.min(99,prev+gain);if(ovrOf(p)>pot(g,p))p[b.attr]=prev;refresh(p);p.fat=Math.min(100,p.fat+8);
     return{msg:p[b.attr]>prev?`${p.name}: ${LBL(p)[b.attr]} ${prev}→${p[b.attr]}${p.ovr>old?` (media ${old}→${p.ovr})`:''}`:`${p.name} no mejora (${p[b.attr]===prev&&ovrOf(p)>=pot(g,p)?'techo de potencial':'sin progreso'})`}}
   case'msg':return answer(g,b);
-  case'buy':{const p=P[b.pid],give=P[b.give];if(!p||!give||give.t!==g.me||p.t===g.me)return err('Operación no válida');
-    const ask=Math.round(p.val*(p.t?1+.15*p.gr:.8)/100)*100,offer=Math.round(+b.offer);if(!(offer>0))return err('Oferta no válida');
-    if(offer<ask*.92)return{counter:ask,msg:`Oferta rechazada. Piden ${ask.toLocaleString('es-ES')} €`};
-    const net=offer-give.val,O=p.t?g.T[p.t]:null;if(net>me.bud)return err('Presupuesto insuficiente');if(O&&net<0&&O.bud<-net)return err('Ese club no puede pagar la diferencia');
-    me.bud-=net;if(O)O.bud+=net;me.pl=me.pl.map(i=>i===give.id?p.id:i);if(O)O.pl=O.pl.map(i=>i===p.id?give.id:i);
+  case'buy':{const p=P[b.pid],mode=['money','both','player'].includes(b.mode)?b.mode:'both',give=mode==='money'?null:P[b.give];if(!p||p.t===g.me||(mode!=='money'&&(!give||give.t!==g.me)))return err('Operación no válida');
+    const ask=Math.round(p.val*(p.t?1+.15*p.gr:.8)/100)*100,offer=mode==='player'?give.val:Math.round(+b.offer);if(!(offer>0))return err('Oferta no válida');
+    if(offer<ask*.92)return{counter:ask,msg:mode==='player'?`Oferta rechazada: ${give.name} no basta. Piden ${ask.toLocaleString('es-ES')} € de valor`:`Oferta rechazada. Piden ${ask.toLocaleString('es-ES')} €`};
+    const net=mode==='player'?0:offer-(give?give.val:0),O=p.t?g.T[p.t]:null;if(net>me.bud)return err('Presupuesto insuficiente');if(O&&net<0&&O.bud<-net)return err('Ese club no puede pagar la diferencia');
+    me.bud-=net;if(O)O.bud+=net;
+    if(!give){ // solo dinero: llega p a tu plantilla y el club rival repone con un jugador de relleno
+      p.n=freeN(g,me);me.pl.push(p.id);
+      if(O){const fl=mk(g,p.pos,Math.max(55,p.ovr-8),pick(g,FN)+' '+pick(g,SN),freeN(g,O),O.id);O.pl=O.pl.map(i=>i===p.id?fl.id:i);if(O.cap===p.id)O.cap=fl.id}
+      p.t=g.me;p.sx=1.1;p.sal=Math.round(p.val/150*1.1);p.ct=ri(g,2,3);p.mo=60;p.ns=0;if(O)auto(g,O);
+      g.fin.push({s:g.season,w:g.round+1,k:'Fichajes',t:`${p.name} por dinero`,a:-net});news(g,`Fichaje: ${p.name} llega a Garra FC`,'transfer');return{msg:`¡Fichado ${p.name}! Se une a tu plantilla (ya tienes ${me.pl.length} jugadores)`}}
+    me.pl=me.pl.map(i=>i===give.id?p.id:i);if(O)O.pl=O.pl.map(i=>i===p.id?give.id:i);
     const gn=give.n;p.t=g.me;const prevT=O;give.t=O?O.id:null;p.n=gn;if(O)give.n=freeN(g,O);p.sx=1.1;p.sal=Math.round(p.val/150*1.1);p.ct=ri(g,2,3);p.mo=60;p.ns=0;
     me.lu=me.lu.map(i=>i===give.id?p.id:i);me.bn=me.bn.map(i=>i===give.id?p.id:i);if(me.cap===give.id)me.cap=p.id;if(O)auto(g,O);
-    g.fin.push({s:g.season,w:g.round+1,k:'Fichajes',t:`${p.name} por ${give.name} (+${offer})`,a:-net});news(g,`Fichaje: ${p.name} llega a Garra FC; sale ${give.name}`,'transfer');return{msg:`¡Fichado ${p.name}!`}}
+    g.fin.push({s:g.season,w:g.round+1,k:'Fichajes',t:`${p.name} por ${give.name}${net?` (${net>0?'+':''}${net})`:''}`,a:-net});news(g,`Fichaje: ${p.name} llega a Garra FC; sale ${give.name}`,'transfer');return{msg:`¡Fichado ${p.name}!`}}
   }return err('Acción desconocida')}
 let getUser=d=>d.length>=8?{id:d,name:'Jugador'}:null;const C={},file=id=>path.join(SV,id.replace(/[^a-z0-9]/gi,'')+'.json');
 // ---- Guardado: Upstash Redis (sobrevive a redeploys) + copia en disco. Cada carrera = una clave barro:g:<id> (gzip+base64) ----
