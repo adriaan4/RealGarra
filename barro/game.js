@@ -128,15 +128,15 @@ function act(g,b){const me=g.T[g.me],P=g.P;
     me.lu=me.lu.map(i=>i===give.id?p.id:i);me.bn=me.bn.map(i=>i===give.id?p.id:i);if(me.cap===give.id)me.cap=p.id;if(O)auto(g,O);
     g.fin.push({s:g.season,w:g.round+1,k:'Fichajes',t:`${p.name} por ${give.name} (+${offer})`,a:-net});news(g,`Fichaje: ${p.name} llega a Garra FC; sale ${give.name}`,'transfer');return{msg:`¡Fichado ${p.name}!`}}
   }return err('Acción desconocida')}
-const C={},file=id=>path.join(SV,id.replace(/[^a-z0-9]/gi,'')+'.json');
+let getUser=d=>d.length>=8?{id:d,name:'Jugador'}:null;const C={},file=id=>path.join(SV,id.replace(/[^a-z0-9]/gi,'')+'.json');
 const load=id=>C[id]||(fs.existsSync(file(id))?C[id]=JSON.parse(fs.readFileSync(file(id),'utf8')):null),save=g=>{C[g.id]=g;fs.writeFileSync(file(g.id),JSON.stringify(g))};
-const list=()=>fs.readdirSync(SV).map(f=>load(f.slice(0,-5))).filter(Boolean).map(g=>({id:g.id,name:g.name,season:g.season,round:g.round,div:g.T[g.me].div})).sort((a,b)=>b.id.localeCompare(a.id));
+const list=uid=>fs.readdirSync(SV).map(f=>load(f.slice(0,-5))).filter(g=>g&&g.owner===uid).map(g=>({id:g.id,name:g.name,season:g.season,round:g.round,div:g.T[g.me].div})).sort((a,b)=>b.id.localeCompare(a.id));
 const MT={'.html':'text/html;charset=utf8','.js':'text/javascript','.png':'image/png','.css':'text/css'};
 const handle=(q,s)=>{const u=new URL(q.url,'http://x'),j=(o,c=200)=>{s.writeHead(c,{'content-type':'application/json'});s.end(JSON.stringify(o))};
   if(u.pathname.startsWith('/api/')){const run=body=>{try{const b=body&&typeof body==='object'?body:body?JSON.parse(body):{},id=u.searchParams.get('id');
-    if(u.pathname==='/api/saves')return j(list());
-    if(u.pathname==='/api/new'){const g=create(String(b.name||'').slice(0,40));save(g);return j(g)}
-    const g=load(id||'');if(!g)return j({err:'Partida no encontrada'},404);
+    const user=getUser(String(q.headers['x-device']||''));if(u.pathname==='/api/me')return j({user:user&&{id:user.id,name:user.name}});if(!user)return j({err:'login'},401);if(u.pathname==='/api/saves')return j(list(user.id));
+    if(u.pathname==='/api/new'){const g=create(String(b.name||'').slice(0,40));g.owner=user.id;save(g);return j(g)}
+    const g=load(id||'');if(!g||g.owner!==user.id)return j({err:'Partida no encontrada'},404);
     if(u.pathname==='/api/game'&&q.method==='DELETE'){fs.unlinkSync(file(id));delete C[id];return j({})}
     if(u.pathname==='/api/game')return j(g);
     if(u.pathname==='/api/rename'){g.name=String(b.name||g.name).slice(0,40);save(g);return j({})}
@@ -145,4 +145,4 @@ const handle=(q,s)=>{const u=new URL(q.url,'http://x'),j=(o,c=200)=>{s.writeHead
   const f=path.join(__dirname,'public',u.pathname==='/'?'index.html':path.normalize(u.pathname).replace(/^(\.\.[\/\\])+/,''));
   fs.readFile(f,(e,d)=>{if(e){s.writeHead(404);return s.end('No encontrado')}s.writeHead(200,{'content-type':MT[path.extname(f)]||'application/octet-stream'});s.end(d)})};
 if(require.main===module)http.createServer(handle).listen(process.env.PORT||3000,()=>console.log('DEL BARRO AL GARRO en http://localhost:'+(process.env.PORT||3000)));
-module.exports={create,act,table,handle};
+module.exports={create,act,table,handle,auth:f=>{getUser=f}};
