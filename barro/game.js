@@ -99,7 +99,7 @@ function advance(g){const r=g.round,me=g.T[g.me],out={},fin=(k,a,t)=>{me.bud+=a;
     else if(Math.abs(f.hg-f.ag)>=5)news(g,`Goleada en ${d}ª: ${H.name} ${f.hg}-${f.ag} ${A.name}`,'result')}
   if(rnd(g)<.35){const ts=Object.values(g.T).filter(x=>!x.gar),a=pick(g,ts),b=pick(g,ts.filter(x=>x.div===a.div&&x!==a));if(b){const pa=g.P[pick(g,a.pl)],pb=g.P[pick(g,b.pl)];
     a.pl=a.pl.map(i=>i===pa.id?pb.id:i);b.pl=b.pl.map(i=>i===pb.id?pa.id:i);pa.t=b.id;pb.t=a.id;[pa.n,pb.n]=[freeN(g,b),freeN(g,a)];news(g,`Fichaje: ${pa.name} (${a.name}) ↔ ${pb.name} (${b.name})`,'transfer')}}
-  out.nm=chat(g,played,out.f?(out.f.h===g.me?out.f.hg-out.f.ag:out.f.ag-out.f.hg):0);
+  out.nm=chat(g,played,out.f?(out.f.h===g.me?out.f.hg-out.f.ag:out.f.ag-out.f.hg):0);try{out.nm+=PX.settle(g,played,out.f)||0}catch(e){console.error('Barro prensa: '+e.message)}
   if(out.f)mkPress(g,out.f);
   for(const p of Object.values(g.P)){p.fat=Math.max(0,p.fat-14);if(p.inj>0)p.inj--;p.tr=0}
   g.round++;if(g.round>=22)out.season=endSeason(g);return out}
@@ -171,7 +171,7 @@ function chat(g,played,res){const me=g.T[g.me],M=g.msgs||(g.msgs=[]),ab=g.season
 const nr=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 function mkCtx(g,f){const me=g.T[g.me],r=f.rep,h=f.h===g.me,gf=h?f.hg:f.ag,gc=h?f.ag:f.hg,op=g.T[h?f.a:f.h],all=me.pl.map(i=>g.P[i]),
   mine=Object.entries(r.rt).filter(([i])=>g.P[i]&&g.P[i].t===g.me).map(([i,v])=>({id:+i,n:g.P[i].name,rt:v,g:r.g[i]||0,a:r.a[i]||0})).sort((a,b)=>b.rt-a.rt);
-  return{rival:op.name,gf,gc,local:h,jornada:g.round+1,pos:table(g,me.div).findIndex(x=>x.id===g.me)+1,liga:DNm[me.div],racha:g.streak,mejor:mine[0]||null,peor:mine.length>1?mine[mine.length-1]:null,
+  return{rival:op.name,gf,gc,local:h,jornada:g.round+1,pos:table(g,me.div).findIndex(x=>x.id===g.me)+1,liga:DNm[me.div],racha:g.streak,st:{pos:h?r.pos:100-r.pos,sh:h?r.sh:[r.sh[1],r.sh[0]],so:h?r.so:[r.so[1],r.so[0]]},mejor:mine[0]||null,peor:mine.length>1?mine[mine.length-1]:null,
     descontentos:all.filter(p=>MO(p)<40).map(p=>({id:p.id,n:p.name})),plantilla:all.map(p=>({id:p.id,n:p.name,moral:MO(p)}))}}
 function mkPress(g,f){g.pr={id:g.mid=(g.mid||0)+1,w:g.round+1,s:g.season,st:'new',i:0,ai:false,ctx:mkCtx(g,f),qs:[],h:null}}
 const TONES=['H','C','D','A'];
@@ -193,7 +193,7 @@ function tplQs(g,c){const w=c.gf>c.gc,l=c.gf<c.gc,rs=w?'la victoria':l?'la derro
   return q.concat(first,rest).slice(0,3).map(x=>({...x,o:tonesFor(x,c)}))}
 // preguntas antiguas (partidas guardadas con respuesta libre) se pasan al formato nuevo
 function fixQ(g,q){if(!q.role)q.role=q.pid&&g.T[g.me].pl.includes(q.pid)?'top':'team';if(!q.o)q.o=tonesFor(q,g.pr.ctx);return q}
-async function pressQs(g){g.pr.ai=false;g.pr.qs=tplQs(g,g.pr.ctx)}
+async function pressQs(g){try{await PX.qs(g,g.pr,'post')}catch(e){console.error('Barro prensa: '+e.message);g.pr.ai=false;g.pr.qs=tplQs(g,g.pr.ctx)}}
 const RP={H:['Poco a poco se baja del pedestal. El míster no regala nada.','«Aquí nadie es más que nadie», anota el periodista.','Mano dura en sala de prensa. Respeto y algo de miedo en el vestuario.'],
   C:['Aplausos en la sala. Buen titular para el club.','El míster no escatima en elogios y el vestuario lo agradece.','Los periodistas sonríen: palabras grandes, cariño de padre.'],
   D:['Respuesta fría: ni frío ni calor, pero alguien se ha dado por aludido.','El periodista levanta una ceja. Qué poco entusiasmo.','Quita hierro al asunto; en el vestuario no a todos les hace gracia.'],
@@ -203,7 +203,7 @@ async function pressAns(g,k){const me=g.T[g.me],pr=g.pr,q=fixQ(g,pr.qs[pr.i]),c=
   let dt=dt0;if(q.role==='team'){if(k==='C')dt=w?3:l?-2:1;else if(k==='D')dt=w?-1:l?1:0;else if(k==='H')dt=w?1:-1;else if(k==='A')dt=l?3:2}
   const t=me.pl.includes(q.pid)?g.P[q.pid]:null,fx=t&&dp?[{id:t.id,d:dp}]:[];
   for(const p of me.pl.map(i=>g.P[i]))if(dt)mood(p,dt);for(const x of fx)mood(g.P[x.id],x.d);
-  q.k=k;q.a=q.o.find(x=>x.k===k).l;q.rp=pick(g,RP[k]);q.team=dt;q.fx=fx.map(x=>({id:x.id,n:g.P[x.id].name,d:x.d}));q.h=HL[k];pr.i++;
+  q.k=k;q.a=q.o.find(x=>x.k===k).l;q.rp=pick(g,RP[k]);q.team=dt;q.fx=fx.map(x=>({id:x.id,n:g.P[x.id].name,d:x.d}));q.h=HL[k];try{q.ex=PX.react(g,q.fx,dt)}catch(e){console.error('Barro prensa: '+e.message)}pr.i++;
   if(pr.i>=pr.qs.length){pr.st='done';pr.h=pr.qs.map(x=>x.h).filter(Boolean).pop()||'Rueda de prensa del míster';news(g,`📰 Rueda de prensa: ${pr.h}`,'press')}}
 
 // ===== RUEDA DE PRENSA PREVIA (antes de cada jornada): la inventa la IA con tus resultados, jugadores y el rival; sin clave usa plantillas =====
@@ -233,7 +233,8 @@ async function prePress(g){const w=g.round+1;if(g.pre&&g.pre.w===w&&g.pre.s===g.
   const a=await ai(`Contexto de Garra FC antes de su próximo partido (JSON): ${JSON.stringify(c)}\nInventa una rueda de prensa previa de 3 preguntas distintas y cortas del periodista, cada una con la respuesta del míster (1-3 frases). Usa los resultados recientes, la racha, la clasificación, el rival, lesionados, goleador o jugadores en forma si aparecen. Formato: {"qa":[{"m":"SER|TVE|TV","q":"pregunta","a":"respuesta del míster"}],"h":"titular corto (máx 70 caracteres)"}`,900);
   if(a&&Array.isArray(a.qa)){const qa=a.qa.slice(0,3).map(x=>({m:['SER','TVE','TV'].includes(x.m)?x.m:'TV',q:String(x.q||'').slice(0,260),a:String(x.a||'').slice(0,420)})).filter(x=>x.q.length>8&&x.a.length>8);if(qa.length>=2){o={qa,h:String(a.h||'').slice(0,90)};ia=true}}
   if(!o)o=tplPre(g,c);g.pre={s:g.season,w,rival:c.rival,ai:ia,qa:o.qa,h:o.h||`Previa: Garra FC vs ${c.rival}`};return null}
-async function press(g,b){if(b.type==='press_pre'){const x=await prePress(g);return x||{}}const pr=g.pr;if(!pr||pr.st==='done')return err('No hay rueda de prensa pendiente');
+const PX=require('./prensa2.js')({rnd,ri,pick,shuf,cl,mood,MO,say,news,eu,err,preCtx,FXT,RP,HL,DNm}); // ruedas de prensa 2.0 (respuesta libre / propuesta IA, preguntas sin repetir, consecuencias)
+async function press(g,b){const rx=await PX.route(g,b);if(rx)return rx;if(b.type==='press_pre'){const x=await prePress(g);return x||{}}const pr=g.pr;if(!pr||pr.st==='done')return err('No hay rueda de prensa pendiente');
   if(b.type==='press_open'){if(pr.st==='new'){pr.st='open';await pressQs(g)}else pr.qs.forEach(q=>fixQ(g,q));return{}}
   if(b.type==='press_ans'){if(pr.st!=='open'||b.i!==pr.i)return err('Esa pregunta ya está respondida');if(!TONES.includes(b.k))return err('Elige una respuesta');await pressAns(g,b.k);return{}}
   return err('Acción no válida')}
@@ -241,6 +242,7 @@ function answer(g,b){const me=g.T[g.me],P=g.P,m=(g.msgs||[]).find(x=>x.id===b.id
   const p=P[m.pid],o=m.o.find(x=>x[0]===b.opt);if(!o)return err('Respuesta no válida');if(!p||p.t!==g.me){m.st='void';return err('Ese jugador ya no está en tu plantilla')}
   const done=(rp,msg)=>{m.st='done';m.ch=o[1];m.rp=rp;return{msg:msg||rp}},raise=to=>{p.sx=to/(p.val/150);p.sal=to};
   switch(m.k+':'+o[0]){
+  case'press:ex':case'press:hold':case'press:joke':{const r=PX.pmsg(g,m,p,o[0]);return done(r.rp,r.msg)}
   case'play:start':{if(p.inj)return err(p.name+' está lesionado');if(!me.lu.includes(p.id)){const S=slots(me.fm);let bi=-1,bv=1e9;me.lu.forEach((id,i)=>{if((S[i]==='GK')!==(p.pos==='GK'))return;const v=P[id].ovr+(S[i]===p.pos?0:6);if(v<bv){bv=v;bi=i}});if(bi<0)return err('No hay hueco para él: cámbialo a mano en Tácticas');const old=me.lu[bi],j=me.bn.indexOf(p.id);if(j<0)return err('Alineación no válida');me.bn[j]=old;me.lu[bi]=p.id}
     mood(p,15);return done('¡Gracias, mister! No le voy a fallar.',p.name+' será titular')}
   case'play:soon':mood(p,3);return done('Vale, mister, esperaré mi oportunidad.');
