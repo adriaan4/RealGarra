@@ -107,6 +107,29 @@ img.av{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position
 .sgl{display:grid;gap:6px;margin-top:6px}.sgc{background:#000c;border:1px solid #fff2;border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.35;cursor:pointer;text-align:left}.sgc b{display:block;color:var(--ac);font-size:11px}.sgc.on{border-color:var(--ac);background:#e2ab2c22}
 .pbn.pgo{background:linear-gradient(90deg,var(--ac),var(--ac2));color:#111;border:0;font-weight:800}.prqk{margin-top:8px}.prqk summary{font-size:12px;color:#ffffffb0;cursor:pointer;padding:4px 2px}.prqk .prbt{margin-top:4px}
 .prx{font-size:12px;margin-top:4px;color:#ffffffd0}.prsc{font-size:11px;color:#ffffff90;margin-top:3px}
+
+/* Cambios en directo (ilimitados) */
+.sbp{position:absolute;inset:0;z-index:8;background:#000f;display:flex;flex-direction:column;gap:8px;padding:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overflow:auto;animation:in .2s}
+.sbh h3{margin:0;color:var(--tx);font-size:16px}
+.sbg{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;min-height:0}
+@media(orientation:portrait) and (max-width:620px){.sbg{grid-template-columns:1fr}}
+.sbc{background:linear-gradient(160deg,var(--pn2),var(--pn));border:1px solid #3b2e1f;border-radius:12px;padding:8px;overflow:auto;display:flex;flex-direction:column;gap:5px;min-height:0}
+.sbc h4{font:900 12px Impact;letter-spacing:.04em;text-transform:uppercase;color:var(--ac)}
+.sbr{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;border:2px solid transparent;background:#0f0c09;cursor:pointer;user-select:none}
+.sbr .o{font:900 18px Impact;min-width:26px}.sbr .nm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbr small{color:var(--mu);font-size:10px;white-space:nowrap}.sbr .ro{font-size:10px;color:var(--mu)}.sbr .ro.oop{color:var(--gd);font-weight:800}
+.sbr.on{border-color:#fff;background:#2a1f14}.sbr.chg{border-color:var(--ac)}.sbr.bad{opacity:.45;cursor:not-allowed}
+.bf{display:block;flex:none;width:42px;height:5px;background:#0006;border-radius:3px;overflow:hidden}.bf u{display:block;height:100%}
+.sbf{display:flex;gap:8px;justify-content:flex-end;flex:none}.sbf .btn:disabled{opacity:.4;cursor:default;transform:none;filter:none}
+@media(max-height:430px){.sbp .mu.sm{display:none}.sbr{padding:4px 8px}}
+/* Cartel de temporada */
+.stt{position:fixed;inset:0;z-index:60;display:grid;place-content:center;justify-items:center;text-align:center;padding:16px;overflow:hidden;cursor:pointer;background:radial-gradient(900px 520px at 50% 45%,#5a1a1c,#0d0b09 72%);animation:stf .5s both}
+.stt .stn{font:900 min(10.5vw,26dvh)/1 Impact,'Arial Narrow',sans-serif;white-space:nowrap;letter-spacing:.03em;text-transform:uppercase;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 28px #e2ab2c66);animation:stn .9s cubic-bezier(.2,.9,.3,1.2) both}
+.stt .sty{margin-top:14px;font:700 clamp(14px,3.2vw,24px) Impact,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.85;animation:stf 1s .5s both}
+.stt .sth{margin-top:26px;font-size:12px;color:var(--mu);animation:stf 1s 1.2s both}
+@media(orientation:portrait){.stt .stn{white-space:normal;font-size:min(14vw,12dvh)}.stt .stx{display:block;font-size:2.4em;line-height:1.05}}
+@keyframes stf{from{opacity:0}}@keyframes stn{0%{opacity:0;transform:scale(.55)}60%{opacity:1}100%{transform:none}}
+@media(prefers-reduced-motion:reduce){.stt,.stt *{animation:none!important}}
 </style></head><body><div id="app"><div class="ldw"><div class="ldt">DEL BARRO AL GARRO</div><div class="ldb"><i></i></div><div class="mu sm">Entrando al modo carrera…</div></div></div>
 <script>
 const LD=m=>`<div class="ldw"><div class="ldt">DEL BARRO AL GARRO</div><div class="ldb"><i></i></div><div class="mu sm">${m}</div></div>`,fail=()=>{$('#app').innerHTML=`<div class="ldw"><div class="ldt">DEL BARRO AL GARRO</div><div class="mu">No se pudo conectar con el servidor.</div><button class="btn" style="margin:auto" onclick="location.reload()">Reintentar</button></div>`};
@@ -156,7 +179,7 @@ inicio(){const m=mf(),nx=m.find(f=>!f.done),la=[...m].reverse().find(f=>f.done),
  return`<div class="g g2"><div class="c" style="grid-column:1/-1;background:linear-gradient(120deg,#4a1416,#1a1512)"><div class="mu sm">TEMPORADA ${season()} · ${DN[gd()]} División · Jornada ${Math.min(G.round+1,22)}/22</div>
  ${nx?`<div class="r sp" style="justify-content:space-around;margin:14px 0"><div style="text-align:center">${crest(G.T[nx.h],64)}<br><b>${e(G.T[nx.h].name)}</b></div><div style="font:900 28px Impact">VS</div><div style="text-align:center">${crest(G.T[nx.a],64)}<br><b>${e(G.T[nx.a].name)}</b></div></div>
  <div class="mu sm" style="text-align:center">${dt(G.dates[nx.r])} · ${e(G.T[nx.h].st)} · Previa: tu media ${avg(G.me)} vs ${avg(opp.id)} · Rival: ${fchips(opp.id)} · ${t.findIndex(x=>x.id===opp.id)+1}º</div>`:''}
- <div class="r" style="margin-top:14px;gap:8px"><button class="btn big" style="flex:1" onclick="adv()">▶ Avanzar jornada</button><button class="btn big s" style="flex:none" onclick="prensaPre()">🎙️ Prensa previa</button></div></div>
+ <div class="r" style="margin-top:14px;gap:8px"><button class="btn big" style="flex:1" onclick="adv()">${G.live&&G.live.r===G.round&&G.live.s===G.season?'▶ Reanudar partido':'▶ Avanzar jornada'}</button><button class="btn big s" style="flex:none" onclick="prensaPre()">🎙️ Prensa previa</button></div></div>
  <div class="c"><h3>Último resultado</h3>${la?`<div class="r sp"><span>${e(G.T[la.h].name)}</span><b style="font:900 24px Impact">${la.hg}-${la.ag}</b><span>${e(G.T[la.a].name)}</span></div><div class="r" style="margin-top:8px"><button class="btn s" onclick='watch(G.fx[${gd()}].find(f=>f.r===${la.r}&&(f.h==="${G.me}"||f.a==="${G.me}")))'>▶ Ver partido</button><button class="btn s" onclick='report(G.fx[${gd()}].find(f=>f.r===${la.r}&&(f.h==="${G.me}"||f.a==="${G.me}")))'>Resumen</button></div>`:'<span class="mu">Aún no has jugado</span>'}</div>
  <div class="c"><h3>Objetivo de temporada</h3><b>${e(G.obj.t)}</b><div class="mu sm">Ahora: ${pos+1}º · ${t[pos].pts} pts</div><div class="bar"><i style="width:${Math.min(100,t[pos].pts/66*100)}%"></i></div></div>
  <div class="c"><h3>Presupuesto</h3><div style="font:900 28px Impact">${eur(me().bud)}</div><div class="mu sm">Racha: ${G.streak>0?G.streak+' victorias':G.streak<0?-G.streak+' derrotas':'—'}</div></div>
@@ -230,13 +253,13 @@ function prensa(which){const pre=which==='pre',PR=()=>pre?G.pp:G.pr;if(!pre&&(!G
 async function prApi(b){const r=await api('act?id='+ID,b);if(r.err){toast(r.err);return null}if(r.g)G=r.g;return r}
 const hdr=()=>`<div class="hd">${crest(me(),42)}<div><b>${e(me().name)}</b><div class="mu">${DN[gd()]} División · Temp. ${season()} · Jornada ${Math.min(G.round+1,22)}/22</div></div><div class="bu">${eur(me().bud)}</div></div>`;
 let WTM;
-function watch(f,sea){const r=f&&f.rep;if(!r||!r.tl)return report(f,sea);clearTimeout(WTM);document.getElementById('mw')?.remove();const T2=[G.T[f.h],G.T[f.a]],FMS={'1-2-1':[1,2,1],'2-1-1':[2,1,1],'1-1-2':[1,1,2],'2-2':[2,2,0]},RN={GK:'POR',D:'DEF',M:'MED',F:'DEL'},
+function watch(f,sea,live){let r=f&&f.rep;if(!r||!r.tl)return report(f,sea);clearTimeout(WTM);document.getElementById('mw')?.remove();const CUR=[r.lu[0].slice(),r.lu[1].slice()],MS=f.h===G.me?0:1,T2=[G.T[f.h],G.T[f.a]],FMS={'1-2-1':[1,2,1],'2-1-1':[2,1,1],'1-1-2':[1,1,2],'2-2':[2,2,0]},RN={GK:'POR',D:'DEF',M:'MED',F:'DEL'},
  ROL=[0,1].map(s=>{const fm=FMS[r.fm[s]];return['GK',...Array(fm[0]).fill('D'),...Array(fm[1]).fill('M'),...Array(fm[2]).fill('F')]}),
- bx=(s,i)=>{const ro=ROL[s],q=ro[i],n=ro.filter(x=>x===q).length,k=ro.slice(0,i).filter(x=>x===q).length;return{x:{GK:7,D:24,M:40,F:54}[q],y:(k+1)/(n+1)*100,gk:q==='GK'}},P=(s,i)=>G.P[r.lu[s][i]],
+ bx=(s,i)=>{const ro=ROL[s],q=ro[i],n=ro.filter(x=>x===q).length,k=ro.slice(0,i).filter(x=>x===q).length;return{x:{GK:7,D:24,M:40,F:54}[q],y:(k+1)/(n+1)*100,gk:q==='GK'}},P=(s,i)=>G.P[CUR[s][i]],
  SR=[['pos','Posesión'],['sh','Tiros'],['so','A puerta'],['sv','Paradas'],['fo','Faltas'],['yc','Amarillas']];
  const panel=s=>{const T=T2[s];return`<aside class="pn ${s?'rt':''}"><h4>${crest(T,20)}<span>${e(T.name)}</span><small>${r.fm[s]}</small></h4>${ROL[s].map((q,i)=>{const p=P(s,i);return`<div class="pr" id="r${s}${i}"><span class="n" style="background:${T.c[0]};color:${ink(T)};border-color:${ink(T)}">${p.n}</span><span class="nm">${e(p.name)}</span><span class="ro">${RN[q]}</span><span class="ic" id="ic${s}${i}"></span></div>`}).join('')}<div class="sep"></div>${SR.map(([k,n])=>`<div class="sr"><span class="mu">${n}</span><b id="v${s}${k}">${k==='pos'?'50%':0}</b></div>${k==='pos'?`<div class="pbar"><i id="pb${s}" style="width:50%"></i></div>`:''}`).join('')}</aside>`};
  const mw=document.createElement('div');mw.className='mw';mw.id='mw';
- mw.innerHTML=`<div class="mwt"><button class="btn s" id="cl">✕</button><div class="sc">${crest(T2[0],30)}<b id="sc">0 - 0</b>${crest(T2[1],30)}<span id="ck" class="chip">0'</span></div><button class="btn s" id="sp">x1</button><button class="btn s" id="sk">⏭ Saltar</button></div><div class="rot">↻ Gira el móvil en horizontal para verlo mejor</div>
+ mw.innerHTML=`<div class="mwt"><button class="btn s" id="cl">✕</button><div class="sc">${crest(T2[0],30)}<b id="sc">0 - 0</b>${crest(T2[1],30)}<span id="ck" class="chip">0'</span></div>${live?'<button class="btn s" id="sb">🔄 Cambios</button>':''}<button class="btn s" id="sp">x1</button><button class="btn s" id="sk">⏭ Saltar</button></div><div class="rot">↻ Gira el móvil en horizontal para verlo mejor</div>
  <div class="mwb">${panel(0)}<div class="mc"><div id="fld" class="fld">${pitchBits()}${[0,1].map(s=>ROL[s].map((q,i)=>(u=>`<div class="ch${u?' ph':''}" id="c${s}${i}" style="background:${T2[s].c[0]};color:${ink(T2[s])};border-color:${ink(T2[s])}">${u?`<img src="${u}" alt="">`:''}<i>${P(s,i).n}</i></div>`)(ph(P(s,i)))).join('')).join('')}<div id="bl" class="bl"></div><div id="fx" class="fxo"></div></div><div id="tk" class="tk"></div></div>${panel(1)}</div>`;
  document.body.append(mw);document.body.style.overflow='hidden';
  const $f=id=>document.getElementById(id);let k=-1,spd=1,BP=[50,50];
@@ -247,8 +270,8 @@ function watch(f,sea){const r=f&&f.rep;if(!r||!r.tl)return report(f,sea);clearTi
    el.style.transitionDuration=tr;el.style.left=cl(x,3,97)+'%';el.style.top=cl(y,6,94)+'%'})};
  const place=(s,i,a)=>{const b=bx(s,i),d=b.gk?0:a,x=s?100-b.x-d:b.x+d,el=$f('c'+s+i);el.style.left=x+'%';el.style.top=b.y+'%'},ball=(x,y)=>{const b=$f('bl');b.style.left=x+'%';b.style.top=y+'%'},pp=el=>[parseFloat(el.style.left),parseFloat(el.style.top)],nm=(s,q)=>P(s,q).name;
  // Estadísticas en directo: se calculan solo con los sucesos ya vistos (n = último suceso; part = el tiro de n aún no tiene resultado)
- const calc=(n,part)=>{const S=[0,1].map(()=>({p:0,sh:0,so:0,sv:0,fo:0,yc:0,g:0})),pl=[{},{}],pk=(s,i)=>pl[s][i]||(pl[s][i]={g:0,a:0,y:0});
-  for(let j=0;j<=n&&j<r.tl.length;j++){const[,i,si,as,t]=r.tl[j],fu=!(part&&j===n);
+ const calc=(n,part)=>{const S=[0,1].map(()=>({p:0,sh:0,so:0,sv:0,fo:0,yc:0,g:0})),pl=[{},{}],LU=[r.lu[0].slice(),r.lu[1].slice()],SB=r.subs||[],pk=(s,i)=>{const id=LU[s][i];return pl[s][id]||(pl[s][id]={g:0,a:0,y:0})};let q=0;
+  for(let j=0;j<=n&&j<r.tl.length;j++){while(q<SB.length&&SB[q].k<=j){LU[SB[q].s][SB[q].slot]=SB[q].inn;q++}const[,i,si,as,t]=r.tl[j],fu=!(part&&j===n);
    if(t==='f'||t==='y'){S[i].fo++;if(t==='y'){S[i].yc++;pk(i,si).y++}continue}
    S[i].p++;if(t==='p')continue;S[i].sh++;if(!fu||t==='m')continue;S[i].so++;
    if(t==='g'){S[i].g++;pk(i,si).g++;if(as>=0)pk(i,as).a++}else S[1-i].sv++}
@@ -256,15 +279,18 @@ function watch(f,sea){const r=f&&f.rep;if(!r||!r.tl)return report(f,sea);clearTi
  const paint=c=>{const tot=c.S[0].p+c.S[1].p;
   for(const s of[0,1]){const x=c.S[s],po=tot?Math.round(x.p/tot*100):50;$f('v'+s+'pos').textContent=po+'%';$f('pb'+s).style.width=po+'%';
    for(const[q]of SR.slice(1))$f('v'+s+q).textContent=x[q];
-   ROL[s].forEach((q,i)=>{const a=c.pl[s][i]||{};$f('ic'+s+i).innerHTML=(a.g?'⚽'+(a.g>1?'×'+a.g:''):'')+(a.a?`<b class="as">A${a.a>1?a.a:''}</b>`:'')+(a.y?'🟨':'')})}
+   ROL[s].forEach((q,i)=>{const a=c.pl[s][CUR[s][i]]||{};$f('ic'+s+i).innerHTML=(a.g?'⚽'+(a.g>1?'×'+a.g:''):'')+(a.a?`<b class="as">A${a.a>1?a.a:''}</b>`:'')+(a.y?'🟨':'')})}
   $f('sc').textContent=c.S[0].g+' - '+c.S[1].g},
  hl=(s,q)=>{mw.querySelectorAll('.pr.on').forEach(x=>x.classList.remove('on'));if(q>=0)$f('r'+s+q)?.classList.add('on')};
  for(const s of[0,1])ROL[s].forEach((q,i)=>place(s,i,0));paint(calc(-1,false));
- const close=()=>{clearTimeout(WTM);mw.remove();document.body.style.overflow=''},end=()=>{close();report(f,sea)},fin=()=>{hl(0,-1);{const x=$f('fx');x.className='fxo';void x.offsetWidth;x.innerHTML=`FINAL<small>${f.hg} - ${f.ag}</small>`;x.classList.add('fin');const po=RPR&&RPR.post;if(po&&po.respuesta){x.classList.add('hp');x.insertAdjacentHTML('beforeend',`<div class="fpr"><b>🎙️ Rueda de prensa post-partido</b><div class="fq">${e(po.pregunta||'¿Qué análisis hace del partido?')}</div><div class="fa">«${e(po.respuesta)}»</div><div class="fs">— ${e(po.portavoz||'Real Garra')}</div></div>`)}}$f('tk').textContent=`Final: ${T2[0].name} ${f.hg}-${f.ag} ${T2[1].name}`;$f('sk').textContent='📊 Estadísticas'};
- $f('cl').onclick=close;$f('sk').onclick=end;$f('sp').onclick=()=>{spd=spd===1?2:spd===2?4:1;$f('sp').textContent='x'+spd};
+ const FS=()=>live?r.sc:[f.hg,f.ag],close=()=>{clearTimeout(WTM);mw.remove();document.body.style.overflow=''},end=()=>{close();report(f,sea)},fin=()=>{if(live&&$f('sb'))$f('sb').style.display='none';hl(0,-1);{const x=$f('fx');x.className='fxo';void x.offsetWidth;x.innerHTML=`FINAL<small>${FS()[0]} - ${FS()[1]}</small>`;x.classList.add('fin');const po=RPR&&RPR.post;if(po&&po.respuesta){x.classList.add('hp');x.insertAdjacentHTML('beforeend',`<div class="fpr"><b>🎙️ Rueda de prensa post-partido</b><div class="fq">${e(po.pregunta||'¿Qué análisis hace del partido?')}</div><div class="fa">«${e(po.respuesta)}»</div><div class="fs">— ${e(po.portavoz||'Real Garra')}</div></div>`)}}$f('tk').textContent=`Final: ${T2[0].name} ${FS()[0]}-${FS()[1]} ${T2[1].name}`;$f('sk').textContent='📊 Estadísticas';if(live)liveEnd()};
+ $f('cl').onclick=live?()=>finish(0,0):close;$f('sk').onclick=live?()=>finish(1,0):end;$f('sp').onclick=()=>{spd=spd===1?2:spd===2?4:1;$f('sp').textContent='x'+spd};
  const kick=c=>{for(const s of[0,1])ROL[s].forEach((q,i)=>{const b=bx(s,i),el=$f('c'+s+i);if(!el)return;let x=s?100-b.x:b.x;x=s?Math.max(x,53):Math.min(x,47);el.style.transitionDuration=(.9/spd)+'s';el.style.left=x+'%';el.style.top=b.y+'%'});
   const fw=ROL[c].map((q,i)=>q==='F'?i:-1).filter(i=>i>=0),mi=fw.length?fw[0]:ROL[c].findIndex(q=>q==='M'),el=$f('c'+c+mi);if(el){el.style.left=(c?51:49)+'%';el.style.top='50%'}BP=[50,50];ball(50,50);hl(c,mi);$f('tk').textContent=`Saca de centro el ${T2[c].name}`};
- const step=()=>{const fl=$f('fld');if(!fl||!fl.isConnected)return;k++;if(k>=r.tl.length){paint(calc(r.tl.length-1,false));return fin()}const[m,i,si,as,t]=r.tl[k],d=1000/spd,foul=t==='f'||t==='y';$f('ck').textContent=m+"'";
+ const step=()=>{const fl=$f('fld');if(!fl||!fl.isConnected)return;
+  if(live&&PQ&&k<r.tl.length-1&&(k<0||'pmgs'.includes(r.tl[k][4]))){PQ=0;return openSubs()}
+  {const nk=k+1;if(SA!==nk){SA=nk;const bs=(r.subs||[]).filter(x=>x.k===nk);if(bs.length){bs.forEach(applySub);$f('tk').textContent='🔄 '+subTxt(bs);paint(calc(k,false));WTM=setTimeout(step,900/spd);return}}}
+  k++;if(k>=r.tl.length){paint(calc(r.tl.length-1,false));return fin()}const[m,i,si,as,t]=r.tl[k],d=1000/spd,foul=t==='f'||t==='y';$f('ck').textContent=m+"'";
   const ch=(s,q)=>$f('c'+s+q),fw=x=>i?100-x:x;let txt='';
   if(t==='p'){const q=1+k%4,x=fw(rr(30,66)),y=rr(14,86);lay(x,y,{[i+'-'+q]:[x,y]});hl(i,q);BP=[x,y];ball(x,y);txt=`${m}' ${T2[i].name} mueve el balón`}
   else if(foul){const x=BP[0]+rr(-3,3),y=BP[1]+rr(-3,3);lay(BP[0],BP[1],{[i+'-'+si]:[x,y],[(1-i)+'-'+(1+k%4)]:[x+(i?2.5:-2.5),y+2]});hl(i,si);txt=`${m}' ${t==='y'?'🟨 Amarilla.':'🔔'} Falta de ${nm(i,si)}`}
@@ -273,8 +299,40 @@ function watch(f,sea){const r=f&&f.rep;if(!r||!r.tl)return report(f,sea);clearTi
     else if(t==='s'){ball(...pp(ch(1-i,0)));$f('tk').textContent=`${m}' 🧤 ¡Paradón de ${nm(1-i,0)}!`}else{ball(i?1.5:98.5,k%2?27:73);$f('tk').textContent=`${m}' Se va fuera el disparo de ${nm(i,si)}`}
     paint(calc(k,false))},d*.45)}
   $f('tk').textContent=txt;paint(calc(k,true));const wait=t==='g'?Math.max(d*2.4,1200):d;if(t==='g')setTimeout(()=>{if($f('fld'))kick(1-i)},wait*.55);WTM=setTimeout(step,wait)};
+ // ===== Cambios ilimitados en directo + cierre del partido =====
+ let PQ=0,SA=-2,over=0;
+ const subTxt=bs=>{const so=bs.map(b=>b.out).filter(id=>!bs.some(x=>x.inn===id)),si=bs.map(b=>b.inn).filter(id=>!bs.some(x=>x.out===id));return so.length?`Cambio en ${T2[bs[0].s].name}: `+so.map((id,j)=>`sale ${G.P[id].name}, entra ${G.P[si[j]].name}`).join(' · '):`Cambio de posiciones en ${T2[bs[0].s].name}`},
+  rfs=(s,i)=>{const p=P(s,i),row=$f('r'+s+i),c=$f('c'+s+i);if(row){row.querySelector('.n').textContent=p.n;row.querySelector('.nm').textContent=p.name}if(c){const u=ph(p);c.classList.toggle('ph',!!u);c.innerHTML=(u?`<img src="${u}" alt="">`:'')+`<i>${p.n}</i>`}},
+  applySub=b=>{CUR[b.s][b.slot]=b.inn;rfs(b.s,b.slot)},
+  applyNow=()=>{const nk=k+1,bs=(r.subs||[]).filter(x=>x.k===nk);SA=nk;if(bs.length){bs.forEach(applySub);$f('tk').textContent='🔄 '+subTxt(bs)}paint(calc(k,false))},
+  resume=ms=>{const b=$f('sb');if(b)b.textContent='🔄 Cambios';WTM=setTimeout(step,ms)};
+ const openSubs=()=>{document.getElementById('sbp')?.remove();const sq=me().pl.slice(),lu=CUR[MS].slice(),RO={GK:'GK',D:'DEF',M:'MID',F:'FWD'},mnt=k<0?0:r.tl[k][0],c0=calc(k,false).S;let sel=null;
+  const px=document.createElement('div');px.className='sbp';px.id='sbp';mw.append(px);
+  const fc=p=>p.fat>60?'#ff4d6a':p.fat>30?'#f5c542':'#00e08a',info=p=>`${p.form?`<small>forma ${p.form>0?'▲':'▼'}${Math.abs(p.form)}</small>`:''}<i class="bf" title="Cansancio ${p.fat}%"><u style="width:${100-p.fat}%;background:${fc(p)}"></u></i>`,PS={GK:'POR',DEF:'DEF',MID:'MED',FWD:'DEL'};
+  const confirm=async()=>{const btn=px.querySelector('#sbo');btn.disabled=true;const x=await prApi({type:'live_sub',done:k+1,lu});if(!x||!x.live){btn.disabled=false;return}
+   r=x.live.rep;px.remove();applyNow();resume(900/spd)};
+  const draw=()=>{const bn=sq.filter(id=>!lu.includes(id)).sort((a,b)=>G.P[b].ovr-G.P[a].ovr),ch=lu.some((id,i)=>id!==CUR[MS][i]);
+   px.innerHTML=`<div class="sbh"><h3>🔄 Cambios · ${mnt}' · ${e(T2[0].name)} ${c0[0].g}-${c0[1].g} ${e(T2[1].name)}</h3></div><div class="mu sm">Toca a uno del campo y a uno del banquillo para cambiarlos (o a dos del campo para que se cambien de posición). Sin límite de cambios.</div>
+   <div class="sbg"><div class="sbc"><h4>En el campo</h4>${lu.map((id,i)=>{const p=G.P[id],ro=RO[ROL[MS][i]],oop=p.pos!==ro;return`<div class="sbr ${sel&&sel.t==='p'&&sel.i===i?'on':''} ${id!==CUR[MS][i]?'chg':''}" data-p="${i}"><b class="o">${p.ovr}</b><span class="nm">${e(p.name)}</span><span class="ro${oop?' oop':''}">${RN[ROL[MS][i]]}${oop?` (es ${PS[p.pos]})`:''}</span>${info(p)}</div>`}).join('')}</div>
+   <div class="sbc"><h4>Banquillo</h4>${bn.map(id=>{const p=G.P[id];return`<div class="sbr ${p.inj?'bad':''} ${sel&&sel.t==='b'&&sel.id===id?'on':''}" ${p.inj?'':`data-b="${id}"`}><b class="o">${p.ovr}</b><span class="nm">${e(p.name)}</span>${p.inj?'<span class="ro">🩹 lesionado</span>':`<span class="ro">${PS[p.pos]}</span>`}${info(p)}</div>`}).join('')||'<div class="mu sm">No queda nadie en el banquillo.</div>'}</div></div>
+   <div class="sbf"><button class="btn s" id="sbx">Volver al partido</button><button class="btn" id="sbo" ${ch?'':'disabled'}>Confirmar cambios</button></div>`;
+   px.querySelector('#sbx').onclick=()=>{px.remove();resume(400)};px.querySelector('#sbo').onclick=confirm};
+  px.onclick=ev=>{const el=ev.target.closest('[data-p],[data-b]');if(!el)return;
+   if(el.dataset.p!=null){const i=+el.dataset.p;if(sel&&sel.t==='b'){lu[i]=sel.id;sel=null}else if(sel&&sel.t==='p'&&sel.i!==i){[lu[sel.i],lu[i]]=[lu[i],lu[sel.i]];sel=null}else sel={t:'p',i}}
+   else{const id=+el.dataset.b;if(sel&&sel.t==='p'){lu[sel.i]=id;sel=null}else sel={t:'b',id}}draw()};
+  draw()};
+ if($f('sb'))$f('sb').onclick=()=>{if(over||PQ)return;PQ=1;$f('sb').textContent='⏳ Tras la jugada…'};
+ const finish=async(rep,viaTitle)=>{if(over)return;over=1;clearTimeout(WTM);const sk=$f('sk');if(sk)sk.textContent='…';const x=await commit();mw.remove();document.body.style.overflow='';const o=x&&x.out;if(!o||!o.f)return;
+  if(o.nm)toast('📨 '+o.nm+(o.nm>1?' mensajes nuevos':' mensaje nuevo')+' en el vestuario');
+  const rp=()=>{if(rep)report(o.f,o.season)};if(o.season&&!viaTitle)seasonTitle(rp);else rp()},
+  liveEnd=()=>commit().then(x=>{const o=x&&x.out;if(o&&o.season)setTimeout(()=>{if(!over)seasonTitle(()=>finish(1,1))},1500)});
  WTM=setTimeout(step,600)}
-let busy=0;async function adv(){if(busy)return;busy=1;const[r]=await Promise.all([act({type:'advance'}),loadRPR()]);busy=0;if(r.out&&r.out.f)watch(r.out.f,r.out.season);if(r.out&&r.out.nm)toast('📨 '+r.out.nm+(r.out.nm>1?' mensajes nuevos':' mensaje nuevo')+' en el vestuario')}
+// El partido del mister se juega en directo en el servidor; se cierra (resultado, notas, prensa...) al acabar, saltar o cerrar. Si acaba la temporada sale el cartel.
+let CM=null;const commit=()=>CM||(CM=act({type:'advance'}).then(r=>{if(r.err)CM=null;return r}));
+function seasonTitle(cb){document.getElementById('stt')?.remove();const o=document.createElement('div');o.id='stt';o.className='stt';
+ o.innerHTML=`<div class="stn">TEMPORADA <span class="stx">${G.season+1}</span></div><div class="sty">${season()} · ${DN[gd()]} División</div><div class="sth">Toca para continuar</div>`;
+ o.onclick=()=>{o.remove();cb&&cb()};document.body.append(o)}
+let busy=0;async function adv(){if(busy)return;busy=1;CM=null;const[r]=await Promise.all([act({type:'live_begin'}),loadRPR()]);busy=0;if(r.live)watch(r.live,0,1)}
 const setp=(id,pos,n)=>{const p=G.P[id];act({type:'setp',pid:id,pos:pos||p.pos,n:n||p.n})},cap=id=>{const t=me();act({type:'lineup',lu:t.lu,bn:t.bn,fm:t.fm,cap:id})},fm=f=>{const t=me();act({type:'lineup',lu:t.lu,bn:t.bn,fm:f,cap:t.cap})};
 function sw(a,b){if(a===null){if(SEL===null){SEL=b;return render()}a=SEL}SEL=null;if(a===b)return render();const t=me(),L=[...t.lu,...t.bn];[L[a],L[b]]=[L[b],L[a]];act({type:'lineup',lu:L.slice(0,5),bn:L.slice(5),fm:t.fm,cap:t.cap})}
 function neg(id){const p=G.P[id],ask=Math.round(p.val*(p.t?1+.15*p.gr:.8)/100)*100;TR={id,ask,mode:'both'};modal(`<h3>Negociar: ${e(p.name)}</h3><div class="sm">${p.pos} · ${p.ovr}/${potOf(p)} · ${p.t?e(G.T[p.t].name):'Agente libre'}<br>Valor ${eur(p.val)} · Pedirán ~${eur(ask)}</div><p class="sm" style="margin-top:8px">¿Cómo quieres pujar?</p><select id="md" onchange="TR.mode=this.value;negMode()"><option value="money">Solo dinero</option><option value="both" selected>Jugador + dinero</option><option value="player">Solo jugador</option></select><div id="ofw"><p class="sm" style="margin-top:8px" id="oft">Oferta total (€, incluye el valor del jugador)</p><input id="of" type="number" value="${ask}"></div><div id="gvw"><p class="sm" style="margin-top:8px">Jugador que traspasas a cambio (a su valor)</p><select id="gv" onchange="negMode()">${me().pl.map(i=>G.P[i]).map(q=>`<option value="${q.id}">${e(q.name)} (${q.ovr}) · ${eur(q.val)}</option>`).join('')}</select></div><div class="sm mu" id="nin" style="margin-top:8px"></div><button class="btn" style="margin-top:10px;width:100%" onclick="buy(${id})">Enviar oferta</button>`);negMode()}
