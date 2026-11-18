@@ -17,14 +17,14 @@ const ri=(g,a,b)=>a+Math.floor(rnd(g)*(b-a+1)),pick=(g,a)=>a[ri(g,0,a.length-1)]
 const shuf=(g,a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(g,0,i);[a[i],a[j]]=[a[j],a[i]]}return a};
 const wpick=(g,a,f)=>{const w=a.map(f),s=w.reduce((x,y)=>x+y,0);let r=rnd(g)*s;for(let i=0;i<a.length;i++){if((r-=w[i])<=0)return a[i]}return a[a.length-1]};
 const val=o=>Math.round((o-52)**3*6/100)*100;
-const raw=p=>K.reduce((s,k,i)=>s+p[k]*WT[p.pos][i],0),ovrOf=p=>cl(Math.round(raw(p)),60,99);
+const raw=p=>K.reduce((s,k,i)=>s+p[k]*WT[p.pos][i],0),ovrOf=p=>cl(Math.round(raw(p)),60,99),ovdOf=p=>cl(+raw(p).toFixed(1),60,99);
 const LBL=p=>p.pos==='GK'?{pace:'VEL',shoot:'SAL',pass:'SAQ',drib:'REF',def:'PAR',phys:'POS'}:{pace:'RIT',shoot:'TIR',pass:'PAS',drib:'REG',def:'DEF',phys:'FIS'};
 const gkq=p=>(p.def*.45+p.drib*.25+p.phys*.15+p.shoot*.15)+2.5; // calidad del portero en el motor: paradas, reflejos, posicionamiento y salidas (+2.5 mantiene el equilibrio de antes)
 const pot=(g,p)=>p.real||p.t===g.me?99:p.pot; // jugadores del Garra (y los de tu plantilla): sin techo de potencial
-const refresh=p=>{p.ovr=ovrOf(p);if(p.ovr>p.pot)p.pot=p.ovr;p.val=val(p.ovr);p.sal=Math.round(p.val/150*(p.sx||1))};
+const refresh=p=>{p.ovr=ovrOf(p);p.ovd=ovdOf(p);if(p.ovr>p.pot)p.pot=p.ovr;p.val=val(p.ovr);p.sal=Math.round(p.val/150*(p.sx||1))};
 function mk(g,pos,base,name,n,t){const p={id:g.pid++,name,pos,n,t,gk:1,fat:0,form:0,inj:0,tr:0,gr:+(.8+rnd(g)*.5).toFixed(2),ct:ri(g,1,3),s:{g:0,a:0,app:0,rt:0,yc:0}};
   BI[pos].forEach((b,i)=>p[K[i]]=cl(Math.round(base+b+ri(g,-5,5)),30,99));const d=Math.round(base-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));
-  p.ovr=ovrOf(p);p.pot=cl(p.ovr+ri(g,0,12),60,99);p.val=val(p.ovr);p.sal=Math.round(p.val/150);g.P[p.id]=p;return p}
+  p.ovr=ovrOf(p);p.ovd=ovdOf(p);p.pot=cl(p.ovr+ri(g,0,12),60,99);p.val=val(p.ovr);p.sal=Math.round(p.val/150);g.P[p.id]=p;return p}
 const freeN=(g,t)=>{const u=new Set(t.pl.map(i=>g.P[i].n));let n=2;while(u.has(n))n++;return n};
 function mkTeam(g,div,name,base,o={}){const id='t'+g.tid++,h=ri(g,0,359);
   const t={id,name,div,c:o.c||[`hsl(${h} 70% 42%)`,`hsl(${(h+150+ri(g,0,60))%360} 75% 88%)`],cr:{s:ri(g,0,4),p:ri(g,0,3),i:(name.split(' ').filter(w=>!['de','los','la','del','y'].includes(w.toLowerCase())).slice(0,2).map(w=>w[0]).join('')).toUpperCase()},st:'Estadio '+pick(g,P2),bud:BUD[div-1],pl:[],lu:[],bn:[],fm:'2-1-1',cap:0,gar:!!o.gar,real:!!o.real};
@@ -129,7 +129,13 @@ function advance(g){const r=g.round,me=g.T[g.me],out={},fin=(k,a,t)=>{me.bud+=a;
   out.nm=chat(g,played,out.f?(out.f.h===g.me?out.f.hg-out.f.ag:out.f.ag-out.f.hg):0);try{out.nm+=PX.settle(g,played,out.f)||0}catch(e){console.error('Barro prensa: '+e.message)}
   if(out.f)mkPress(g,out.f);
   for(const p of Object.values(g.P)){p.fat=Math.max(0,p.fat-14);if(p.inj>0)p.inj--;p.tr=0}
-  g.round++;if(g.round>=22)out.season=endSeason(g);return out}
+  g.round++;if(g.round>=22)out.season=endSeason(g);else{const c=clinch(g);if(c)out.clinch=c}return out}
+// Ascenso/descenso matemático (se avisa una sola vez por temporada). Conservador: los empates a puntos se cuentan en contra.
+function clinch(g){const d=g.T[g.me].div,tb=table(g,d),rem={};g.fx[d].filter(f=>!f.done).forEach(f=>{rem[f.h]=(rem[f.h]||0)+1;rem[f.a]=(rem[f.a]||0)+1});
+  const mx=x=>x.pts+3*(rem[x.id]||0),m=tb.find(x=>x.id===g.me),ot=tb.filter(x=>x.id!==g.me);g.cl=g.cl||{};
+  const k=d>1&&ot.filter(x=>mx(x)>=m.pts).length<=1?'up':d<5&&ot.filter(x=>x.pts>mx(m)).length>=10?'down':null;
+  if(!k||g.cl[g.season+k])return null;g.cl[g.season+k]=1;
+  news(g,k==='up'?'¡ASCENSO MATEMÁTICO! Garra FC ya es equipo de categoría superior la próxima temporada.':'Descenso matemático: Garra FC jugará la próxima temporada en una categoría inferior.','season');return k}
 const tmHas=(g,t,e)=>t.gar;
 function endSeason(g){const rec={s:g.season,ch:{},pro:[],rel:[],gp:null},tb={},mv=[];
   for(let d=1;d<=5;d++){tb[d]=table(g,d);rec.ch[d]=tb[d][0].id;
@@ -148,13 +154,14 @@ function placeReal(g){const me=g.T[g.me],rl=Object.values(g.P).filter(p=>p.real&
     O.pl=O.pl.map(i=>i===w.id?p.id:i);w.t=null;p.t=O.id;if(O.pl.some(i=>i!==p.id&&g.P[i].n===p.n))p.n=freeN(g,O);if(O.cap===w.id)O.cap=p.id;auto(g,O)})}
 function fixReal(g){const nm=new Set(REAL.squad.map(s=>s.name));Object.values(g.P).forEach(p=>{if(nm.has(p.name))p.real=1});placeReal(g);g.rl=1}
 // Progresión muy lenta tras cada partido: la valoración suma/resta décimas de punto; al llegar a ±1 un atributo sube/baja 1 (nunca pasa del potencial)
+// Progresión por partido en DÉCIMAS: la nota del partido sube o baja la media (p.ovd, 1 decimal) y repartimos esa subida entre los atributos (2 decimales).
+// PROG_X = cuánto cuenta cada partido (1 = ritmo antiguo; 2 = el doble). El techo de potencial sigue frenando las subidas.
+const PROG_X=2;
 function prog(g,p,v,res,r,ga){let d=(v-6)*(v>6?.035:.025)+(res>0?.01:res<0?-.01:0);if(p.pos==='GK')d+=ga===0?.012:ga>=3?-.02:0;
-  p.pg=p.pg||0;if(p.ovr>=pot(g,p)){if(d>0)d=0;if(p.pg>0)p.pg=0}
-  p.pg=cl(p.pg+d,-1.5,1.5);let k=-1,dir=0;
-  if(Math.abs(p.pg)>=1){dir=Math.sign(p.pg);const w=WT[p.pos].map(x=>x+.04);if(dir>0){if(r.g[p.id])w[1]*=4;if(r.a[p.id])w[2]*=3;if(p.pos==='GK'&&r.sv_[p.id]){w[4]*=3;w[3]*=3}}
-    const i=wpick(g,K.map((_,j)=>j),j=>w[j]),key=K[i],old=p[key],nv=cl(old+dir,30,99);p.pg-=dir;
-    if(nv!==old){p[key]=nv;refresh(p);k=i;if(p.t===g.me)news(g,`${p.name} ${dir>0?'mejora':'empeora'}: ${LBL(p)[key]} ${old}→${nv}`,'progress')}else dir=0}
-  return[+d.toFixed(3),k,dir]}
+  d*=PROG_X;if(p.ovr>=pot(g,p)&&d>0)d=0;
+  const w=WT[p.pos].map(x=>x+.04);if(d>0){if(r.g[p.id])w[1]*=4;if(r.a[p.id])w[2]*=3;if(p.pos==='GK'&&r.sv_[p.id]){w[4]*=3;w[3]*=3}}
+  const S=w.reduce((s,x,j)=>s+x*WT[p.pos][j],0),inc=K.map((key,j)=>{const old=p[key],nv=cl(+(old+d*w[j]/S).toFixed(2),30,99);p[key]=nv;return +(nv-old).toFixed(2)});
+  refresh(p);return[+d.toFixed(3),inc]}
 function fixGK(g){for(const p of Object.values(g.P))if(p.pos==='GK'&&!p.gk){BI.GK.forEach((b,i)=>p[K[i]]=cl(p.ovr+b+ri(g,-4,4),30,99));const d=Math.round(p.ovr-raw(p));K.forEach(k=>p[k]=cl(p[k]+d,30,99));p.gk=1;refresh(p)}
   for(const p of Object.values(g.P))p.gk=1;g.gkv=1}
 const err=m=>({err:m});
