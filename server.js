@@ -986,8 +986,9 @@ function lgAutoNext() { // al meter un resultado: recalcula el próximo partido 
 function lgAdminView() {
   lgEnsure();
   const st = lgStats(), cfg = db.garrabet.cfg, nm = lgNextMatch();
-  const teams = st.teams.map(t => ({ name: t.name, garra: t.key === norm(LG_GARRA), PJ: t.PJ, G: t.G, E: t.E, P: t.P, GF: t.GF, GC: t.GC, DG: t.GF - t.GC, Pts: t.Pts, form: t.form, rating: t.rating }))
-    .sort((a, b) => b.Pts - a.Pts || b.DG - a.DG || b.GF - a.GF || a.name.localeCompare(b.name));
+  // la tabla es LA MISMA que la de Clasificación (la oficial de MLA si ya se sincronizó, en su orden); de lgStats solo salen la forma y el rating de cada equipo
+  const byKey = new Map(st.teams.map(t => [t.key, t]));
+  const teams = clasifPublic().teams.map(t => { const s = byKey.get(norm(t.name)); return { name: t.name, garra: t.garra, PJ: t.PJ, G: t.G, E: t.E, P: t.P, GF: t.GF, GC: t.GC, DG: t.DG, Pts: t.Pts, form: s ? s.form : '', rating: s ? s.rating : null }; });
   let next = null;
   if (nm) {
     const od = db.garrabet.odds[nm.j], e = lgExpected(nm.rival, st);

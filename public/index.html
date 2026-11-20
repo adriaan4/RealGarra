@@ -666,6 +666,7 @@ dialog button{min-height:48px}
  <p class="sub">Toca las cuotas para armar tu boleto: una selección es sencilla y varias, combinada (se multiplican). Solo una selección por mercado y partido.</p>
  <div id="gbName"></div>
  <div class="row"><select id="gbMatch" aria-label="Partido"></select></div>
+ <div id="gbTab"></div>
  <div id="gbMarkets"></div>
  <div id="gbSlip"></div>
  <h2 style="margin-top:22px">Mis apuestas</h2><div id="gbMine"></div>
@@ -991,7 +992,7 @@ $('#mlaStatus').onclick=async()=>{try{await mlaShow()}catch(e){$('#mlaOut').inne
 $('#mlaSync').onclick=async()=>{const b=$('#mlaSync');b.disabled=true;$('#mlaOut').innerHTML='<p>Consultando MLA…</p>';
  try{const r=await adm('/api/mla/sync','POST');
   const ok=r.ok?`<p class="msg">✅ ${r.changes&&r.changes.length?'Actualizado: '+esc(r.changes.join(' | ')):'MLA leído, sin cambios (ya estaba al día)'}</p>`:'';
-  await mlaShow(ok);if(r.ok)await load()}
+  await mlaShow(ok);if(r.ok){await load();await lgLoad()}}
  catch(e){$('#mlaOut').innerHTML='<p class="msg">'+esc(e.message)+'</p>'}
  b.disabled=false};
 // ---- Crónicas de partido ----
@@ -1294,8 +1295,12 @@ function gbTicketHtml(t,del){
  const n=t.sels.length;
  return `<div class="pv gbtk"><div class="top"><span><b>${n>1?'Combinada ×'+n:'Sencilla'}</b> · cuota <b>${gbO(t.odd)}</b>${t.stake?` · apuesta <b>${gbM(t.stake)}</b>`:''}</span><span class="gbchip ${t.status}">${gbChipTxt(t.status)}</span></div>
   ${t.stake?`<p class="sub" style="margin:4px 0 0">${t.status==='win'?'Cobras <b>'+gbM(t.payout)+'</b> pavos':t.status==='void'?'Apuesta anulada: te devolvemos '+gbM(t.stake)+' pavos':t.status==='lose'?'Pierdes '+gbM(t.stake)+' pavos':'Si ganas: <b>'+gbM(t.stake*t.odd)+'</b> pavos'}</p>`:''}<ul>${t.sels.map(x=>`<li>J${x.j} vs ${esc(gbRival(x.j))} · ${esc(gbSelTxt(x))} @ ${gbO(x.odd)}${x.nm?' (no multiplica)':''} ${x.status==='win'?'✅':x.status==='lose'?'❌':'⏳'}${gbNote(x)?' <small>'+gbNote(x)+'</small>':''}</li>`).join('')}</ul>${del||''}</div>`}
+// Clasificación en la pantalla de apuestas: es S.clasif, la misma que la página Clasificación (la que se pega en Admin → Más → Clasificación MLA)
+function gbClasif(){const el=$('#gbTab');if(!el)return;const c=S.clasif,t=(c&&c.teams)||[];
+ const h=t.length?`<h3 style="margin:14px 0 6px">📊 Clasificación</h3><div class="wrap"><table class="fbTb"><thead><tr><th>Pos</th><th style="text-align:left">Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>PTS</th></tr></thead><tbody>${t.map((x,i)=>`<tr${x.garra?' class="g"':''}><td>${i+1}</td><td class="n">${crestImg(x.name)}${esc(x.name)}</td><td>${x.PJ}</td><td>${x.G}</td><td>${x.E}</td><td>${x.P}</td><td>${x.DG>0?'+':''}${x.DG}</td><td class="fbPt">${x.Pts}</td></tr>`).join('')}</tbody></table></div><p class="sub" style="font-size:14px;margin:4px 0 0">${c.src==='mla'?'MLA Sport'+(c.at?' · actualizada '+new Date(c.at).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):''):'Calculada con los resultados de la liga'}</p>`:'';
+ if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h}}
 function renderGB(){
- const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;
+ const cal=S.calendar||[],sel=$('#gbMatch'),as=$('#gbAdmMatch');if(!sel||!as)return;gbClasif();
  const nx=cal.find(m=>m.j===gbAct())||cal.find(m=>m.date>=today()),opts=cal.map(m=>`<option value="${m.j}">J${m.j} · ${dmy(m.date)} · Real Garra vs ${esc(m.rival)}</option>`).join('');
  if(sel.dataset.sig!==opts){const v=sel.value||(nx?nx.j:cal[0]&&cal[0].j);sel.innerHTML=opts;sel.dataset.sig=opts;sel.value=v;as.innerHTML=opts;as.value=as.value||v;gbAdmFill();gbFilters()}
  // nombre
@@ -1410,10 +1415,11 @@ $('#gbSlip').addEventListener('input',e=>{if(e.target.id!=='gbStake')return;gbSt
 // ---- Cuotas automáticas (liga, estadísticas y recálculo) ----
 let lg=null;
 async function lgLoad(){if(!pw)return;try{lg=await adm('/api/garrabet-admin/league');lgRender()}catch(e){}}
+setInterval(()=>{if(!document.hidden)lgLoad()},60000); // la clasificación de GarraBet sigue a la de MLA aunque se actualice sola
 function lgRender(){const L=lg;if(!L)return;const fo=document.activeElement,busy=fo&&$('#lgDet').contains(fo)&&fo.matches('input,select');
  const n=L.next,src={auto:'🤖 automáticas',manual:'✍️ puestas a mano',none:'sin cuotas'};
  $('#lgNext').innerHTML=n?`<div class="pv"><b>Próximo partido: J${n.j} · Real Garra vs ${esc(n.rival)}</b><br><small>Goles esperados: Garra <b>${n.lg}</b> – ${esc(n.rival)} <b>${n.lr}</b> · Cuotas ahora: ${src[n.source]}${n.at?' ('+new Date(n.at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'})+')':''}</small><br>${[['1','Gana Garra'],['X','Empate'],['2','Gana '+n.rival]].map(([k,t])=>`${esc(t)} <b>${n.now&&n.now[k]?gbO(n.now[k]):'—'}</b>${n.source==='manual'?' <small>(calculada: '+gbO(n.calc[k])+')</small>':''}`).join(' · ')}</div>`:'<p>No quedan partidos sin resultado en el calendario.</p>';
- $('#lgTable').innerHTML='<thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Forma</th><th>Rating</th></tr></thead><tbody>'+L.teams.map(t=>`<tr${t.garra?' class="me"':''}><td>${esc(t.name)}</td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td>${t.GF}</td><td>${t.GC}</td><td>${t.DG}</td><td><b>${t.Pts}</b></td><td class="lgF">${esc(t.form)||'—'}</td><td><b>${t.rating}</b></td></tr>`).join('')+'</tbody>';
+ $('#lgTable').innerHTML='<thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th><th>Forma</th><th>Rating</th></tr></thead><tbody>'+L.teams.map(t=>`<tr${t.garra?' class="me"':''}><td>${esc(t.name)}</td><td>${t.PJ}</td><td>${t.G}</td><td>${t.E}</td><td>${t.P}</td><td>${t.GF}</td><td>${t.GC}</td><td>${t.DG}</td><td><b>${t.Pts}</b></td><td class="lgF">${esc(t.form)||'—'}</td><td><b>${t.rating!=null?t.rating:'—'}</b></td></tr>`).join('')+'</tbody>';
  $('#lgList').innerHTML=L.results.map(r=>`<div class="pv vh"><span><small>J${r.j}</small> ${esc(r.a)} <b>${r.ga} - ${r.gb}</b> ${esc(r.b)}</span><button type="button" class="ghost" data-lgdel="${r.id}">Quitar</button></div>`).join('')||'<p>Todavía no hay resultados de otros equipos.</p>';
  if(!busy){$('#lgAuto').checked=L.cfg.auto;$('#lgMargin').value=String(L.cfg.margin).replace('.',',');
   for(const id of ['lgA','lgB']){const s=$('#'+id),v=s.value;s.innerHTML='<option value="">Equipo…</option>'+L.names.map(x=>`<option>${esc(x)}</option>`).join('');s.value=v}}}

@@ -15,7 +15,7 @@
     info('Leyendo MLA…');
     try {
       const r = await adm('/api/mla/sync', 'POST');
-      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } }
+      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } } if (typeof lgLoad === 'function') { try { await lgLoad(); } catch (e) { /* la tabla de GarraBet se refresca sola */ } }
       await status();
       if (!r.ok) info(q('#mlaInfo').textContent + ' · ' + (r.error || 'No se pudo leer MLA'));
     } catch (e) { info('Error: ' + e.message); }
@@ -26,7 +26,7 @@
     try {
       const r = await adm('/api/mla/paste', 'POST', { text });
       q('#mlaPaste').value = '';
-      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } }
+      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } } if (typeof lgLoad === 'function') { try { await lgLoad(); } catch (e) { /* la tabla de GarraBet se refresca sola */ } }
       await status();
       info(q('#mlaInfo').textContent + ' · Guardados ' + r.teams + ' equipos' + (r.changes.length ? '.' : ' (ya estaba igual).'));
     } catch (e) { info('Error: ' + e.message); }
@@ -44,7 +44,7 @@
       const r = await fetch('/api/mla/upload', { method: 'POST', headers: { 'Content-Type': 'text/plain', 'x-admin': pw }, body: text });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Error');
-      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } }
+      if (typeof load === 'function') { try { await load(); } catch (e) { /* se refresca solo */ } } if (typeof lgLoad === 'function') { try { await lgLoad(); } catch (e) { /* la tabla de GarraBet se refresca sola */ } }
       await status();
       info(q('#mlaInfo').textContent + ' · Guardados ' + d.teams + ' equipos desde ' + file.name + (d.changes.length ? '.' : ' (ya estaba igual).'));
     } catch (e) { info('Error al leer el archivo: ' + e.message); }
